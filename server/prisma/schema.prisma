@@ -1,0 +1,455 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ================================
+// CORE TENANCY & IAM
+// ================================
+
+model Tenant {
+  id            String   @id @default(uuid())
+  name          String
+  plan          SubscriptionPlan @default(FREE)
+  trialEndsAt   DateTime? // [NEW] Date when trial expires
+  subscriptionStatus SubscriptionStatus @default(TRIAL)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  users         User[]
+  stores        Store[]
+  products      Product[]
+  categories    Category[]
+  customers     Customer[]
+  transactions  Transaction[]
+  
+  // Reporting Aggregates
+  dailySales    DailySalesSummary[]
+  productStats  ProductSalesSummary[]
+  cashLogs      CashflowLog[]
+  purchases     Purchase[]   // [NEW] Added missing relation
+  debtRecords   DebtRecord[] // [NEW] Added missing relation
+}
+
+enum SubscriptionPlan {
+  FREE
+  BASIC
+  PREMIUM
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+// [NEW] Configurable Packages
+model SubscriptionPackage {
+  id            String   @id @default(uuid())
+  name          String   // e.g. "Bulanan", "Tahunan"
+  price         Float    // e.g. 49000
+  durationDays  Int      // e.g. 30
+  description   String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+}
+
+model User {
+  id            String   @id @default(uuid())
+  tenantId      String
+  storeId       String?  // If null, can access all stores (Admin)
+  name          String
+  email         String   @unique
+  passwordHash  String
+  role          UserRole @default(CASHIER)
+  createdAt     DateTime @default(now())
+
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  store         Store?   @relation(fields: [storeId], references: [id])
+  transactions  Transaction[]
+  
+  loginHistory  LoginHistory[]
+}
+
+enum UserRole {
+  OWNER
+  ADMIN
+  STORE_MANAGER
+  CASHIER
+  SUPER_ADMIN
+}
+
+model LoginHistory {
+  id        String   @id @default(uuid())
+  userId    String
+  ip        String?
+  userAgent String?
+  loginAt   DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+// ================================
+// BUSINESS DATA
+// ================================
+
+// 
+model Store {
+  id          String   @id @default(uuid())
+  tenantId    String
+  name        String
+  location    String?
+  latitude    Float?   // [NEW] For Map Visualization
+  longitude   Float?   // [NEW] For Map Visualization
+  category    String?  // [NEW] UMKM Category (Apotik, Kedai, etc.)
+  waNumber    String?  // [NEW] For WhatsApp Notifications
+  balance     Float    @default(0) // [NEW] Digital Wallet Balance
+  createdAt   DateTime @default(now())
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  users       User[]
+  transactions Transaction[]
+  dailySales  DailySalesSummary[]
+  stock       Stock[]
+  cashLogs    CashflowLog[]
+  debts       DebtRecord[]
+  purchases   Purchase[]
+  withdrawals Withdrawal[] // [NEW]
+}
+
+// [NEW] Withdrawal Request
+model Withdrawal {
+  id            String   @id @default(uuid())
+  storeId       String
+  amount        Float
+  fee           Float    @default(0) // [NEW] Platform Fee applied
+  netAmount     Float    @default(0) // [NEW] Final amount transferred
+  bankName      String
+  accountNumber String
+  status        WithdrawalStatus @default(PENDING)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt // Track approval time
+
+  store         Store    @relation(fields: [storeId], references: [id])
+}
+
+enum WithdrawalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// [NEW] Global Announcements
+model Announcement {
+  id        String   @id @default(uuid())
+  title     String
+  content   String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model Supplier {
+  id            String   @id @default(uuid())
+  tenantId      String
+  name          String
+  phone         String?
+  address       String?
+  createdAt     DateTime @default(now())
+  
+  purchases     Purchase[]
+}
+
+model Purchase {
+  id            String   @id @default(uuid())
+  tenantId      String
+  storeId       String
+  supplierId    String?
+  totalAmount   Float
+  purchasedAt   DateTime @default(now())
+  
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  store         Store    @relation(fields: [storeId], references: [id])
+  supplier      Supplier? @relation(fields: [supplierId], references: [id])
+  items         PurchaseItem[]
+}
+
+model PurchaseItem {
+  id            String   @id @default(uuid())
+  purchaseId    String
+  productId     String
+  quantity      Int
+  costPrice     Float    // Price at the moment of purchase
+  
+  purchase      Purchase @relation(fields: [purchaseId], references: [id])
+}
+
+// ... existing models ...
+
+model Product {
+  id            String   @id @default(uuid())
+  tenantId      String
+  storeId       String?  // If null, is a global template or HQ product
+  name          String
+  description   String?
+  sku           String?
+  barcode       String?
+  basePrice     Float
+  sellingPrice  Float
+  stock         Int      @default(0)
+  categoryId    String?
+  imageUrl      String?  
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  category      Category? @relation(fields: [categoryId], references: [id])
+  stocks        Stock[]
+  sales         TransactionItem[]
+  inventoryLogs InventoryLog[] // [NEW]
+  minStock      Int            @default(5) // [NEW]
+}
+
+enum InventoryType {
+  IN
+  OUT
+  ADJUSTMENT
+}
+
+model InventoryLog {
+  id        String        @id @default(uuid())
+  productId String
+  storeId   String?       // Optional: track which store if product is global? assuming product is store-specific or we trust productId
+  type      InventoryType
+  quantity  Int
+  reason    String?
+  createdAt DateTime      @default(now())
+  
+  product   Product       @relation(fields: [productId], references: [id])
+}
+
+model Category {
+  id            String   @id @default(uuid())
+  tenantId      String
+  name          String
+  products      Product[]
+  
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+}
+
+model Stock {
+  id            String   @id @default(uuid())
+  storeId       String
+  productId     String
+  quantity      Int
+  
+  store         Store    @relation(fields: [storeId], references: [id])
+  product       Product  @relation(fields: [productId], references: [id])
+  
+  @@unique([storeId, productId])
+}
+
+model Customer {
+  id            String   @id @default(uuid())
+  tenantId      String
+  name          String
+  phone         String?
+  email         String?
+  createdAt     DateTime @default(now())
+  
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  transactions  Transaction[]
+}
+
+model Transaction {
+  id            String   @id @default(uuid()) // Custom ID like ORD-123
+  tenantId      String
+  storeId       String
+  cashierId     String? // User ID
+  customerId    String?
+  source        String?   // "POS", "MARKET"
+  
+  totalAmount   Float
+  paymentMethod String  // CASH, QRIS, TRANSFER
+  amountPaid    Float
+  change        Float
+  
+  // O2O Fields
+  orderStatus   String   // PENDING, COMPLETED, CANCELLED
+  paymentStatus PaymentStatus @default(UNPAID)
+  fulfillmentType FulfillmentType @default(DELIVERY)
+  pickupCode    String?   @unique // For QR Scanning
+  deliveryAddress String?
+  paymentProof    String?   // [NEW] URL/Path to proof
+  paidAt          DateTime? 
+
+  occurredAt    DateTime @default(now())
+  
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  store         Store    @relation(fields: [storeId], references: [id])
+  user          User?    @relation(fields: [cashierId], references: [id])
+  customer      Customer? @relation(fields: [customerId], references: [id])
+  
+  transactionItems TransactionItem[]
+  
+  @@index([storeId, occurredAt])
+}
+
+// ... (TransactionItem, etc.)
+
+// [NEW] Central Settings (For Admin QRIS)
+model SystemSettings {
+  id          String   @id @default(uuid())
+  key         String   @unique // e.g. "PLATFORM_QRIS_URL", "PLATFORM_BANK_INFO"
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt
+}
+
+model TransactionItem {
+  id            String   @id @default(uuid())
+  transactionId String
+  productId     String
+  quantity      Int
+  price         Float    // Price at moment of sale
+  
+  transaction   Transaction @relation(fields: [transactionId], references: [id])
+  product       Product     @relation(fields: [productId], references: [id])
+}
+
+// Reporting 
+model DailySalesSummary {
+  id            String   @id @default(uuid())
+  tenantId      String
+  storeId       String
+  date          DateTime @db.Date
+  totalSales    Float
+  totalTrans    Int
+  
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  store         Store    @relation(fields: [storeId], references: [id])
+  
+  @@unique([storeId, date])
+}
+
+model ProductSalesSummary {
+  id            String   @id @default(uuid())
+  tenantId      String
+  productId     String
+  date          DateTime @db.Date
+  quantitySold  Int
+  totalRevenue  Float
+  
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+}
+
+enum PaymentStatus {
+  UNPAID
+  PAID
+  REFUNDED
+}
+
+enum FulfillmentType {
+  DELIVERY
+  PICKUP
+  DINE_IN
+}
+
+// ... existing models ...
+
+model CashflowLog {
+  id            String   @id @default(uuid())
+  tenantId      String
+  storeId       String
+  amount        Decimal  @db.Decimal(15, 2)
+  type          CashflowType // IN or OUT
+  category      CashflowCategory // [UPDATED] Enum for better reporting
+  description   String?
+  performedBy   String?  // User ID who did this
+  occurredAt    DateTime
+  
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  store         Store    @relation(fields: [storeId], references: [id])
+  
+  @@index([tenantId, occurredAt])
+}
+
+enum CashflowType {
+  CASH_IN
+  CASH_OUT
+}
+
+enum CashflowCategory {
+  SALES           // Auto-generated from Transactions
+  EXPENSE_OPERATIONAL // Listrik, Air, Sewa
+  EXPENSE_PURCHASE    // Beli Bahan Baku
+  EXPENSE_PETTY       // Es batu, plastik, dll
+  DEBT_PAYMENT        // Bayar Utang
+  RECEIVABLE_PAYMENT  // Terima Pelunasan Kasbon
+  CAPITAL_IN          // Modal Masuk
+  OTHER
+}
+
+model DebtRecord { // [NEW] "Kasbon" Tracking
+  id            String   @id @default(uuid())
+  tenantId      String
+  storeId       String
+  customerId    String?  // Link to customer if applicable
+  borrowerName  String   // Name manual if no customer entity
+  amount        Decimal  @db.Decimal(15, 2)
+  amountPaid    Decimal  @db.Decimal(15, 2) @default(0)
+  dueDate       DateTime?
+  phone         String?
+  address       String?
+  city          String?
+  latitude      Float?   // [NEW] For Location-based search
+  longitude     Float?   // [NEW] For Location-based search
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  store         Store    @relation(fields: [storeId], references: [id])
+}
+
+enum DebtStatus {
+  UNPAID
+  PARTIAL
+  PAID
+  BAD_DEBT
+}
+
+// ================================
+// SYSTEM & AUDIT
+// ================================
+
+model SyncLog {
+  id            String   @id @default(uuid())
+  tenantId      String
+  deviceId      String
+  status        String   // SUCCESS, PARTIAL, ERROR
+  recordsSynced Int
+  startedAt     DateTime @default(now())
+  completedAt   DateTime?
+  errorMessage  String? // If failed
+}
+
+model AuditLog {
+  id            String   @id @default(uuid())
+  tenantId      String
+  userId        String?
+  action        String   // "UPDATE_PRICE", "ADJUST_STOCK"
+  entity        String   // "Product", "Transaction"
+  entityId      String
+  oldValue      String?
+  newValue      String?
+  occurredAt    DateTime @default(now())
+}

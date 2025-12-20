@@ -1,0 +1,28 @@
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+.env
+
+# Flutter
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+.pub-cache/
+.pub/
+
+# Mobile Specific
+mobile/build/
+mobile/.dart_tool/
+mobile_buyer/build/
+mobile_buyer/.dart_tool/
+ios/Flutter/App.framework
+ios/Flutter/Flutter.framework
+android/local.properties
+
+# Editor
+.vscode/
+.idea/
+*.iml

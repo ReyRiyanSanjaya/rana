@@ -1,0 +1,45 @@
+name: rana_merchant
+description: Aplikasi Kelola Toko & Pesanan UMKM.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # State Management
+  provider: ^6.0.5
+  
+  # Networking
+  dio: ^5.3.3
+  
+  # Local Storage (Offline First)
+  sqflite: ^2.3.0
+  path: ^1.8.3
+  shared_preferences: ^2.2.0
+  
+  # UI Components
+  google_fonts: ^6.1.0
+  intl: ^0.18.1
+  lucide_icons: ^0.1.0 # Or similar icon pack
+  fl_chart: ^0.68.0 # For Reporting Charts
+  url_launcher: ^6.1.11
+  mobile_scanner: ^3.5.0 # [NEW] For QR Scanning
+
+  
+  # Background Sync
+  workmanager: ^0.5.2
+  
+  # UUID
+  uuid: ^4.2.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+
+flutter:
+  uses-material-design: true

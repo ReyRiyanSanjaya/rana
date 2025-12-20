@@ -1,0 +1,13 @@
+Untuk login, gunakan akun berikut sesuai aplikasinya:
+
+1. Rana Merchant App (Untuk Pedagang):
+
+Email: merchant@rana.com
+Password: password123
+2. Rana Admin Dashboard (Untuk Pemilik Platform):
+
+Email: super@rana.com
+Password: password123
+PENTING: Agar akun ini tersedia di database, jalankan file seed_db.bat yang baru saya buat.
+
+Setelah itu, silakan login! 🥳
