@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const productController = require('../controllers/productController');
-// const verifyToken = require('../middleware/auth'); // Check if we want auth enabled
-// router.use(verifyToken);
+const verifyToken = require('../middleware/auth');
+router.use(verifyToken);
 
 router.get('/', productController.getProducts);
 router.post('/', productController.createProduct);

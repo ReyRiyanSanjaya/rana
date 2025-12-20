@@ -86,7 +86,7 @@ const Stores = () => {
     const filteredMerchants = merchants.filter(m =>
         m.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         m.tenant?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        m.tenant?.email?.toLowerCase().includes(searchTerm.toLowerCase())
+        m.users?.[0]?.email?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     return (
@@ -168,7 +168,7 @@ const Stores = () => {
                             <div className="space-y-3">
                                 <div className="flex items-center text-sm text-slate-600 dark:text-slate-400">
                                     <Users size={16} className="mr-2" />
-                                    <span>{merchant.tenant?.email || 'No Email'}</span>
+                                    <span>{merchant.users?.[0]?.email || 'No Email'}</span>
                                 </div>
                                 <div className="flex items-center text-sm text-slate-600 dark:text-slate-400">
                                     <MapPin size={16} className="mr-2" />

@@ -12,6 +12,7 @@ import { AuthProvider } from './context/AuthContext';
 
 import Login from './pages/Login';
 import Stores from './pages/Stores';
+import Reports from './pages/Reports';
 
 // Placeholders for other routes
 const Placeholder = ({ title }) => (

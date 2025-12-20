@@ -8,9 +8,9 @@ import {
     Menu,
     LogOut,
     Store,
-    Zap
+    Zap,
+    BarChart3
 } from 'lucide-react';
-
 import ThemeToggle from '../ThemeToggle';
 import { useAuth } from '../../context/AuthContext';
 
@@ -42,6 +42,7 @@ const DashboardLayout = ({ children }) => {
         cashOps: { icon: Package, label: 'Cash & Ops', path: '/cash-ops' },
         subscription: { icon: Zap, label: 'Subscription', path: '/subscription' },
         stores: { icon: Store, label: 'Stores / Tenants', path: '/stores' },
+        reports: { icon: BarChart3, label: 'Advanced Reports', path: '/reports' },
         settings: { icon: Settings, label: 'Settings', path: '/settings' },
     };
 
@@ -58,6 +59,7 @@ const DashboardLayout = ({ children }) => {
         navItems = [
             ALL_NAV_ITEMS.dashboard,
             ALL_NAV_ITEMS.pos,
+            ALL_NAV_ITEMS.reports,
             ALL_NAV_ITEMS.pnl,
             ALL_NAV_ITEMS.inventory,
             ALL_NAV_ITEMS.cashOps,

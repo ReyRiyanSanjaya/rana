@@ -30,9 +30,37 @@ const ProfitLoss = () => {
     const [dateRange, setDateRange] = useState('this_month'); // simple toggle for now
 
     useEffect(() => {
-        // Mock dates
-        fetchProfitLoss('2023-11-01', '2023-11-30').then(res => {
+        const now = new Date();
+        let start = new Date();
+        let end = new Date();
+
+        if (dateRange === 'today') {
+            start.setHours(0, 0, 0, 0);
+            end.setHours(23, 59, 59, 999);
+        } else if (dateRange === 'this_week') {
+            // Monday as start
+            const day = now.getDay() || 7;
+            if (day !== 1) start.setHours(-24 * (day - 1));
+            start.setHours(0, 0, 0, 0);
+        } else if (dateRange === 'this_month') {
+            start.setDate(1);
+            start.setHours(0, 0, 0, 0);
+        } else if (dateRange === 'last_month') {
+            start.setMonth(start.getMonth() - 1);
+            start.setDate(1);
+            start.setHours(0, 0, 0, 0);
+            end.setDate(0); // Last day of prev month
+            end.setHours(23, 59, 59, 999);
+        }
+
+        const startStr = start.toISOString().split('T')[0];
+        const endStr = end.toISOString().split('T')[0];
+
+        fetchProfitLoss(startStr, endStr).then(res => {
             setData(res);
+            setLoading(false);
+        }).catch(err => {
+            console.error("Failed to load PnL", err);
             setLoading(false);
         });
     }, [dateRange]);
@@ -94,9 +122,9 @@ const ProfitLoss = () => {
                         type="positive"
                     />
                     <PnLCard
-                        title="Net Profit (Est.)"
-                        value={formatCurrency(pnl.netProfit || pnl.grossProfit)}
-                        subValue="After expenses"
+                        title="Net Profit"
+                        value={formatCurrency(pnl.netProfit)}
+                        subValue="After all expenses"
                         type="positive"
                     />
                 </div>
@@ -166,10 +194,32 @@ const ProfitLoss = () => {
                                 <td className="px-6 py-4 text-right text-red-500">-{formatCurrency(pnl.cogs)}</td>
                                 <td className="px-6 py-4 text-right">{(pnl.cogs / pnl.revenue * 100).toFixed(1)}%</td>
                             </tr>
-                            <tr className="bg-green-50/50">
+                            <tr>
                                 <td className="px-6 py-4 font-bold text-green-900">Gross Profit</td>
                                 <td className="px-6 py-4 text-right font-bold text-green-700">{formatCurrency(pnl.grossProfit)}</td>
                                 <td className="px-6 py-4 text-right font-bold text-green-700">{pnl.margin}%</td>
+                            </tr>
+                            {/* Expense Breakdown */}
+                            {Object.entries(pnl.expenseBreakdown || {}).map(([cat, amt]) => (
+                                <tr key={cat}>
+                                    <td className="px-6 py-4 text-slate-600 pl-10 border-l-4 border-l-transparent hover:border-l-red-200">
+                                        {cat.replace('EXPENSE_', '')}
+                                    </td>
+                                    <td className="px-6 py-4 text-right text-red-500">-{formatCurrency(amt)}</td>
+                                    <td className="px-6 py-4 text-right">{(pnl.revenue > 0 ? (amt / pnl.revenue * 100) : 0).toFixed(1)}%</td>
+                                </tr>
+                            ))}
+                            <tr className="bg-red-50/30">
+                                <td className="px-6 py-4 font-medium text-red-900">Total Expenses</td>
+                                <td className="px-6 py-4 text-right font-bold text-red-700">-{formatCurrency(pnl.totalExpenses)}</td>
+                                <td className="px-6 py-4 text-right text-red-700">{(pnl.revenue > 0 ? (pnl.totalExpenses / pnl.revenue * 100) : 0).toFixed(1)}%</td>
+                            </tr>
+                            <tr className="bg-indigo-100/50 text-lg">
+                                <td className="px-6 py-4 font-extrabold text-indigo-900">Net Profit</td>
+                                <td className="px-6 py-4 text-right font-extrabold text-indigo-700">{formatCurrency(pnl.netProfit)}</td>
+                                <td className="px-6 py-4 text-right font-bold text-indigo-700">
+                                    {(pnl.revenue > 0 ? (pnl.netProfit / pnl.revenue * 100) : 0).toFixed(1)}%
+                                </td>
                             </tr>
                         </tbody>
                     </table>

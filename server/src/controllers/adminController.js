@@ -301,9 +301,13 @@ const getDashboardStats = async (req, res) => {
                 include: {
                     tenant: {
                         select: {
-                            name: true,
-                            email: true,
+                            name: true
                         }
+                    },
+                    users: {
+                        where: { role: 'OWNER' },
+                        take: 1,
+                        select: { email: true, name: true }
                     }
                 },
                 orderBy: { createdAt: 'desc' }

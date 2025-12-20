@@ -26,20 +26,30 @@ const getDashboardStats = async (req, res) => {
         });
 
         // Also get Top 5 Products for widget
-        const topProducts = await prisma.productSalesSummary.findMany({
+        const topSummaries = await prisma.productSalesSummary.findMany({
             where: {
                 tenantId,
-                periodStart: startOfDay,
-                periodType: 'DAILY'
+                date: startOfDay
             },
             orderBy: {
-                revenue: 'desc'
+                totalRevenue: 'desc'
             },
-            take: 5,
-            include: {
-                product: { select: { name: true, sku: true } }
-            }
+            take: 5
         });
+
+        // Manually fetch product details since relation is missing in schema
+        const productIds = topSummaries.map(s => s.productId);
+        const products = await prisma.product.findMany({
+            where: { id: { in: productIds } },
+            select: { id: true, name: true, sku: true }
+        });
+
+        const productMap = new Map(products.map(p => [p.id, p]));
+
+        const topProducts = topSummaries.map(s => ({
+            ...s,
+            product: productMap.get(s.productId) || { name: 'Unknown', sku: '-' }
+        }));
 
         return successResponse(res, {
             financials: summary || {
@@ -86,17 +96,53 @@ const getProfitLoss = async (req, res) => {
             }
         });
 
+        // Fetch Expenses (CashflowLog)
+        const expenses = await prisma.cashflowLog.groupBy({
+            by: ['category'],
+            where: {
+                tenantId,
+                storeId: storeId || undefined,
+                type: 'CASH_OUT',
+                category: {
+                    in: ['EXPENSE_OPERATIONAL', 'EXPENSE_PURCHASE', 'EXPENSE_PETTY', 'OTHER']
+                },
+                occurredAt: {
+                    gte: start,
+                    lte: end
+                }
+            },
+            _sum: {
+                amount: true
+            }
+        });
+
         const totals = aggs[0]?._sum || {};
+
+        // Process Expenses
+        const expenseMap = {};
+        let totalExpenses = 0;
+        expenses.forEach(e => {
+            const amt = Number(e._sum.amount);
+            expenseMap[e.category] = amt;
+            totalExpenses += amt;
+        });
+
+        const revenue = totals.netSales || 0;
+        const grossProfit = totals.grossProfit || 0;
+        const netProfit = grossProfit - totalExpenses;
 
         return successResponse(res, {
             period: { start, end },
             pnl: {
-                revenue: totals.netSales || 0,
+                revenue,
                 cogs: totals.cogs || 0,
-                grossProfit: totals.grossProfit || 0,
-                margin: totals.netSales > 0 ? ((totals.grossProfit / totals.netSales) * 100).toFixed(2) : 0,
+                grossProfit,
+                margin: revenue > 0 ? ((grossProfit / revenue) * 100).toFixed(2) : 0,
                 taxCollected: totals.totalTax || 0,
-                discountsGiven: totals.totalDiscount || 0
+                discountsGiven: totals.totalDiscount || 0,
+                totalExpenses,
+                netProfit,
+                expenseBreakdown: expenseMap
             }
         });
 

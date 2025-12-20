@@ -53,12 +53,9 @@ const SyncManager = {
                 try {
                     if (item.type === 'NEW_TRANSACTION') {
                         // POST to server
-                        // await api.post('/transactions/sync', item.payload);
+                        await api.post('/transactions/sync', item.payload);
 
-                        // Pseudo-call since we don't have the route yet
-                        console.log('Simulating Network Request for:', item.payload.offlineId);
-                        await new Promise(r => setTimeout(r, 500)); // Sim latency
-
+                        console.log('Synced:', item.payload.offlineId);
                         syncedIds.push(item.id);
                     }
                 } catch (err) {
