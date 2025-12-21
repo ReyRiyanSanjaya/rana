@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import 'package:rana_merchant/providers/auth_provider.dart';
 import 'package:rana_merchant/screens/register_screen.dart';
+import 'package:rana_merchant/screens/home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -20,6 +22,9 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       await Provider.of<AuthProvider>(context, listen: false)
           .login(_emailCtrl.text, _passCtrl.text);
+      if (mounted) {
+         Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomeScreen()));
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
     } finally {
@@ -36,9 +41,9 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.storefront, size: 64, color: Colors.indigo),
+              const Icon(Icons.storefront, size: 64, color: Colors.indigo).animate().scale(duration: 600.ms, curve: Curves.elasticOut),
               const SizedBox(height: 16),
-              Text('Rana POS', style: Theme.of(context).textTheme.headlineMedium),
+              Text('Rana POS', style: Theme.of(context).textTheme.headlineMedium).animate().fadeIn(delay: 300.ms).slideY(begin: 0.3),
               const SizedBox(height: 32),
               TextField(
                 controller: _emailCtrl,
@@ -68,7 +73,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 },
                 child: const Text('Belum punya akun? Daftar gratis'),
               )
-            ],
+            ].animate(interval: 100.ms).fadeIn().slideY(begin: 0.2),
           ),
         ),
       ),

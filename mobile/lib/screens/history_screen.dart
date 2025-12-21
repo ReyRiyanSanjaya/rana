@@ -42,7 +42,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 itemCount: _transactions.length,
                 itemBuilder: (context, index) {
                   final txn = _transactions[index];
-                  final isSynced = txn['isSynced'] == 1;
+                  final isSynced = txn['status'] == 'SYNCED';
+                  final date = DateTime.tryParse(txn['occurredAt'] ?? '') ?? DateTime.now();
+                  final dateStr = DateFormat('dd MMM HH:mm').format(date);
+
                   return Card(
                     margin: const EdgeInsets.only(bottom: 8),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -55,8 +58,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           size: 20,
                         ),
                       ),
-                      title: Text('Order #${txn['id']}'),
-                      subtitle: Text('Total: Rp ${txn['totalAmount']}'),
+                      title: Text('Order #${txn['offlineId'].toString().substring(0,8)}'),
+                      subtitle: Text('$dateStr • Rp ${txn['total']}'),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () {
                            // Show Detail logic

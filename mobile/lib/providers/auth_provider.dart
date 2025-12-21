@@ -18,26 +18,14 @@ class AuthProvider extends ChangeNotifier {
       final response = await _api.login(email: email, password: password);
       // Backend returns { token, user: {...} }
       // We also now expect user to have storeId
-      if (response['success'] == true) { // check success flag if wrapper used, or direct data
-         // Check authController.js structure: 
-         // return successResponse(res, { token, user: ... }, "Login Successful");
-         // successResponse -> { success: true, data: { token, user }, message: ... }
-         // Wait, api_service.dart returns "response.data".
-         // The structure from server is:
-         // { success: true, data: { token: "...", user: {...} }, message: "..." }
-         // So in api_service: return response.data; -> returns the WHOLE object.
-         
-         // careful here. Let's verify what api_service actually returns.
-         // api_service: return response.data;
-         // So here response['data'] contains the token.
-         
+      if (response['status'] == 'success') { 
          final data = response['data'];
          _token = data['token'];
          _currentUser = data['user'];
+         
+         // Set token in ApiService singleton
+         _api.setToken(_token!);
       } else {
-         // Fallback if successResponse wrapper is not used or different
-         // In authController I saw: return successResponse(...)
-         // Let's assume standard response structure.
          throw Exception(response['message'] ?? 'Login Failed');
       }
       

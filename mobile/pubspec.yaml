@@ -20,6 +20,9 @@ dependencies:
   sqflite: ^2.3.0
   path: ^1.8.3
   shared_preferences: ^2.2.0
+  sqflite_common_ffi: ^2.3.0 # Required for Desktop
+  sqflite_common_ffi_web: ^0.4.0 # Required for Web
+
   
   # UI Components
   google_fonts: ^6.1.0
@@ -37,6 +40,10 @@ dependencies:
   uuid: ^4.2.1
   geolocator: ^10.1.0
   geocoding: ^2.1.1
+  flutter_animate: ^4.5.2
+  animations: ^2.1.0
+  lottie: ^3.1.0
+  flutter_local_notifications: ^17.0.0
 
 dev_dependencies:
   flutter_test:

@@ -2,6 +2,15 @@ import 'package:dio/dio.dart';
 import 'package:rana_merchant/data/local/database_helper.dart';
 
 class ApiService {
+  // Singleton Pattern
+  static final ApiService _instance = ApiService._internal();
+  
+  factory ApiService() {
+    return _instance;
+  }
+
+  ApiService._internal();
+
   final Dio _dio = Dio(BaseOptions(
     baseUrl: 'http://localhost:4000/api', // Use localhost for Windows/Web. Use 10.0.2.2 for Android Emulator.
     connectTimeout: const Duration(seconds: 5),
@@ -12,6 +21,7 @@ class ApiService {
 
   void setToken(String token) {
     _token = token;
+    _dio.options.headers['Authorization'] = 'Bearer $token'; // Set global header
   }
 
   // --- Auth ---
@@ -92,7 +102,8 @@ class ApiService {
             'name': p['name'],
             'costPrice': p['costPrice'], // Ensure server sends numbers
             'sellingPrice': p['sellingPrice'],
-            'trackStock': p['trackStock'] ? 1 : 0
+            'trackStock': (p['trackStock'] == true) ? 1 : 1, // Default to 1 (True) as we are enabling stock feature
+            'stock': p['stock'] ?? 0 
         });
       }
       print('Products Synced (Downlink): ${serverProducts.length}');
@@ -140,6 +151,26 @@ class ApiService {
     }
   }
 
+  // --- Inventory ---
+  Future<void> adjustStock({required String productId, required int quantity, required String type, String? reason}) async {
+    try {
+      final response = await _dio.post('/inventory/adjust',
+          data: {
+            'productId': productId, 
+            'quantity': quantity, 
+            'type': type, // IN, OUT, ADJUSTMENT
+            'reason': reason
+          },
+          options: Options(headers: {'Authorization': 'Bearer ${_token}'}));
+      
+      if (response.data['status'] != 'success') {
+        throw Exception(response.data['message']);
+      }
+    } catch (e) {
+      throw Exception('Stock Adjustment Failed: $e');
+    }
+  }
+
   Future<void> scanQrOrder(String code) async {
     try {
       final response = await _dio.post('/orders/scan',
@@ -175,5 +206,16 @@ class ApiService {
         // Keep pending
       }
     }
+  }
+
+  // --- Master Sync ---
+  Future<void> syncAllData() async {
+    // 1. Push Offline Transactions (Upstream)
+    await syncOfflineTransactions();
+    
+    // 2. Fetch Latest Products & Stock (Downstream)
+    await fetchAndSaveProducts();
+    
+    // 3. (Optional) Fetch other data like Reports/Wallet if needed
   }
 }

@@ -5,10 +5,31 @@ import 'package:rana_merchant/providers/auth_provider.dart';
 import 'package:rana_merchant/screens/login_screen.dart';
 import 'package:rana_merchant/screens/home_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:animations/animations.dart';
+import 'package:rana_merchant/services/notification_service.dart';
+
+import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 
 void main() {
+  if (kIsWeb) {
+    // Initialize for Web
+    databaseFactory = databaseFactoryFfiWeb;
+  } else if (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.linux) {
+    // Initialize FFI for Desktop
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+  }
+  
+  // Initialize Notifications
+  WidgetsFlutterBinding.ensureInitialized();
+  NotificationService().init();
+
   runApp(const RanaApp());
 }
+
+
 
 class RanaApp extends StatelessWidget {
   const RanaApp({super.key});
@@ -29,68 +50,85 @@ class RanaApp extends StatelessWidget {
             seedColor: const Color(0xFF6366F1), // Soft Indigo
             primary: const Color(0xFF4F46E5),
             secondary: const Color(0xFFEC4899), // Soft Pink accent
-            surface: const Color(0xFFF9FAFB), // Very light gray background
-            surfaceContainerHighest: const Color(0xFFFFFFFF), // White cards
+            surface: const Color(0xFFFFFFFF), // Pure white surface
+            surfaceContainerHighest: const Color(0xFFF8FAFC), // Very light slate for contrast
           ),
-          scaffoldBackgroundColor: const Color(0xFFF3F4F6), // Soft gray bg
+          scaffoldBackgroundColor: const Color(0xFFF1F5F9), // Soft slate gray bg
+          splashFactory: InkSparkle.splashFactory, // Sparkle splash for M3
           appBarTheme: const AppBarTheme(
             backgroundColor: Colors.white,
-            foregroundColor: Color(0xFF374151), // Soft Dark Gray
+            foregroundColor: Color(0xFF1E293B), // Slate 800
             elevation: 0,
-            shape: Border(bottom: BorderSide(color: Color(0xFFF3F4F6), width: 1.5)), // Soft Stroke Breakdown
+            scrolledUnderElevation: 0,
+            shape: Border(bottom: BorderSide(color: Color(0xFFF1F5F9), width: 1)),
             centerTitle: true,
             titleTextStyle: TextStyle(
-              color: Color(0xFF374151), 
+              color: Color(0xFF1E293B), 
               fontSize: 18, 
               fontWeight: FontWeight.w600,
+              fontFamily: 'Inter',
             )
           ),
           cardTheme: CardTheme(
-            elevation: 0, // Flat
+            elevation: 2, // Soft shadow
+            shadowColor: const Color(0xFF64748B).withOpacity(0.1), // Blue-gray shadow
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20), // Softer corners
-              side: const BorderSide(color: Color(0xFFE5E7EB), width: 1.5) // Soft Stroke (Gray-200)
+              borderRadius: BorderRadius.circular(24), // Even rounder
+              side: BorderSide.none, // Remove border for cleaner look, rely on shadow
             ),
             color: Colors.white,
-            margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 0)
+            margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4)
           ),
           inputDecorationTheme: InputDecorationTheme(
             filled: true,
-            fillColor: const Color(0xFFF9FAFB), // Cool Gray 50
+            fillColor: const Color(0xFFF8FAFC), // Slate 50
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(color: Color(0xFFE5E7EB), width: 1.5), // Soft Stroke
+              borderRadius: BorderRadius.circular(20),
+              borderSide: BorderSide.none, // Cleaner default state
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(color: Color(0xFFE5E7EB), width: 1.5),
+              borderRadius: BorderRadius.circular(20),
+              borderSide: const BorderSide(color: Color(0xFFE2E8F0), width: 1), // Slate 200
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(color: Color(0xFF818CF8), width: 2), // Soft Indigo Focus
+              borderRadius: BorderRadius.circular(20),
+              borderSide: const BorderSide(color: Color(0xFF6366F1), width: 2), // Ring
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+            floatingLabelBehavior: FloatingLabelBehavior.always,
           ),
           filledButtonTheme: FilledButtonThemeData(
             style: FilledButton.styleFrom(
-              elevation: 0,
+              elevation: 4,
+              shadowColor: const Color(0xFF4F46E5).withOpacity(0.4), // Colored shadow
               backgroundColor: const Color(0xFF4F46E5),
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: BorderSide.none // Filled doesn't need stroke usually, or maybe a subtle inner one? Keep clean.
+                borderRadius: BorderRadius.circular(20),
               ),
-              padding: const EdgeInsets.symmetric(vertical: 18),
+              padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
+              textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
             )
           ),
           outlinedButtonTheme: OutlinedButtonThemeData(
              style: OutlinedButton.styleFrom(
-               side: const BorderSide(color: Color(0xFFE5E7EB), width: 1.5),
-               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-               padding: const EdgeInsets.symmetric(vertical: 18),
+               side: const BorderSide(color: Color(0xFFCBD5E1), width: 1.5),
+               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+               padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
+               textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
              )
           ),
-          textTheme: GoogleFonts.interTextTheme(),
+          pageTransitionsTheme: const PageTransitionsTheme(
+            builders: {
+              TargetPlatform.android: SharedAxisPageTransitionsBuilder(transitionType: SharedAxisTransitionType.horizontal),
+              TargetPlatform.iOS: SharedAxisPageTransitionsBuilder(transitionType: SharedAxisTransitionType.horizontal),
+              TargetPlatform.windows: FadeThroughPageTransitionsBuilder(),
+            },
+          ),
+          textTheme: GoogleFonts.outfitTextTheme().apply( // Switched to Outfit for a friendlier/softer look
+             bodyColor: const Color(0xFF334155), // Slate 700
+             displayColor: const Color(0xFF1E293B), // Slate 800
+          ),
         ),
         home: const AuthWrapper(),
       ),

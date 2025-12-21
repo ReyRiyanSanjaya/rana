@@ -77,6 +77,30 @@ class CartProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void removeItem(String productId) {
+    _items.remove(productId);
+    notifyListeners();
+  }
+
+  void removeSingleItem(String productId) {
+    if (!_items.containsKey(productId)) return;
+    
+    if (_items[productId]!.quantity > 1) {
+      _items.update(
+        productId,
+        (existing) => CartItem(
+          productId: existing.productId,
+          name: existing.name,
+          price: existing.price,
+          quantity: existing.quantity - 1,
+        ),
+      );
+    } else {
+      _items.remove(productId);
+    }
+    notifyListeners();
+  }
+
   Future<void> checkout(
       String tenantId, 
       String storeId, 
@@ -103,7 +127,7 @@ class CartProvider extends ChangeNotifier {
       'status': 'PENDING_SYNC',
       // New Fields for UMKM Features
       'paymentMethod': paymentMethod, // CASH, QRIS, KASBON
-      'customerId': null, // logic to link existing customer
+      // 'customerId' removed as it doesn't exist in local DB schema yet
       'customerName': customerName, // For Kasbon/Struk
       'notes': notes
     };
