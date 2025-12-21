@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:rana_pos/data/local/database_helper.dart';
+import 'package:rana_merchant/data/local/database_helper.dart';
 
 class StockOpnameScreen extends StatefulWidget {
   const StockOpnameScreen({super.key});

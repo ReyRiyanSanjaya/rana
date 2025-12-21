@@ -1,23 +1,40 @@
 @echo off
 echo ===================================================
-echo   Rana Ecosystem - Tailwind v4 Fixer
+echo   Rana Ecosystem - All Dependency Installer
 echo ===================================================
 echo.
-echo [1/2] Installing @tailwindcss/vite...
-cd admin_client
-call npm install @tailwindcss/vite
-echo.
 
-echo [2/2] Cleaning up old config...
-if exist postcss.config.js (
-    del postcss.config.js
-    echo Deleted old postcss.config.js
-)
+echo [1/5] Installing Server Dependencies...
+cd server
+call npm install
 cd ..
-
 echo.
+
+echo [2/5] Installing Merchant Client Dependencies...
+cd client
+call npm install
+cd ..
+echo.
+
+echo [3/5] Installing Admin Client Dependencies...
+cd admin_client
+call npm install
+cd ..
+echo.
+
+echo [4/5] Installing Mobile (Merchant) Dependencies...
+cd mobile
+call flutter pub get
+cd ..
+echo.
+
+echo [5/5] Installing Mobile (Buyer) Dependencies...
+cd mobile_buyer
+call flutter pub get
+cd ..
+echo.
+
 echo ===================================================
-echo   Fix Complete! Restarting servers...
+echo   All Dependencies Installed Successfully!
 echo ===================================================
-timeout /t 3
-start_all.bat
+pause

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:rana_pos/data/remote/api_service.dart';
+import 'package:rana_merchant/data/remote/api_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final ApiService _api = ApiService();
@@ -15,7 +15,7 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> login(String email, String password) async {
     try {
-      final response = await _api.login(email, password);
+      final response = await _api.login(email: email, password: password);
       // Backend returns { token, user: {...} }
       // We also now expect user to have storeId
       if (response['success'] == true) { // check success flag if wrapper used, or direct data

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:rana_pos/providers/auth_provider.dart';
-import 'package:rana_pos/screens/register_screen.dart';
+import 'package:rana_merchant/providers/auth_provider.dart';
+import 'package:rana_merchant/screens/register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
-import 'package:rana_pos/providers/auth_provider.dart';
+import 'package:rana_merchant/providers/auth_provider.dart';
 import 'package:provider/provider.dart';
 
 class OrderListScreen extends StatefulWidget {

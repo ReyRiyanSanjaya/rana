@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:rana_pos/providers/auth_provider.dart';
-import 'package:rana_pos/providers/cart_provider.dart';
-import 'package:rana_pos/data/remote/api_service.dart';
-import 'package:rana_pos/data/local/database_helper.dart';
-import 'package:rana_pos/screens/expense_screen.dart';
-import 'package:rana_pos/screens/add_product_screen.dart';
-import 'package:rana_pos/screens/report_screen.dart';
-import 'package:rana_pos/screens/history_screen.dart';
-import 'package:rana_pos/screens/settings_screen.dart';
-import 'package:rana_pos/screens/subscription_screen.dart';
-import 'package:rana_pos/screens/stock_opname_screen.dart';
-import 'package:rana_pos/screens/stock_opname_screen.dart';
-import 'package:rana_pos/screens/purchase_screen.dart';
-import 'package:rana_pos/screens/order_list_screen.dart';
-import 'package:rana_pos/screens/wallet_screen.dart'; // [NEW]
-import 'package:rana_pos/screens/scan_screen.dart'; // [NEW]
+import 'package:rana_merchant/providers/auth_provider.dart';
+import 'package:rana_merchant/providers/cart_provider.dart';
+import 'package:rana_merchant/data/remote/api_service.dart';
+import 'package:rana_merchant/data/local/database_helper.dart';
+import 'package:rana_merchant/screens/expense_screen.dart';
+import 'package:rana_merchant/screens/add_product_screen.dart';
+import 'package:rana_merchant/screens/report_screen.dart';
+import 'package:rana_merchant/screens/history_screen.dart';
+import 'package:rana_merchant/screens/settings_screen.dart';
+import 'package:rana_merchant/screens/subscription_screen.dart';
+import 'package:rana_merchant/screens/stock_opname_screen.dart';
+import 'package:rana_merchant/screens/stock_opname_screen.dart';
+import 'package:rana_merchant/screens/purchase_screen.dart';
+import 'package:rana_merchant/screens/order_list_screen.dart';
+import 'package:rana_merchant/screens/wallet_screen.dart'; // [NEW]
+import 'package:rana_merchant/screens/scan_screen.dart'; // [NEW]
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -182,7 +182,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            const DrawerHeader(
+            DrawerHeader(
               decoration: BoxDecoration(color: Colors.indigo),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -227,7 +227,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.inventory),
-              title: const Text('Stock Opname'),luaran'),
+              title: const Text('Stock Opname'),
               onTap: () {
                  Navigator.pop(context);
                  Navigator.push(context, MaterialPageRoute(builder: (_) => const ExpenseScreen()));

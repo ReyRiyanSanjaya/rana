@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:rana_pos/data/remote/api_service.dart';
+import 'package:rana_merchant/data/remote/api_service.dart';
 import 'package:intl/intl.dart';
 
 class WalletScreen extends StatefulWidget {

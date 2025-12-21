@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:rana_pos/data/remote/api_service.dart';
+import 'package:rana_merchant/data/remote/api_service.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 
@@ -100,13 +100,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 value: _category,
                 decoration: const InputDecoration(labelText: 'Kategori Usaha', border: OutlineInputBorder()),
                 items: const [
-                  DropdownMenuItem(value: 'Apotik', child: Text('Apotik / Kesehatan')),
-                  DropdownMenuItem(value: 'Kedai Makanan', child: Text('Kedai Makanan / Resto')),
-                  DropdownMenuItem(value: 'Outlet Ponsel', child: Text('Outlet Ponsel / Pulsa')),
-                  DropdownMenuItem(value: 'Toko Baju', child: Text('Toko Baju / Fashion')),
-                  DropdownMenuItem(value: 'Kelontong', child: Text('Toko Kelontong / Sembako')),
+                  DropdownMenuItem(value: 'Apotik', child: Text('Apotik / Kesehatan', overflow: TextOverflow.ellipsis)),
+                  DropdownMenuItem(value: 'Kedai Makanan', child: Text('Kedai Makanan / Resto', overflow: TextOverflow.ellipsis)),
+                  DropdownMenuItem(value: 'Outlet Ponsel', child: Text('Outlet Ponsel / Pulsa', overflow: TextOverflow.ellipsis)),
+                  DropdownMenuItem(value: 'Toko Baju', child: Text('Toko Baju / Fashion', overflow: TextOverflow.ellipsis)),
+                  DropdownMenuItem(value: 'Kelontong', child: Text('Toko Kelontong / Sembako', overflow: TextOverflow.ellipsis)),
                   DropdownMenuItem(value: 'Lainnya', child: Text('Lainnya')),
                 ], 
+                isExpanded: true,
                 onChanged: (val) => setState(() => _category = val),
                 validator: (v) => v == null ? 'Pilih Kategori' : null,
               ),

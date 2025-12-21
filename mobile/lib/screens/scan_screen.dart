@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import 'package:rana_pos/data/remote/api_service.dart';
+import 'package:rana_merchant/data/remote/api_service.dart';
 
 class ScanScreen extends StatefulWidget {
   const ScanScreen({super.key});

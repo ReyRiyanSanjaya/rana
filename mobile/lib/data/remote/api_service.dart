@@ -1,13 +1,18 @@
-```dart
 import 'package:dio/dio.dart';
-import 'package:rana_pos/data/local/database_helper.dart';
+import 'package:rana_merchant/data/local/database_helper.dart';
 
 class ApiService {
   final Dio _dio = Dio(BaseOptions(
-    baseUrl: 'http://10.0.2.2:4000/api', // Android Emulator localhost
+    baseUrl: 'http://localhost:4000/api', // Use localhost for Windows/Web. Use 10.0.2.2 for Android Emulator.
     connectTimeout: const Duration(seconds: 5),
     receiveTimeout: const Duration(seconds: 5),
   ));
+  
+  String? _token;
+
+  void setToken(String token) {
+    _token = token;
+  }
 
   // --- Auth ---
   Future<void> register({

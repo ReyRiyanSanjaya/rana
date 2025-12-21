@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:rana_pos/providers/cart_provider.dart';
-import 'package:rana_pos/providers/auth_provider.dart';
-import 'package:rana_pos/screens/login_screen.dart';
-import 'package:rana_pos/screens/home_screen.dart';
+import 'package:rana_merchant/providers/cart_provider.dart';
+import 'package:rana_merchant/providers/auth_provider.dart';
+import 'package:rana_merchant/screens/login_screen.dart';
+import 'package:rana_merchant/screens/home_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 void main() {

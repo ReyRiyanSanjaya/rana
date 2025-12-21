@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:rana_pos/data/local/database_helper.dart';
-import 'package:rana_pos/data/remote/api_service.dart';
+import 'package:rana_merchant/data/local/database_helper.dart';
+import 'package:rana_merchant/data/remote/api_service.dart';
 
 class AddProductScreen extends StatefulWidget {
   const AddProductScreen({super.key});

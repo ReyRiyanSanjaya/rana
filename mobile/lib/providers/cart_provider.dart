@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
-import 'package:rana_pos/data/local/database_helper.dart';
-import 'package:rana_pos/data/remote/api_service.dart'; // [NEW]
+import 'package:rana_merchant/data/local/database_helper.dart';
+import 'package:rana_merchant/data/remote/api_service.dart'; // [NEW]
 
 class CartItem {
   final String productId;

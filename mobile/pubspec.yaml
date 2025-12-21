@@ -24,7 +24,7 @@ dependencies:
   # UI Components
   google_fonts: ^6.1.0
   intl: ^0.18.1
-  lucide_icons: ^0.1.0 # Or similar icon pack
+  lucide_icons: ^0.257.0 # Or similar icon pack
   fl_chart: ^0.68.0 # For Reporting Charts
   url_launcher: ^6.1.11
   mobile_scanner: ^3.5.0 # [NEW] For QR Scanning
@@ -35,6 +35,8 @@ dependencies:
   
   # UUID
   uuid: ^4.2.1
+  geolocator: ^10.1.0
+  geocoding: ^2.1.1
 
 dev_dependencies:
   flutter_test:

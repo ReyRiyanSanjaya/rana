@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/material.dart';
-import 'package:rana_pos/data/local/database_helper.dart';
-import 'package:rana_pos/services/digital_receipt_service.dart';
+import 'package:rana_merchant/data/local/database_helper.dart';
+import 'package:rana_merchant/services/digital_receipt_service.dart';
 import 'package:intl/intl.dart';
 
 class HistoryScreen extends StatefulWidget {
@@ -54,12 +54,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           color: isSynced ? Colors.green : Colors.orange,
                           size: 20,
                         ),
-                        const Icon(Icons.chevron_right),
-                      ],
+                      ),
+                      title: Text('Order #${txn['id']}'),
+                      subtitle: Text('Total: Rp ${txn['totalAmount']}'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () {
+                           // Show Detail logic
+                      },
                     ),
-                    onTap: () {
-                         // Show Detail logic
-                    },
                   );
                 },
               ),
