@@ -47,7 +47,7 @@ class ApiService {
         'address': address
       });
       
-      if (!response.data['success']) {
+      if (response.data['success'] != true) {
          throw Exception(response.data['message']);
       }
     } catch (e) {
@@ -103,7 +103,10 @@ class ApiService {
             'costPrice': p['costPrice'], // Ensure server sends numbers
             'sellingPrice': p['sellingPrice'],
             'trackStock': (p['trackStock'] == true) ? 1 : 1, // Default to 1 (True) as we are enabling stock feature
-            'stock': p['stock'] ?? 0 
+            'stock': p['stock'] ?? 0,
+            'category': (p['category'] is Map) 
+                ? (p['category']['name'] ?? 'All') 
+                : (p['category']?.toString() ?? 'All')
         });
       }
       print('Products Synced (Downlink): ${serverProducts.length}');
@@ -114,9 +117,18 @@ class ApiService {
   }
 
   // --- Product Management ---
-  Future<void> createProduct(Map<String, dynamic> data) async {
+  Future<Map<String, dynamic>> createProduct(Map<String, dynamic> data) async {
       // data: {sku, name, sellingPrice, costPrice}
-      await _dio.post('/products', data: data);
+      final response = await _dio.post('/products', data: data);
+      return response.data['data'];
+  }
+
+  Future<void> updateProduct(String id, Map<String, dynamic> data) async {
+      await _dio.put('/products/$id', data: data);
+  }
+
+  Future<void> deleteProduct(String id) async {
+      await _dio.delete('/products/$id');
   }
 
   Future<List<dynamic>> getSubscriptionPackages() async {
@@ -133,7 +145,7 @@ class ApiService {
   Future<Map<String, dynamic>> getWalletData() async {
     try {
       final response = await _dio.get('/wallet', options: Options(headers: {'Authorization': 'Bearer ${_token}'}));
-      if (response.data['success']) return response.data['data'];
+      if (response.data['success'] == true) return response.data['data'];
       throw Exception(response.data['message']);
     } catch (e) {
       throw Exception('Get Wallet Failed: $e');
@@ -145,7 +157,7 @@ class ApiService {
       final response = await _dio.post('/wallet/withdraw',
           data: {'amount': amount, 'bankName': bankName, 'accountNumber': accountNumber},
           options: Options(headers: {'Authorization': 'Bearer ${_token}'}));
-      if (!response.data['success']) throw Exception(response.data['message']);
+      if (response.data['success'] != true) throw Exception(response.data['message']);
     } catch (e) {
        throw Exception('Withdraw Request Failed: $e');
     }
@@ -176,7 +188,7 @@ class ApiService {
       final response = await _dio.post('/orders/scan',
           data: {'pickupCode': code},
           options: Options(headers: {'Authorization': 'Bearer ${_token}'}));
-      if (!response.data['success']) throw Exception(response.data['message']);
+      if (response.data['success'] != true) throw Exception(response.data['message']);
     } catch (e) {
        throw Exception('Scan Order Failed: $e');
     }

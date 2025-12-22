@@ -42,6 +42,9 @@ app.use('/api/wallet', require('./routes/walletRoutes')); // [NEW] Merchant Wall
 app.use('/api/inventory', require('./routes/inventoryRoutes')); // [NEW] Inventory API
 app.use('/api/products', require('./routes/productRoutes')); // [NEW] Product CRUD API
 
+const wholesaleRoutes = require('./routes/wholesaleRoutes');
+app.use('/api/wholesale', wholesaleRoutes); // [NEW]
+
 // Error Handler
 app.use((err, req, res, next) => {
     console.error('[Global Error]', err);

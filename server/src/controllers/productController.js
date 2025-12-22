@@ -45,14 +45,14 @@ const createProduct = async (req, res) => {
             data: {
                 name,
                 sku,
-                basePrice: parseFloat(basePrice),
-                sellingPrice: parseFloat(sellingPrice),
-                stock: parseInt(stock),
-                minStock: parseInt(minStock),
-                categoryId: categoryId || undefined,
+                basePrice: isNaN(parseFloat(basePrice)) ? 0 : parseFloat(basePrice),
+                sellingPrice: isNaN(parseFloat(sellingPrice)) ? 0 : parseFloat(sellingPrice),
+                stock: isNaN(parseInt(stock)) ? 0 : parseInt(stock),
+                minStock: isNaN(parseInt(minStock)) ? 0 : parseInt(minStock),
+                category: categoryId ? { connect: { id: categoryId } } : undefined,
                 description,
-                tenantId: tenant.id,
-                storeId: demoStore?.id
+                tenant: { connect: { id: tenant.id } },
+                storeId: demoStore ? demoStore.id : undefined
             }
         });
 

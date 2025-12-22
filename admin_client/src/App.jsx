@@ -8,6 +8,7 @@ import AcquisitionMap from './pages/AcquisitionMap';
 import Packages from './pages/Packages';
 import Announcements from './pages/Announcements';
 import Settings from './pages/Settings';
+import SubscriptionRequests from './pages/SubscriptionRequests'; // [NEW]
 import AdminLayout from './components/AdminLayout';
 
 const ProtectedRoute = ({ children }) => {
@@ -34,6 +35,10 @@ function App() {
 
         <Route path="/merchants" element={
           <ProtectedRoute><Merchants /></ProtectedRoute>
+        } />
+
+        <Route path="/subscriptions" element={
+          <ProtectedRoute><SubscriptionRequests /></ProtectedRoute>
         } />
 
         <Route path="/map" element={

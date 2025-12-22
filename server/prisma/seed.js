@@ -31,7 +31,9 @@ async function main() {
 
     const merchantUser = await prisma.user.upsert({
         where: { email: merchantEmail },
-        update: {},
+        update: {
+            passwordHash: hashedPassword, // Force update password
+        },
         create: {
             email: merchantEmail,
             name: 'Merchant Owner',
@@ -59,7 +61,10 @@ async function main() {
     const adminEmail = 'super@rana.com';
     const adminUser = await prisma.user.upsert({
         where: { email: adminEmail },
-        update: { role: 'SUPER_ADMIN' },
+        update: {
+            role: 'SUPER_ADMIN',
+            passwordHash: hashedPassword // Force update password
+        },
         create: {
             email: adminEmail,
             name: 'Platform Administrator',

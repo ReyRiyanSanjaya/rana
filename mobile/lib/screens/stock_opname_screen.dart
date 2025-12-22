@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:rana_merchant/data/local/database_helper.dart';
 import 'package:rana_merchant/data/remote/api_service.dart';
 import 'package:rana_merchant/providers/auth_provider.dart';
+import 'package:rana_merchant/screens/add_product_screen.dart'; // [NEW]
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
@@ -15,6 +16,8 @@ class StockOpnameScreen extends StatefulWidget {
 
 class _StockOpnameScreenState extends State<StockOpnameScreen> {
   final ApiService _api = ApiService();
+  final _searchCtrl = TextEditingController();
+  List<Map<String, dynamic>> _allProducts = []; // Backup for filtering
   List<Map<String, dynamic>> _products = [];
   bool _isLoading = false;
   
@@ -28,6 +31,12 @@ class _StockOpnameScreenState extends State<StockOpnameScreen> {
     // Token is handled by Singleton ApiService now, but good practice to ensure it's set if needed elsewhere
     // _api.setToken(...) is called in AuthProvider login.
     _refreshData();
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _refreshData() async {
@@ -44,15 +53,32 @@ class _StockOpnameScreenState extends State<StockOpnameScreen> {
       }
 
       setState(() {
-        _products = data;
+        _allProducts = data; // Keep full list
+        _products = data;     // Display list
         _totalProducts = data.length;
         _lowStockCount = low;
       });
+      _searchCtrl.text = ''; // Clear search when refreshing
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _filterProducts(String query) {
+      if (query.isEmpty) {
+          setState(() => _products = _allProducts);
+          return;
+      }
+      setState(() {
+          _products = _allProducts.where((p) {
+              final name = p['name'].toString().toLowerCase();
+              final sku = (p['sku'] ?? '').toString().toLowerCase();
+              final q = query.toLowerCase();
+              return name.contains(q) || sku.contains(q);
+          }).toList();
+      });
   }
 
   void _showAdjustDialog(Map<String, dynamic> product) {
@@ -235,6 +261,25 @@ class _StockOpnameScreenState extends State<StockOpnameScreen> {
                     ),
                   ),
                   
+                  // [NEW] Search Bar
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: TextField(
+                        controller: _searchCtrl,
+                        onChanged: _filterProducts,
+                        decoration: InputDecoration(
+                          hintText: 'Cari Produk (Nama / SKU)...',
+                          prefixIcon: const Icon(Icons.search),
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                          contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                        ),
+                      ),
+                    ),
+                  ),
+                  
                   // Title List
                   SliverToBoxAdapter(
                     child: Padding(
@@ -309,8 +354,28 @@ class _StockOpnameScreenState extends State<StockOpnameScreen> {
                                          Text('Unit', style: TextStyle(fontSize: 12, color: Colors.grey[400])),
                                        ],
                                      ),
-                                     const SizedBox(width: 12),
-                                     Icon(Icons.chevron_right, color: Colors.grey[300])
+                                     const SizedBox(width: 4),
+                                     
+                                     // [NEW] Actions Menu
+                                     PopupMenuButton<String>(
+                                       icon: Icon(Icons.more_vert, color: Colors.grey[400]),
+                                       onSelected: (val) async {
+                                           if (val == 'edit') {
+                                               // Navigate to Edit Screen
+                                               final res = await Navigator.push(
+                                                   context,
+                                                   MaterialPageRoute(builder: (_) => AddProductScreen(product: p))
+                                               );
+                                               if (res == true) _refreshData();
+                                           } else if (val == 'delete') {
+                                               _confirmDelete(p);
+                                           }
+                                       },
+                                       itemBuilder: (context) => [
+                                           const PopupMenuItem(value: 'edit', child: Row(children: [Icon(Icons.edit, size: 20), SizedBox(width: 8), Text('Edit Data')])),
+                                           const PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete, size: 20, color: Colors.red), SizedBox(width: 8), Text('Hapus Produk', style: TextStyle(color: Colors.red))])),
+                                       ]
+                                     )
                                    ],
                                  ),
                                ),
@@ -326,6 +391,40 @@ class _StockOpnameScreenState extends State<StockOpnameScreen> {
               ),
             ),
     );
+  }
+
+  // [NEW] Delete Logic
+  Future<void> _confirmDelete(Map<String, dynamic> product) async {
+      final confirm = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+              title: const Text('Hapus Produk?'),
+              content: Text('Anda yakin ingin menghapus "${product['name']}"? Data yang sudah dihapus tidak dapat dikembalikan.'),
+              actions: [
+                  TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Batal')),
+                  TextButton(
+                      onPressed: () => Navigator.pop(context, true), 
+                      child: const Text('Hapus', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold))
+                  ),
+              ],
+          )
+      );
+
+      if (confirm == true) {
+          setState(() => _isLoading = true);
+          try {
+              // API Call
+              await _api.deleteProduct(product['id']);
+              // Local DB
+              await DatabaseHelper.instance.deleteProduct(product['id']);
+              
+              if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Produk Berhasil Dihapus')));
+              _refreshData();
+          } catch (e) {
+              if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal Hapus: $e')));
+              setState(() => _isLoading = false);
+          }
+      }
   }
 
   Widget _buildStatCard(String label, String value, IconData icon, MaterialColor color) {

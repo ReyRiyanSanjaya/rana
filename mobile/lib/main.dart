@@ -12,6 +12,8 @@ import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, Tar
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 
+import 'package:rana_merchant/providers/wholesale_cart_provider.dart'; // [NEW]
+
 void main() {
   if (kIsWeb) {
     // Initialize for Web
@@ -40,6 +42,7 @@ class RanaApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => CartProvider()),
+        ChangeNotifierProvider(create: (_) => WholesaleCartProvider()), // [NEW]
       ],
       child: MaterialApp(
         title: 'Rana Merchant',
@@ -69,7 +72,7 @@ class RanaApp extends StatelessWidget {
               fontFamily: 'Inter',
             )
           ),
-          cardTheme: CardTheme(
+          cardTheme: CardThemeData(
             elevation: 2, // Soft shadow
             shadowColor: const Color(0xFF64748B).withOpacity(0.1), // Blue-gray shadow
             shape: RoundedRectangleBorder(

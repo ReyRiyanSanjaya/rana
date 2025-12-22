@@ -23,6 +23,9 @@ dependencies:
   sqflite_common_ffi: ^2.3.0 # Required for Desktop
   sqflite_common_ffi_web: ^0.4.0 # Required for Web
 
+  # Audio
+  audioplayers: ^5.1.0
+
   
   # UI Components
   google_fonts: ^6.1.0

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Wallet, Settings, LogOut, Store, Map, Package, Megaphone } from 'lucide-react';
+import { LayoutDashboard, Wallet, Settings, LogOut, Store, Map, Package, Megaphone, CreditCard } from 'lucide-react';
 
 const SidebarItem = ({ to, icon: Icon, label }) => {
     const location = useLocation();
@@ -46,6 +46,7 @@ const AdminLayout = ({ children }) => {
                     <SidebarItem to="/" icon={LayoutDashboard} label="Dashboard" />
                     <SidebarItem to="/withdrawals" icon={Wallet} label="Withdrawals" />
                     <SidebarItem to="/merchants" icon={Store} label="Merchants" />
+                    <SidebarItem to="/subscriptions" icon={CreditCard} label="Subscriptions" /> {/* [NEW] */}
                     <SidebarItem to="/map" icon={Map} label="Acquisition Map" />
                     <SidebarItem to="/packages" icon={Package} label="Packages" />
                     <SidebarItem to="/announcements" icon={Megaphone} label="Announcements" />

@@ -1,117 +1,150 @@
 import 'package:flutter/material.dart';
-import 'package:rana_merchant/data/remote/api_service.dart';
-import 'package:intl/intl.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import 'package:rana_merchant/providers/subscription_provider.dart';
 
-class SubscriptionScreen extends StatefulWidget {
+class SubscriptionScreen extends StatelessWidget {
   const SubscriptionScreen({super.key});
 
   @override
-  State<SubscriptionScreen> createState() => _SubscriptionScreenState();
-}
-
-class _SubscriptionScreenState extends State<SubscriptionScreen> {
-  List<dynamic> _packages = [];
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadPackages();
-  }
-
-  Future<void> _loadPackages() async {
-    final pkgs = await ApiService().getSubscriptionPackages();
-    setState(() {
-      _packages = pkgs;
-      _isLoading = false;
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final currency = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
-
+    final sub = Provider.of<SubscriptionProvider>(context);
+    
     return Scaffold(
-      body: Container(
+      appBar: AppBar(
+        title: Text('Berlangganan Rana', style: GoogleFonts.poppins(color: Colors.black)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black),
+      ),
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
-        width: double.infinity,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Colors.indigo.shade900, Colors.indigo.shade600]
-          )
-        ),
         child: Column(
           children: [
-            const SizedBox(height: 48),
-            const Icon(Icons.workspace_premium, size: 64, color: Colors.amber),
-            const SizedBox(height: 16),
-            const Text(
-              'Upgrade ke Premium',
-              style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
+            // Plan Card
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(colors: [Colors.indigo, Colors.blueAccent]),
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [BoxShadow(color: Colors.blue.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))],
+              ),
+              child: Column(
+                children: [
+                  const Icon(Icons.star, color: Colors.yellow, size: 48),
+                  const SizedBox(height: 16),
+                  Text('Rana Premium', style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
+                  const SizedBox(height: 8),
+                  Text('Rp 99.000 / bulan', style: GoogleFonts.poppins(fontSize: 18, color: Colors.white70)),
+                  const SizedBox(height: 24),
+                  _buildBenefitRow('✅ Unlimited Produk'),
+                  _buildBenefitRow('✅ Rana AI Smart Insight'),
+                  _buildBenefitRow('✅ Laporan Bisnis Lengkap'),
+                  _buildBenefitRow('✅ Multi-User'),
+                ],
+              ),
             ),
-             const SizedBox(height: 8),
-            const Text(
-              'Akses fitur Sync & Manajemen tanpa batas.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white70, fontSize: 16),
-            ),
+            
             const SizedBox(height: 32),
             
-            Expanded(
-              child: _isLoading 
-                ? const Center(child: CircularProgressIndicator(color: Colors.white))
-                : ListView.builder(
-                    itemCount: _packages.length,
-                    itemBuilder: (context, index) {
-                      final pkg = _packages[index];
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(pkg['name'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                                  Text('${pkg['durationDays']} Hari', style: const TextStyle(color: Colors.grey)),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              Text(currency.format(pkg['price']), style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 24)),
-                              const SizedBox(height: 8),
-                              Text(pkg['description'] ?? '', style: const TextStyle(color: Colors.black54)),
-                              const SizedBox(height: 16),
-                              SizedBox(
-                                width: double.infinity,
-                                child: FilledButton(
-                                  style: FilledButton.styleFrom(backgroundColor: Colors.indigo),
-                                  onPressed: () {
-                                      // In real app, trigger Payment Gateway logic here
-                                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Memilih ${pkg['name']}...')));
-                                  }, 
-                                  child: const Text('Pilih Paket')
-                                ),
-                              )
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-            ),
-            
-            TextButton(
-              onPressed: () => Navigator.pop(context), 
-              child: const Text('Tutup (Mode Baca)', style: TextStyle(color: Colors.white))
-            )
+            // Status Handling
+            if (sub.status == SubscriptionStatus.active)
+              _buildActiveState()
+            else if (sub.status == SubscriptionStatus.pending)
+              _buildPendingState()
+            else
+              _buildPaymentSection(context, sub),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildBenefitRow(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(children: [Expanded(child: Text(text, style: GoogleFonts.poppins(color: Colors.white, fontSize: 16)))]),
+    );
+  }
+
+  Widget _buildActiveState() {
+    return Column(
+      children: [
+        const Icon(Icons.check_circle, size: 64, color: Colors.green),
+        const SizedBox(height: 16),
+        Text('Akun Anda Premium!', style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        Text('Terima kasih telah berlangganan.', style: GoogleFonts.poppins(color: Colors.grey)),
+      ],
+    );
+  }
+
+  Widget _buildPendingState() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: Colors.orange.shade50, borderRadius: BorderRadius.circular(16)),
+      child: Column(
+        children: [
+          const Icon(Icons.av_timer, size: 48, color: Colors.orange),
+          const SizedBox(height: 16),
+          Text('Menunggu Verifikasi', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Text('Admin sedang memverifikasi pembayaran Anda. Mohon tunggu 1x24 jam.', textAlign: TextAlign.center, style: GoogleFonts.poppins(color: Colors.grey[700])),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaymentSection(BuildContext context, SubscriptionProvider sub) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('Transfer Pembayaran', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(12)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('BCA: 123-456-7890', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold)),
+              Text('a.n. PT Rana Nusantara', style: GoogleFonts.poppins(color: Colors.grey)),
+              const Divider(height: 24),
+              Text('Mandiri: 098-765-4321', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold)),
+              Text('a.n. PT Rana Nusantara', style: GoogleFonts.poppins(color: Colors.grey)),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+        FilledButton(
+          onPressed: () {
+            // Simulate Upload Logic
+            showDialog(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                title: const Text('Simulasi Upload'),
+                content: const Text('Anggap user sudah upload bukti transfer. Lanjutkan?'),
+                actions: [
+                  TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+                  FilledButton(
+                    onPressed: () {
+                      sub.requestUpgrade();
+                      Navigator.pop(ctx);
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bukti terkirim! Menunggu verifikasi.')));
+                    }, 
+                    child: const Text('Kirim Bukti')
+                  ),
+                ],
+              )
+            );
+          },
+          style: FilledButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+          child: Text('Upload Bukti Transfer', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold)),
+        ),
+      ],
     );
   }
 }

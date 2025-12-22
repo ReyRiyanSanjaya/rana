@@ -34,8 +34,10 @@ model Tenant {
   dailySales    DailySalesSummary[]
   productStats  ProductSalesSummary[]
   cashLogs      CashflowLog[]
-  purchases     Purchase[]   // [NEW] Added missing relation
-  debtRecords   DebtRecord[] // [NEW] Added missing relation
+  purchases     Purchase[]
+  debtRecords   DebtRecord[]
+  subscriptionRequests SubscriptionRequest[] // [FIX] Added relation
+  wholesaleOrders      WholesaleOrder[]      // [FIX] Added relation
 }
 
 enum SubscriptionPlan {
@@ -61,6 +63,23 @@ model SubscriptionPackage {
   description   String?
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
+}
+
+model SubscriptionRequest {
+  id            String   @id @default(uuid())
+  tenantId      String
+  proofUrl      String?
+  status        RequestStatus @default(PENDING)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 model User {
@@ -301,7 +320,10 @@ model Transaction {
   
   transactionItems TransactionItem[]
   
+  offlineId     String?   // [NEW] To map back to mobile device ID for idempotency
+  
   @@index([storeId, occurredAt])
+  @@unique([tenantId, offlineId]) // Ensure we don't double-sync the same offline txn
 }
 
 // ... (TransactionItem, etc.)
@@ -452,4 +474,74 @@ model AuditLog {
   oldValue      String?
   newValue      String?
   occurredAt    DateTime @default(now())
+}
+
+// ================================
+// B2B MARKETPLACE (KULAKAN) ISOMORPHIC SCHEME
+// ================================
+
+model WholesaleCategory {
+  id            String   @id @default(uuid())
+  name          String
+  icon          String?  // URL or Material Icon Name
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  
+  products      WholesaleProduct[]
+}
+
+model WholesaleProduct {
+  id            String   @id @default(uuid())
+  categoryId    String
+  name          String
+  description   String?
+  price         Float
+  stock         Int      @default(0)
+  imageUrl      String?
+  supplierName  String?  // e.g. "Official Partner"
+  minOrder      Int      @default(1)
+  isActive      Boolean  @default(true)
+  soldCount     Int      @default(0)
+  rating        Float    @default(0.0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  category      WholesaleCategory @relation(fields: [categoryId], references: [id])
+  orderItems    WholesaleOrderItem[]
+}
+
+model WholesaleOrder {
+  id            String   @id @default(uuid())
+  tenantId      String
+  storeId       String?
+  totalAmount   Float
+  status        WholesaleOrderStatus @default(PENDING)
+  paymentMethod String   // "TRANSFER_BCA", "COD"
+  shippingAddress String?
+  shippingCost  Float    @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  items         WholesaleOrderItem[]
+}
+
+model WholesaleOrderItem {
+  id            String   @id @default(uuid())
+  orderId       String
+  productId     String
+  quantity      Int
+  price         Float    // Price at purchase time
+  
+  order         WholesaleOrder   @relation(fields: [orderId], references: [id])
+  product       WholesaleProduct @relation(fields: [productId], references: [id])
+}
+
+enum WholesaleOrderStatus {
+  PENDING
+  PAID
+  PROCESSED
+  SHIPPED
+  DELIVERED
+  CANCELLED
 }
