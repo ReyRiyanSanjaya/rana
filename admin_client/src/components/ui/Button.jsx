@@ -1,42 +1,50 @@
-import React from 'react';
-import { Loader2 } from 'lucide-react';
+import * as React from "react"
+import { Slot } from "@radix-ui/react-slot"
+import { cva } from "class-variance-authority"
+import { cn } from "../../lib/utils"
 
-const Button = ({
-    children,
-    variant = 'primary', // primary, secondary, ghost, destruction
-    size = 'md', // sm, md, lg
-    className = '',
-    isLoading = false,
-    disabled = false,
-    icon: Icon,
-    ...props
-}) => {
-    const baseStyles = "inline-flex items-center justify-center font-semibold rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed";
+const buttonVariants = cva(
+    "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+    {
+        variants: {
+            variant: {
+                default:
+                    "bg-slate-900 text-slate-50 shadow hover:bg-slate-900/90",
+                destructive:
+                    "bg-red-500 text-slate-50 shadow-sm hover:bg-red-500/90",
+                outline:
+                    "border border-slate-200 bg-white shadow-sm hover:bg-slate-100 hover:text-slate-900",
+                secondary:
+                    "bg-slate-100 text-slate-900 shadow-sm hover:bg-slate-100/80",
+                ghost: "hover:bg-slate-100 hover:text-slate-900",
+                link: "text-slate-900 underline-offset-4 hover:underline",
+            },
+            size: {
+                default: "h-9 px-4 py-2",
+                sm: "h-8 rounded-md px-3 text-xs",
+                lg: "h-10 rounded-md px-8",
+                icon: "h-9 w-9",
+            },
+        },
+        defaultVariants: {
+            variant: "default",
+            size: "default",
+        },
+    }
+)
 
-    const variants = {
-        primary: "bg-primary-600 text-white shadow-sm hover:bg-primary-700 focus:ring-primary-500 border border-transparent",
-        secondary: "bg-white text-slate-700 border border-slate-300 shadow-sm hover:bg-slate-50 focus:ring-slate-300",
-        ghost: "bg-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-900 focus:ring-slate-200",
-        destructive: "bg-red-600 text-white shadow-sm hover:bg-red-700 focus:ring-red-500 border border-transparent",
-    };
-
-    const sizes = {
-        sm: "px-3 py-2 text-sm",
-        md: "px-4 py-2.5 text-sm",
-        lg: "px-5 py-3 text-base",
-    };
-
+const Button = React.forwardRef(({ className, variant, size, asChild = false, ...props }, ref) => {
+    const Comp = asChild ? Slot : "button"
     return (
-        <button
-            className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`}
-            disabled={disabled || isLoading}
+        <Comp
+            className={cn(buttonVariants({ variant, size, className }))}
+            ref={ref}
             {...props}
-        >
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {!isLoading && Icon && <Icon className="mr-2 h-4 w-4" />}
-            {children}
-        </button>
-    );
-};
+        />
+    )
+})
+Button.displayName = "Button"
 
-export default Button;
+export { Button, buttonVariants }
+export default Button
+

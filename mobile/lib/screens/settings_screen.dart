@@ -1,8 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:provider/provider.dart';
+import 'package:rana_merchant/providers/subscription_provider.dart';
+import 'package:rana_merchant/data/remote/api_service.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  Map<String, String> bankInfo = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    final data = await ApiService().getSystemSettings();
+    if (mounted) setState(() => bankInfo = data);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -10,6 +31,7 @@ class SettingsScreen extends StatelessWidget {
       appBar: AppBar(title: const Text('Pengaturan')),
       body: ListView(
         children: [
+          // ... Existing Items ...
           const Padding(
             padding: EdgeInsets.all(16.0),
             child: Text('Perangkat & Printer', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo)),
@@ -27,6 +49,29 @@ class SettingsScreen extends StatelessWidget {
             onTap: () {},
           ),
           const Divider(),
+          
+          // [NEW] Bank Info Section
+          const Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Text('Info Transfer Platform', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo)),
+          ),
+          if (bankInfo.isNotEmpty) ...[
+            ListTile(
+              leading: const Icon(Icons.account_balance),
+              title: Text(bankInfo['BANK_NAME'] ?? 'Bank'),
+              subtitle: Text('${bankInfo['BANK_ACCOUNT_NUMBER'] ?? '-'} a.n ${bankInfo['BANK_ACCOUNT_NAME'] ?? '-'}'),
+              trailing: IconButton(onPressed: (){}, icon: const Icon(Icons.copy, size: 16)), // Copy logic TODO
+            ),
+             ListTile(
+              leading: const Icon(Icons.percent),
+              title: const Text('Biaya Admin Platform'),
+              subtitle: Text('${bankInfo['PLATFORM_FEE_PERCENTAGE'] ?? '0'}% per penarikan'),
+            ),
+          ] else 
+            const ListTile(title: Text('Memuat info bank...', style: TextStyle(color: Colors.grey))),
+            
+          const Divider(),
+
           const Padding(
             padding: EdgeInsets.all(16.0),
             child: Text('Akun & Toko', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo)),
@@ -61,6 +106,35 @@ class SettingsScreen extends StatelessWidget {
                  }
               },
             ),
+            const Divider(),
+             // DEBUG SECTION
+             const Padding(
+               padding: EdgeInsets.all(16.0),
+               child: Text('Debug Menu', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
+             ),
+             ListTile(
+               leading: const Icon(Icons.bug_report, color: Colors.red),
+               title: const Text('Cek Status Langganan Manual'),
+               onTap: () async {
+                  final sub = Provider.of<SubscriptionProvider>(context, listen: false);
+                  try {
+                    await sub.codeCheckSubscription();
+                    // ignore: use_build_context_synchronously
+                    showDialog(
+                      context: context, 
+                      builder: (_) => AlertDialog(
+                        title: const Text("Hasil Debug"),
+                        content: Text("Status: ${sub.status}\nIsLocked: ${sub.isLocked}\nPackages: ${sub.packages.length}"),
+                        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text("OK"))],
+                      )
+                    );
+                  } catch (e) {
+                     // ignore: use_build_context_synchronously
+                     showDialog(context: context, builder: (_) => AlertDialog(title: const Text("Error"), content: Text(e.toString())));
+                  }
+               },
+             ),
+            const Divider(),
         ],
       ),
     );

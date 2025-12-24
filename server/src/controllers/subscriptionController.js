@@ -3,7 +3,10 @@ const prisma = new PrismaClient();
 
 exports.createRequest = async (req, res) => {
     try {
-        const { tenantId, proofUrl } = req.body;
+        const { proofUrl } = req.body;
+        // const { tenantId } = req.body; 
+        // Use authenticated user's tenantId
+        const tenantId = req.user.tenantId;
 
         // Create Request
         const request = await prisma.subscriptionRequest.create({
@@ -15,10 +18,6 @@ exports.createRequest = async (req, res) => {
         });
 
         // Update Tenant to PENDING if not already
-        await prisma.tenant.update({
-            where: { id: tenantId },
-            data: { subscriptionStatus: 'ACTIVE' } // For Demo: Auto-Activate if desired, but user wants verification.
-        });
         // actually, let's keep tenant status as TRIAL or EXPIRED until approved.
         // Or maybe we add a 'PENDING_VERIFICATION' status to enum?
         // For simplicity, we just rely on the Request being pending.
@@ -63,6 +62,43 @@ exports.approveRequest = async (req, res) => {
         });
 
         res.json({ success: true, message: 'Subscription Approved' });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+};
+exports.getPackages = (req, res) => {
+    // Hardcoded packages for now, or fetch from DB if we had a table
+    const packages = [
+        {
+            id: 'premium_monthly',
+            name: 'Rana Premium',
+            price: 99000,
+            interval: 'month',
+            benefits: [
+                'Unlimited Produk',
+                'Rana AI Smart Insight',
+                'Laporan Bisnis Lengkap',
+                'Multi-User Access',
+                'Prioritas Support (24/7)'
+            ],
+            color: 'blue'
+        },
+        // We can add more plans like Yearly in future
+    ];
+    res.json({ success: true, data: packages });
+};
+
+exports.getStatus = async (req, res) => {
+    try {
+        const { tenantId } = req.user;
+        const tenant = await prisma.tenant.findUnique({
+            where: { id: tenantId },
+            select: { subscriptionStatus: true, plan: true, trialEndsAt: true }
+        });
+
+        if (!tenant) return res.status(404).json({ success: false, message: 'Tenant not found' });
+
+        res.json({ success: true, data: tenant });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }

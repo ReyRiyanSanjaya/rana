@@ -3,8 +3,22 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:rana_merchant/providers/subscription_provider.dart';
 
-class SubscriptionScreen extends StatelessWidget {
+class SubscriptionScreen extends StatefulWidget {
   const SubscriptionScreen({super.key});
+
+  @override
+  State<SubscriptionScreen> createState() => _SubscriptionScreenState();
+}
+
+class _SubscriptionScreenState extends State<SubscriptionScreen> {
+  
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() => 
+      Provider.of<SubscriptionProvider>(context, listen: false).fetchPackages()
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,29 +35,12 @@ class SubscriptionScreen extends StatelessWidget {
         padding: const EdgeInsets.all(24),
         child: Column(
           children: [
-            // Plan Card
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [Colors.indigo, Colors.blueAccent]),
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [BoxShadow(color: Colors.blue.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))],
-              ),
-              child: Column(
-                children: [
-                  const Icon(Icons.star, color: Colors.yellow, size: 48),
-                  const SizedBox(height: 16),
-                  Text('Rana Premium', style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
-                  const SizedBox(height: 8),
-                  Text('Rp 99.000 / bulan', style: GoogleFonts.poppins(fontSize: 18, color: Colors.white70)),
-                  const SizedBox(height: 24),
-                  _buildBenefitRow('✅ Unlimited Produk'),
-                  _buildBenefitRow('✅ Rana AI Smart Insight'),
-                  _buildBenefitRow('✅ Laporan Bisnis Lengkap'),
-                  _buildBenefitRow('✅ Multi-User'),
-                ],
-              ),
-            ),
+            if (sub.isLoading)
+               const Center(child: CircularProgressIndicator())
+            else if (sub.packages.isEmpty)
+               Center(child: Text("Belum ada paket tersedia", style: GoogleFonts.poppins()))
+            else
+               ...sub.packages.map((pkg) => _buildPackageCard(pkg)).toList(),
             
             const SizedBox(height: 32),
             
@@ -56,6 +53,33 @@ class SubscriptionScreen extends StatelessWidget {
               _buildPaymentSection(context, sub),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildPackageCard(dynamic pkg) {
+    final benefits = (pkg['benefits'] as List<dynamic>?) ?? [];
+    final price = pkg['price'];
+    final fmtPrice = "Rp ${price.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}";
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 24),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(colors: [Colors.indigo, Colors.blueAccent]),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [BoxShadow(color: Colors.blue.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))],
+      ),
+      child: Column(
+        children: [
+          const Icon(Icons.star, color: Colors.yellow, size: 48),
+          const SizedBox(height: 16),
+          Text(pkg['name'] ?? 'Paket', style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
+          const SizedBox(height: 8),
+          Text('$fmtPrice / ${pkg['interval'] ?? 'bulan'}', style: GoogleFonts.poppins(fontSize: 18, color: Colors.white70)),
+          const SizedBox(height: 24),
+          ...benefits.map((b) => _buildBenefitRow('✅ $b')),
+        ],
       ),
     );
   }
@@ -127,10 +151,18 @@ class SubscriptionScreen extends StatelessWidget {
                 actions: [
                   TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
                   FilledButton(
-                    onPressed: () {
-                      sub.requestUpgrade();
-                      Navigator.pop(ctx);
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bukti terkirim! Menunggu verifikasi.')));
+                    onPressed: () async {
+                      Navigator.pop(ctx); 
+                      try {
+                        await sub.requestUpgrade('https://via.placeholder.com/150'); // Dummy proof for now
+                        if(mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bukti terkirim! Menunggu verifikasi.'), backgroundColor: Colors.green));
+                        }
+                      } catch (e) {
+                         if(mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal: $e'), backgroundColor: Colors.red));
+                         }
+                      }
                     }, 
                     child: const Text('Kirim Bukti')
                   ),

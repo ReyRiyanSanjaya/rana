@@ -6,9 +6,14 @@ import Withdrawals from './pages/Withdrawals';
 import Merchants from './pages/Merchants';
 import AcquisitionMap from './pages/AcquisitionMap';
 import Packages from './pages/Packages';
-import Announcements from './pages/Announcements';
+import Broadcasts from './pages/Broadcasts'; // [UPDATED]
+import Support from './pages/Support'; // [NEW]
 import Settings from './pages/Settings';
-import SubscriptionRequests from './pages/SubscriptionRequests'; // [NEW]
+import SubscriptionRequests from './pages/SubscriptionRequests';
+import Reports from './pages/Reports'; // [NEW]
+import Kulakan from './pages/Kulakan'; // [NEW]
+import Profile from './pages/Profile'; // [NEW]
+import Billing from './pages/Billing'; // [NEW]
 import AdminLayout from './components/AdminLayout';
 
 const ProtectedRoute = ({ children }) => {
@@ -45,12 +50,32 @@ function App() {
           <ProtectedRoute><AcquisitionMap /></ProtectedRoute>
         } />
 
+        <Route path="/reports" element={
+          <ProtectedRoute><Reports /></ProtectedRoute>
+        } />
+
+        <Route path="/kulakan" element={
+          <ProtectedRoute><Kulakan /></ProtectedRoute>
+        } />
+
+        <Route path="/profile" element={
+          <ProtectedRoute><Profile /></ProtectedRoute>
+        } />
+
+        <Route path="/billing" element={
+          <ProtectedRoute><Billing /></ProtectedRoute>
+        } />
+
         <Route path="/packages" element={
           <ProtectedRoute><Packages /></ProtectedRoute>
         } />
 
-        <Route path="/announcements" element={
-          <ProtectedRoute><Announcements /></ProtectedRoute>
+        <Route path="/broadcasts" element={
+          <ProtectedRoute><Broadcasts /></ProtectedRoute>
+        } />
+
+        <Route path="/support" element={
+          <ProtectedRoute><Support /></ProtectedRoute>
         } />
 
         <Route path="/settings" element={

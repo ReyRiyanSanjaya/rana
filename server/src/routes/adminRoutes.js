@@ -11,21 +11,28 @@ router.use(checkRole(['SUPER_ADMIN']));
 // Get Dashboard Stats
 router.get('/stats', adminController.getDashboardStats);
 router.get('/stats/chart', adminController.getPayoutChart);
+router.get('/analytics', adminController.getBusinessAnalytics); // [NEW]
 
 // Subscription Packages
 router.get('/packages', adminController.getPackages);
 router.post('/packages', adminController.createPackage);
 router.delete('/packages/:id', adminController.deletePackage);
 
+// Tickets & Support
+router.use('/tickets', require('./admin/tickets'));
+
 // Announcements
-router.get('/announcements', adminController.getAnnouncements);
-router.post('/announcements', adminController.createAnnouncement);
-router.delete('/announcements/:id', adminController.deleteAnnouncement);
+router.use('/announcements', require('./admin/announcements'));
 
 // Merchant Management
 router.get('/merchants', adminController.getMerchants);
 router.post('/merchants', adminController.createMerchant);
 router.delete('/merchants/:id', adminController.deleteMerchant);
+
+// Subscription Requests
+router.get('/subscriptions', adminController.getSubscriptionRequests);
+router.put('/subscriptions/:id/approve', adminController.approveSubscriptionRequest);
+router.put('/subscriptions/:id/reject', adminController.rejectSubscriptionRequest);
 
 // Reports
 router.get('/withdrawals/export', adminController.exportWithdrawals);

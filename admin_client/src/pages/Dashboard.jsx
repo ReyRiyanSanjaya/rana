@@ -39,7 +39,7 @@ const Dashboard = () => {
     const formatCurrency = (val) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val);
 
     const StatCard = ({ title, value, icon: Icon, colorClass, link }) => (
-        <Card className="p-6 relative overflow-hidden transition-all duration-200 hover:shadow-md">
+        <Card className="p-6 relative overflow-hidden transition-all duration-200 hover:shadow-md border-slate-200">
             <div className="flex justify-between items-start">
                 <div>
                     <p className="text-sm font-medium text-slate-500 mb-1">{title}</p>
@@ -62,8 +62,17 @@ const Dashboard = () => {
     return (
         <AdminLayout>
             <div className="mb-8">
-                <h1 className="text-2xl font-semibold text-slate-900">Welcome back, {user.name || 'Admin'}</h1>
-                <p className="text-slate-500 mt-1">Here's what's happening with your platform today.</p>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h1 className="text-3xl font-bold tracking-tight text-slate-900">Dashboard</h1>
+                        <p className="text-slate-500 mt-1">Overview of your store performance.</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="px-3 py-1">
+                            {new Date().toLocaleDateString('id-ID', { dateStyle: 'full' })}
+                        </Badge>
+                    </div>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -90,7 +99,7 @@ const Dashboard = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Payout Trends Chart */}
-                <Card className="p-6">
+                <Card className="p-6 shadow-sm border-slate-200">
                     <h3 className="font-semibold text-slate-900 mb-6">Payout Trends (Last 7 Days)</h3>
                     <div className="h-64 w-full">
                         <ResponsiveContainer width="100%" height="100%">
@@ -124,10 +133,12 @@ const Dashboard = () => {
                 </Card>
 
                 {/* Recent Activity */}
-                <Card className="h-full">
+                <Card className="h-full shadow-sm border-slate-200">
                     <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-                        <h3 className="font-semibold text-slate-900">Recent Withdrawal Activity</h3>
-                        <Link to="/withdrawals" className="text-sm text-primary-600 hover:underline">See all</Link>
+                        <h3 className="font-semibold text-slate-900">Recent Withdrawals</h3>
+                        <Link to="/withdrawals" className="text-sm text-primary-600 hover:text-primary-700 font-medium flex items-center">
+                            View all <ArrowRight size={14} className="ml-1" />
+                        </Link>
                     </div>
                     <div>
                         {loading ? (

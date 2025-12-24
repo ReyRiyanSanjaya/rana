@@ -38,6 +38,7 @@ model Tenant {
   debtRecords   DebtRecord[]
   subscriptionRequests SubscriptionRequest[] // [FIX] Added relation
   wholesaleOrders      WholesaleOrder[]      // [FIX] Added relation
+  tickets              SupportTicket[]       // [NEW]
 }
 
 enum SubscriptionPlan {
@@ -519,6 +520,11 @@ model WholesaleOrder {
   paymentMethod String   // "TRANSFER_BCA", "COD"
   shippingAddress String?
   shippingCost  Float    @default(0)
+  
+  // Coupon Fields
+  couponCode    String?
+  discountAmount Float   @default(0)
+
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   
@@ -545,3 +551,103 @@ enum WholesaleOrderStatus {
   DELIVERED
   CANCELLED
 }
+
+model WholesaleCoupon {
+  id          String      @id @default(uuid())
+  code        String      @unique
+  type        CouponType
+  value       Float       // Amount or Percentage
+  minOrder    Float       @default(0)
+  maxDiscount Float?      // Max discount amount for percentage type
+  startDate   DateTime?
+  endDate     DateTime?
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+}
+
+enum CouponType {
+  PERCENTAGE
+  FIXED
+  FREE_SHIPPING
+}
+
+model WholesaleBanner {
+  id          String   @id @default(uuid())
+  title       String
+  imageUrl    String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ================================
+// ANALYTICS & REVENUE
+// ================================
+
+model PlatformRevenue {
+  id            String   @id @default(uuid())
+  amount        Float
+  source        RevenueSource // SUBSCRIPTION, WITHDRAWAL_FEE
+  description   String?  // e.g. "Upgrade to Premium - Toko A", "Fee from Withdrawal #123"
+  referenceId   String?  // ID of SubscriptionRequest or Withdrawal
+  createdAt     DateTime @default(now())
+}
+
+
+enum RevenueSource {
+  SUBSCRIPTION
+  WITHDRAWAL_FEE
+  OTHER
+}
+
+// ================================
+// SUPPORT & TICKETING
+// ================================
+
+model SupportTicket {
+  id            String       @id @default(uuid())
+  tenantId      String
+  storeId       String?
+  subject       String
+  status        TicketStatus @default(OPEN)
+  priority      TicketPriority @default(NORMAL)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  
+  tenant        Tenant       @relation(fields: [tenantId], references: [id])
+  messages      TicketMessage[]
+}
+
+model TicketMessage {
+  id            String   @id @default(uuid())
+  ticketId      String
+  senderType    SenderType // MERCHANT or ADMIN
+  senderId      String   // User ID if known, or "SYSTEM"
+  message       String
+  isAdmin       Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  
+  ticket        SupportTicket @relation(fields: [ticketId], references: [id])
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum SenderType {
+  MERCHANT
+  ADMIN
+  SYSTEM
+}
+

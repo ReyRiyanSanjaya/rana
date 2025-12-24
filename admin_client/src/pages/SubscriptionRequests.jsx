@@ -1,6 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api';
-import { CheckCircle, XCircle, Clock } from 'lucide-react';
+import { CheckCircle, XCircle, ExternalLink, Calendar, CreditCard } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
+import { Button } from '../components/ui/button';
+import Badge from '../components/ui/Badge';
+import Card from '../components/ui/Card';
+import AdminLayout from '../components/AdminLayout';
 
 export default function SubscriptionRequests() {
     const [requests, setRequests] = useState([]);
@@ -12,9 +17,13 @@ export default function SubscriptionRequests() {
 
     const fetchRequests = async () => {
         try {
-            const res = await api.get('/subscription/requests');
-            if (res.data.success) {
+            const res = await api.get('/admin/subscriptions');
+            // Backend returns array directly in successResponse data
+            if (res.data.status === 'success') {
                 setRequests(res.data.data);
+            } else {
+                // Fallback if structure is different
+                setRequests(res.data.data || []);
             }
         } catch (error) {
             console.error('Failed to fetch requests', error);
@@ -24,62 +33,134 @@ export default function SubscriptionRequests() {
     };
 
     const handleApprove = async (id) => {
-        if (!confirm('Approve this subscription?')) return;
+        if (!confirm('Are you sure you want to approve this subscription upgrade?')) return;
         try {
-            await api.post(`/subscription/requests/${id}/approve`);
-            fetchRequests(); // Refresh
+            await api.put(`/admin/subscriptions/${id}/approve`);
+            fetchRequests();
         } catch (error) {
-            alert('Approval failed');
+            console.error(error);
+            alert('Failed to approve request');
         }
     };
 
-    if (loading) return <div className="p-8">Loading...</div>;
+    const handleReject = async (id) => {
+        if (!confirm('Are you sure you want to reject this request?')) return;
+        try {
+            await api.put(`/admin/subscriptions/${id}/reject`);
+            fetchRequests();
+        } catch (error) {
+            console.error(error);
+            alert('Failed to reject request');
+        }
+    };
+
+    const formatDate = (dateStr) => {
+        return new Date(dateStr).toLocaleDateString('id-ID', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    };
 
     return (
-        <div className="p-8">
-            <h1 className="text-2xl font-bold mb-6">Subscription Requests</h1>
+        <AdminLayout>
+            <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                    <div>
+                        <h1 className="text-3xl font-bold tracking-tight text-slate-900">Subscription Requests</h1>
+                        <p className="text-slate-500 mt-1">Manage merchant subscription upgrade requests.</p>
+                    </div>
+                </div>
 
-            <div className="bg-white rounded-lg shadow overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                        <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tenant</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Plan</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Proof</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                        {requests.map((req) => (
-                            <tr key={req.id}>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    <div className="text-sm font-medium text-gray-900">{req.tenant?.name || 'Unknown'}</div>
-                                    <div className="text-sm text-gray-500">{req.tenantId}</div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Premium</td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    {req.status === 'PENDING' && <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Pending</span>}
-                                    {req.status === 'APPROVED' && <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Approved</span>}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-600">
-                                    {req.proofUrl ? <a href={req.proofUrl} target="_blank" rel="noreferrer">View Proof</a> : '-'}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                    {req.status === 'PENDING' && (
-                                        <button
-                                            onClick={() => handleApprove(req.id)}
-                                            className="text-indigo-600 hover:text-indigo-900 flex items-center gap-1"
-                                        >
-                                            <CheckCircle size={16} /> Approve
-                                        </button>
-                                    )}
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+                <Card className="border-slate-200 shadow-sm">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Tenant Info</TableHead>
+                                <TableHead>Requested Plan</TableHead>
+                                <TableHead>Requested At</TableHead>
+                                <TableHead>Proof of Transfer</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {loading ? (
+                                <TableRow>
+                                    <TableCell colSpan={5} className="text-center py-8 text-slate-500">
+                                        Loading requests...
+                                    </TableCell>
+                                </TableRow>
+                            ) : requests.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={5} className="text-center py-8 text-slate-500">
+                                        No pending subscription requests found.
+                                    </TableCell>
+                                </TableRow>
+                            ) : (
+                                requests.map((req) => (
+                                    <TableRow key={req.id}>
+                                        <TableCell>
+                                            <div className="flex flex-col">
+                                                <span className="font-medium text-slate-900">{req.tenant?.name || 'Unknown'}</span>
+                                                <span className="text-xs text-slate-500">{req.tenant?.email || 'No email'}</span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge variant="brand" className="capitalize">
+                                                Premium
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex items-center text-slate-500 text-sm">
+                                                <Calendar size={14} className="mr-2" />
+                                                {formatDate(req.createdAt)}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            {req.proofUrl ? (
+                                                <a
+                                                    href={req.proofUrl}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                                                >
+                                                    <ExternalLink size={14} className="mr-1" />
+                                                    View Proof
+                                                </a>
+                                            ) : (
+                                                <span className="text-slate-400 text-sm italic">No proof attached</span>
+                                            )}
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            <div className="flex justify-end gap-2">
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="text-red-600 border-red-200 hover:bg-red-50"
+                                                    onClick={() => handleReject(req.id)}
+                                                >
+                                                    <XCircle size={16} className="mr-1" />
+                                                    Reject
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    className="bg-green-600 hover:bg-green-700 text-white"
+                                                    onClick={() => handleApprove(req.id)}
+                                                >
+                                                    <CheckCircle size={16} className="mr-1" />
+                                                    Approve
+                                                </Button>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            )}
+                        </TableBody>
+                    </Table>
+                </Card>
             </div>
-        </div>
+        </AdminLayout>
     );
 }

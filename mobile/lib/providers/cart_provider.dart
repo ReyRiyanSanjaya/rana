@@ -120,7 +120,7 @@ class CartProvider extends ChangeNotifier {
       'tenantId': tenantId,
       'storeId': storeId,
       'cashierId': cashierId,
-      'total': totalAmount,
+      'totalAmount': totalAmount, // [FIX] Was 'total'
       'discount': _discount,
       'tax': taxAmount,
       'occurredAt': now,
@@ -134,9 +134,10 @@ class CartProvider extends ChangeNotifier {
 
     // 2. Prepare Items
     final txnItems = _items.values.map((item) => {
-      'id': const Uuid().v4(),
+      // 'id': const Uuid().v4(), // [FIX] Removed, let DB autoincrement
       'transactionOfflineId': offlineId,
       'productId': item.productId,
+      'name': item.name, // [FIX] Added missing name
       'quantity': item.quantity,
       'price': item.price
     }).toList();

@@ -47,6 +47,18 @@ const approveWithdrawal = async (req, res) => {
         const feeAmount = (withdrawal.amount * feePercent) / 100;
         const netAmount = withdrawal.amount - feeAmount;
 
+        // 3. Create Platform Revenue Log if fee exists
+        if (feeAmount > 0) {
+            await prisma.platformRevenue.create({
+                data: {
+                    amount: feeAmount,
+                    source: 'WITHDRAWAL_FEE',
+                    description: `Fee from Withdrawal #${withdrawal.id.substring(0, 8)}`,
+                    referenceId: withdrawal.id
+                }
+            });
+        }
+
         const updated = await prisma.withdrawal.update({
             where: { id },
             data: {
@@ -54,7 +66,6 @@ const approveWithdrawal = async (req, res) => {
                 updatedAt: new Date(),
                 fee: feeAmount,
                 netAmount: netAmount
-                // In a real app we might save proofImage somewhere
             }
         });
 
@@ -442,7 +453,6 @@ const getMerchants = async (req, res) => {
                 tenant: {
                     select: {
                         name: true,
-                        email: true,
                     }
                 }
             },
@@ -553,6 +563,235 @@ const deleteMerchant = async (req, res) => {
     }
 };
 
+// [NEW] Get Subscription Requests
+const getSubscriptionRequests = async (req, res) => {
+    try {
+        const requests = await prisma.subscriptionRequest.findMany({
+            where: { status: 'PENDING' },
+            include: {
+                tenant: {
+                    select: { name: true, plan: true }
+                }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+        successResponse(res, requests);
+    } catch (error) {
+        console.error(error);
+        errorResponse(res, "Failed to fetch subscription requests", 500);
+    }
+};
+
+// [NEW] Approve Subscription Request
+const approveSubscriptionRequest = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Transaction: Update Request -> Update Tenant Plan
+        const result = await prisma.$transaction(async (tx) => {
+            const request = await tx.subscriptionRequest.findUnique({ where: { id } });
+            if (!request) throw new Error("Request not found");
+            if (request.status !== 'PENDING') throw new Error("Request already processed");
+
+            // 1. Update Request
+            const updatedRequest = await tx.subscriptionRequest.update({
+                where: { id },
+                data: { status: 'APPROVED' }
+            });
+
+            // 2. Update Tenant to PREMIUM
+            await tx.tenant.update({
+                where: { id: request.tenantId },
+                data: {
+                    plan: 'PREMIUM',
+                    subscriptionStatus: 'ACTIVE',
+                }
+            });
+
+            // 3. Log Revenue (Assuming Premium is 399000 for now, or fetch from Package)
+            // Ideally we should find the package price. 
+            // For MVP let's assume standard Premium price.
+            await tx.platformRevenue.create({
+                data: {
+                    amount: 399000,
+                    source: 'SUBSCRIPTION',
+                    description: `Subscription Upgrade - Tenant ${request.tenantId.substring(0, 8)}`,
+                    referenceId: request.id
+                }
+            });
+
+            return updatedRequest;
+        });
+
+        successResponse(res, result, "Subscription Approved");
+    } catch (error) {
+        console.error(error);
+        errorResponse(res, error.message || "Failed to approve subscription", 500);
+    }
+};
+
+// [NEW] Reject Subscription Request
+const rejectSubscriptionRequest = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const updated = await prisma.subscriptionRequest.update({
+            where: { id },
+            data: { status: 'REJECTED' }
+        });
+        successResponse(res, updated, "Subscription Rejected");
+    } catch (error) {
+        errorResponse(res, "Failed to reject subscription", 500);
+    }
+};
+
+// [NEW] Get Advanced Analytics
+const getBusinessAnalytics = async (req, res) => {
+    try {
+        // 1. Total Revenue
+        const totalRevenueResult = await prisma.platformRevenue.aggregate({
+            _sum: { amount: true }
+        });
+        const totalRevenue = totalRevenueResult._sum.amount || 0;
+
+        // 2. Revenue by Source
+        const revenueBySource = await prisma.platformRevenue.groupBy({
+            by: ['source'],
+            _sum: { amount: true }
+        });
+
+        // 3. Monthly Revenue (Last 6 Months)
+        const sixMonthsAgo = new Date();
+        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+        sixMonthsAgo.setDate(1); // Start of month
+
+        const revenueLogs = await prisma.platformRevenue.findMany({
+            where: { createdAt: { gte: sixMonthsAgo } },
+            orderBy: { createdAt: 'asc' }
+        });
+
+        // Aggregate by Month-Year in JS
+        const monthlyRevenue = {};
+        // Initialize keys
+        for (let i = 0; i < 6; i++) {
+            const d = new Date(sixMonthsAgo);
+            d.setMonth(d.getMonth() + i);
+            const key = d.toLocaleString('default', { month: 'short', year: '2-digit' }); // Jan 24
+            monthlyRevenue[key] = 0;
+        }
+
+        revenueLogs.forEach(log => {
+            const key = log.createdAt.toLocaleString('default', { month: 'short', year: '2-digit' });
+            if (monthlyRevenue[key] !== undefined) {
+                monthlyRevenue[key] += log.amount;
+            }
+        });
+
+        // Convert to array for Recharts
+        const revenueChart = Object.keys(monthlyRevenue).map(key => ({
+            name: key,
+            revenue: monthlyRevenue[key]
+        }));
+
+        // 4. Merchant Growth (New Tenants per month)
+        // Similar logic for Tenants
+        const tenants = await prisma.tenant.findMany({
+            where: { createdAt: { gte: sixMonthsAgo } }
+        });
+        const monthlyGrowth = {};
+        // Initialize keys
+        for (let i = 0; i < 6; i++) {
+            const d = new Date(sixMonthsAgo);
+            d.setMonth(d.getMonth() + i);
+            const key = d.toLocaleString('default', { month: 'short', year: '2-digit' });
+            monthlyGrowth[key] = 0;
+        }
+        tenants.forEach(t => {
+            const key = t.createdAt.toLocaleString('default', { month: 'short', year: '2-digit' });
+            if (monthlyGrowth[key] !== undefined) {
+                monthlyGrowth[key] += 1;
+            }
+        });
+        const growthChart = Object.keys(monthlyGrowth).map(key => ({
+            name: key,
+            count: monthlyGrowth[key]
+        }));
+
+        // 5. Active Subscribers
+        const activeSubscribers = await prisma.tenant.count({
+            where: { plan: { not: 'FREE' }, subscriptionStatus: 'ACTIVE' }
+        });
+
+        // [NEW] 6. Metrics: ARPU (Average Revenue Per User/Tenant)
+        const totalTenants = await prisma.tenant.count();
+        const arpu = totalTenants > 0 ? (totalRevenue / totalTenants) : 0;
+
+        // [NEW] 7. Churn (Cancelled / Total)
+        const cancelledTenants = await prisma.tenant.count({
+            where: { subscriptionStatus: 'CANCELLED' }
+        });
+        const churnRate = totalTenants > 0 ? ((cancelledTenants / totalTenants) * 100).toFixed(1) : 0;
+
+        // [NEW] 8. Top Merchants by Transaction Volume
+        const topMerchantsResult = await prisma.transaction.groupBy({
+            by: ['storeId'],
+            _sum: { totalAmount: true },
+            orderBy: {
+                _sum: { totalAmount: 'desc' }
+            },
+            take: 5
+        });
+
+        // Enrich with Store Names
+        const topMerchants = [];
+        for (const tm of topMerchantsResult) {
+            const store = await prisma.store.findUnique({
+                where: { id: tm.storeId },
+                select: { name: true, tenant: { select: { name: true } } }
+            });
+            if (store) {
+                topMerchants.push({
+                    name: store.name, // or store.tenant.name
+                    volume: tm._sum.totalAmount
+                });
+            }
+        }
+
+        // [NEW] 9. Merchant Distribution by Location
+        const locationStats = await prisma.store.groupBy({
+            by: ['location'],
+            _count: { id: true },
+            where: {
+                location: { not: null }
+            },
+            orderBy: {
+                _count: { id: 'desc' }
+            },
+            take: 10
+        });
+
+        const merchantByLocation = locationStats.map(stat => ({
+            name: stat.location,
+            count: stat._count.id
+        }));
+
+        successResponse(res, {
+            totalRevenue,
+            revenueBySource,
+            revenueChart,
+            growthChart,
+            activeSubscribers,
+            arpu,
+            churnRate,
+            topMerchants,
+            merchantByLocation
+        });
+
+    } catch (error) {
+        console.error(error);
+        errorResponse(res, "Failed to fetch analytics", 500);
+    }
+};
+
 module.exports = {
     getWithdrawals,
     approveWithdrawal,
@@ -570,5 +809,9 @@ module.exports = {
     createAnnouncement,
     deleteAnnouncement,
     createMerchant,
-    deleteMerchant
+    deleteMerchant,
+    getSubscriptionRequests,
+    approveSubscriptionRequest,
+    rejectSubscriptionRequest,
+    getBusinessAnalytics // Exported
 };

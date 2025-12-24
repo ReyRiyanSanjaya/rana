@@ -1,3 +1,4 @@
+import 'dart:ui'; // For Glassmorphism
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart'; // [NEW]
@@ -26,7 +27,18 @@ import 'package:rana_merchant/widgets/product_card.dart';
 import 'package:rana_merchant/constants.dart';
 import 'package:rana_merchant/services/ai_service.dart';
 import 'package:rana_merchant/providers/subscription_provider.dart'; // [NEW]
-import 'package:rana_merchant/screens/subscription_screen.dart'; // [NEW]
+import 'package:rana_merchant/screens/announcements_screen.dart'; // [NEW] feature
+import 'package:rana_merchant/screens/support_screen.dart'; // [NEW] feature
+import 'package:rana_merchant/screens/pos_screen.dart'; // [NEW] feature
+import 'package:rana_merchant/screens/payment_screen.dart'; // [NEW] Refactored
+import 'package:rana_merchant/services/sync_service.dart'; // [NEW]
+import 'package:rana_merchant/services/connectivity_service.dart'; // [NEW]
+import 'package:rana_merchant/widgets/no_connection_screen.dart'; // [NEW]
+import 'package:rana_merchant/screens/ppob_screen.dart'; // [NEW] feature
+import 'dart:async'; // For Timer
+
+
+
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -39,7 +51,12 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Map<String, dynamic>> products = [];
   bool isLoading = true;
   String _selectedCategory = 'All';
-  Map<String, dynamic>? _aiInsight; // [NEW]
+  int _bottomNavIndex = 0;
+  final ScrollController _scrollController = ScrollController(); // [NEW] For Sticky Header
+  bool _isScrolled = false;
+  Map<String, dynamic>? _aiInsight;
+
+
 
   @override
   void initState() {
@@ -48,12 +65,72 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadInsight();
     
     // Check Subscription after build
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       final sub = Provider.of<SubscriptionProvider>(context, listen: false);
-      if (sub.isLocked) {
+      try {
+        await sub.codeCheckSubscription(); 
+        if (mounted) {
+           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+             content: Text('Debug: Status is ${sub.status.toString().split('.').last} (Locked: ${sub.isLocked})'),
+             backgroundColor: sub.isLocked ? Colors.red : Colors.green,
+             duration: const Duration(seconds: 3),
+           ));
+        }
+      } catch (e) {
+         if (mounted) {
+           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Debug Error: $e'), backgroundColor: Colors.red));
+         }
+      }
+
+      if (sub.isLocked && mounted) {
         _showSubscriptionModal(); 
       }
     });
+
+
+    _scrollController.addListener(() {
+      if (_scrollController.offset > 50 && !_isScrolled) setState(() => _isScrolled = true);
+      if (_scrollController.offset <= 50 && _isScrolled) setState(() => _isScrolled = false);
+    });
+
+    // [NEW] Auto-Sync Loop
+    Timer.periodic(const Duration(seconds: 30), (timer) async {
+       final isOnline = await ConnectivityService().hasInternetConnection();
+       if (isOnline) {
+         await SyncService().syncTransactions();
+       }
+    });
+  }
+
+  // [NEW] Helper for online-only navigation
+  void _navigateToProtected(Widget screen) async {
+    // Show loading feedback
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Memeriksa koneksi...'), duration: Duration(milliseconds: 500)),
+    );
+
+    // Add timeout to prevent hanging
+    bool isOnline = false;
+    try {
+      isOnline = await ConnectivityService().hasInternetConnection().timeout(const Duration(seconds: 3), onTimeout: () => false);
+    } catch (e) {
+      isOnline = false;
+    }
+    
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar(); // Hide loading
+
+    if (isOnline) {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
+    } else {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => NoConnectionScreen(
+        onRetry: () {
+          Navigator.pop(context); // Close NoConnection
+          _navigateToProtected(screen); // Retry
+        }
+      )));
+    }
   }
 
   void _showSubscriptionModal() {
@@ -144,7 +221,7 @@ class _HomeScreenState extends State<HomeScreen> {
           bool isDesktop = constraints.maxWidth >= 900;
 
           if (isDesktop) {
-            return Row(
+            return Row( // Desktop remains similar for now or can be adapted later
               children: [
                 // ... Navigation Rail (unchanged) ...
                 SingleChildScrollView(
@@ -203,21 +280,22 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             );
           } else {
-            // MOBILE LAYOUT
-            return Stack(
-              children: [
-                Column(
-                  children: [
-                    _buildHeader(context, isMobile: true),
-                    // if (_aiInsight != null) _buildAiCard(context), // REMOVED
-                    _buildCategoryTabs(),
-                    Expanded(
-                      child: _buildProductGrid(context, cart, crossAxisCount: 2, aspectRatio: 0.75),
-                    ),
-                  ],
-                ),
-// ... Floating Action Button (unchanged) ...
-              ],
+            // MOBILE LAYOUT - SUPER APP STYLE
+            return Scaffold( 
+              body: _bottomNavIndex == 0 ? _buildSuperAppHome(cart) : _buildBodyForNavIndex(_bottomNavIndex),
+              bottomNavigationBar: NavigationBar(
+                selectedIndex: _bottomNavIndex,
+                onDestinationSelected: (idx) => setState(() => _bottomNavIndex = idx),
+                backgroundColor: Colors.white,
+                indicatorColor: Colors.indigo.shade100,
+                destinations: const [
+                  NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home_filled), label: 'Beranda'),
+                  NavigationDestination(icon: Icon(Icons.history_outlined), selectedIcon: Icon(Icons.history), label: 'Transaksi'),
+                  NavigationDestination(icon: Icon(Icons.qr_code_scanner_rounded), label: 'Scan'), // Center Action
+                  NavigationDestination(icon: Icon(Icons.bar_chart_outlined), selectedIcon: Icon(Icons.bar_chart), label: 'Laporan'),
+                  NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Akun'),
+                ],
+              ),
             );
           }
         },
@@ -225,8 +303,301 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // [NEW] AI Card Widget
-  Widget _buildAiCard(BuildContext context) {
+  // [NEW] Super App Home Body (Pro Version)
+  Widget _buildSuperAppHome(CartProvider cart) {
+      // Use CustomScrollView for Sticky Header effects
+      return CustomScrollView(
+        controller: _scrollController,
+        slivers: [
+          _buildSliverAppBar(context),
+          SliverToBoxAdapter(
+            child: Column(
+              children: [
+                _buildLiveTicker(), // [NEW] Flash News
+                const SizedBox(height: 16),
+                _buildWalletCard(context).animate().fade().slideY(begin: 0.2, end: 0, duration: 600.ms, curve: Curves.easeOutBack),
+                const SizedBox(height: 24),
+                _buildFeatureGrid(context).animate().fade(delay: 200.ms).scale(begin: const Offset(0.9, 0.9)),
+                const SizedBox(height: 24),
+                if (_aiInsight != null) _buildAiCard(context).animate().fade(delay: 300.ms).slideX(),
+                const SizedBox(height: 24),
+                 Padding(
+                   padding: const EdgeInsets.symmetric(horizontal: 24),
+                   child: Row(
+                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                     children: [
+                       Text('Info Terkini', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
+                       Text('Lihat Semua', style: GoogleFonts.poppins(color: const Color(0xFF6366F1), fontWeight: FontWeight.w600)),
+                     ],
+                   ),
+                 ),
+                 const SizedBox(height: 16),
+                 _buildInfoCarousel().animate().fade(delay: 400.ms).slideX(begin: 0.2),
+                 const SizedBox(height: 100),
+              ],
+            ),
+          )
+        ],
+      );
+  }
+
+  Widget _buildBodyForNavIndex(int index) {
+      if (index == 1) return const OrderListScreen(); 
+      if (index == 2) return const ScanScreen(); 
+      if (index == 3) return const ReportScreen(); 
+      if (index == 4) return const SettingsScreen();
+      return const SizedBox.shrink();
+  }
+
+  // [FIXED] Sticky Sliver AppBar - Updated
+  Widget _buildSliverAppBar(BuildContext context) {
+    return SliverAppBar(
+      expandedHeight: 120,
+      pinned: true,
+      backgroundColor: const Color(0xFF1E293B),
+      flexibleSpace: FlexibleSpaceBar(
+        background: Stack(
+          children: [
+            // Decorative Gradients
+            // Decorative Gradients (Fixed: Use BoxShadow for glow instead of invalid filter param)
+            Positioned(top: -50, right: -50, child: Container(width: 200, height: 200, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.blue.withOpacity(0.2), boxShadow: [BoxShadow(color: Colors.blue.withOpacity(0.4), blurRadius: 100, spreadRadius: 10)]))),
+            Positioned(bottom: -30, left: -30, child: Container(width: 150, height: 150, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.pink.withOpacity(0.1), boxShadow: [BoxShadow(color: Colors.pink.withOpacity(0.3), blurRadius: 100, spreadRadius: 10)]))),
+            
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 60, 24, 0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                   Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Halo, Juragan!', style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12)), Text('Rana Store', style: GoogleFonts.poppins(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold))]),
+                   Row(children: [IconButton(onPressed: (){}, icon: const Icon(Icons.notifications_outlined, color: Colors.white)), const CircleAvatar(backgroundColor: Colors.white24, child: Icon(Icons.person, color: Colors.white))]),
+                ],
+              ),
+            )
+          ],
+        ),
+      ),
+      bottom: PreferredSize(
+        preferredSize: const Size.fromHeight(60),
+        child: Container(
+           padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+           child: TextField(
+             onChanged: (val) => setState(() => _searchQuery = val),
+             style: const TextStyle(color: Colors.white),
+             decoration: InputDecoration(
+               hintText: 'Cari produk atau fitur...',
+               hintStyle: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 14),
+               prefixIcon: const Icon(Icons.search, color: Colors.white70),
+               suffixIcon: Container(padding: const EdgeInsets.all(8), child: const Icon(Icons.mic, color: Colors.white)), // Voice Visual
+               filled: true,
+               fillColor: Colors.white.withOpacity(0.15),
+               border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+               contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+               isDense: true,
+             ),
+           ),
+        ),
+      ),
+    );
+  }
+
+  // [NEW] Live Ticker
+  Widget _buildLiveTicker() {
+    return Container(
+      width: double.infinity,
+      color: const Color(0xFFFEF3C7), // Amber 100
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      child: Row(
+        children: [
+           const Icon(Icons.campaign, size: 16, color: Colors.orange),
+           const SizedBox(width: 8),
+           Expanded(child: Text("🔥 Promo Spesial: Diskon 50% Printer Thermal hanya hari ini!", style: GoogleFonts.poppins(fontSize: 12, color: Colors.brown, fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis)),
+        ],
+      ).animate(onPlay: (c) => c.repeat()).shimmer(duration: 3.seconds, delay: 2.seconds),
+    );
+  }
+  
+  // [NEW] Glassmorphism Wallet Card
+  Widget _buildWalletCard(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 24),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: LinearGradient(colors: [const Color(0xFF6366F1), const Color(0xFF818CF8)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+        boxShadow: [BoxShadow(color: const Color(0xFF6366F1).withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))],
+      ),
+      child: Stack(
+        children: [
+          Positioned(top: -20, right: -20, child: Container(width: 100, height: 100, decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), shape: BoxShape.circle))),
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Saldo Dompet', style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12)),
+                        const SizedBox(height: 4),
+                        Text('Rp 2.500.000', style: GoogleFonts.poppins(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 4),
+                        Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(20)), child: Text('Member Bronze', style: GoogleFonts.poppins(color: Colors.white, fontSize: 10))),
+                      ],
+                    ),
+                    const Icon(Icons.account_balance_wallet, color: Colors.white54, size: 32)
+                  ],
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                     _buildGlassAction(Icons.add_circle_outline, 'Top Up'),
+                     _buildGlassAction(Icons.arrow_circle_up_outlined, 'Transfer'),
+                     _buildGlassAction(Icons.history, 'Riwayat'),
+                     _buildGlassAction(Icons.qr_code_scanner, 'Scan'),
+                  ],
+                )
+              ],
+            ),
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGlassAction(IconData icon, String label) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(16)),
+          child: Icon(icon, color: Colors.white, size: 24),
+        ),
+        const SizedBox(height: 8),
+        Text(label, style: GoogleFonts.poppins(color: Colors.white, fontSize: 12))
+      ],
+    );
+  }
+
+  // [UPDATED] Feature Grid with Soft Colors
+  // [UPDATED] Feature Grid with Soft Colors
+  Widget _buildFeatureGrid(BuildContext context) {
+    final features = [
+       {'icon': Icons.point_of_sale, 'label': 'Kasir', 'color': const Color(0xFFF59E0B), 'bg': const Color(0xFFFEF3C7), 'dest': const PosScreen(), 'online': false}, 
+       {'icon': Icons.inventory_2, 'label': 'Produk', 'color': const Color(0xFF3B82F6), 'bg': const Color(0xFFEFF6FF), 'dest': const AddProductScreen(), 'online': false},
+       {'icon': Icons.bar_chart, 'label': 'Laporan', 'color': const Color(0xFF10B981), 'bg': const Color(0xFFECFDF5), 'dest': const ReportScreen(), 'online': false},
+       {'icon': Icons.storefront, 'label': 'Kulakan', 'color': const Color(0xFFEC4899), 'bg': const Color(0xFFFDF2F8), 'dest': const PurchaseScreen(), 'online': true}, // Online
+       
+       {'icon': Icons.campaign, 'label': 'Iklan', 'color': const Color(0xFF8B5CF6), 'bg': const Color(0xFFF5F3FF), 'dest': const MarketingScreen(), 'online': true}, // Online
+       {'icon': Icons.support_agent, 'label': 'Bantuan', 'color': const Color(0xFF06B6D4), 'bg': const Color(0xFFECFEFF), 'dest': const SupportScreen(), 'online': true}, // Online
+       {'icon': Icons.settings, 'label': 'Setting', 'color': const Color(0xFF6B7280), 'bg': const Color(0xFFF3F4F6), 'dest': const SettingsScreen(), 'online': false},
+       {'icon': Icons.payment, 'label': 'PPOB', 'color': const Color(0xFF6366F1), 'bg': const Color(0xFFEEF2FF), 'dest': const PpobScreen(), 'online': false}, // [UPDATED] PPOB (Offline bypass)
+    ];
+
+    return GridView.builder(
+      physics: const NeverScrollableScrollPhysics(),
+      shrinkWrap: true,
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 4, mainAxisSpacing: 24, crossAxisSpacing: 16, childAspectRatio: 0.75),
+      itemCount: features.length,
+      itemBuilder: (ctx, i) {
+         final f = features[i];
+         return InkWell(
+           borderRadius: BorderRadius.circular(16),
+           onTap: f['dest'] != null 
+             ? () { 
+                 if (f['online'] == true) {
+                   _navigateToProtected(f['dest'] as Widget);
+                 } else {
+                   Navigator.push(context, MaterialPageRoute(builder: (_) => f['dest'] as Widget));
+                 }
+               } 
+             : (){},
+           child: Column(
+             children: [
+               Container(
+                 padding: const EdgeInsets.all(16),
+                 decoration: BoxDecoration(
+                   color: f['bg'] as Color, // Soft BG
+                   borderRadius: BorderRadius.circular(20),
+                   boxShadow: [BoxShadow(color: (f['bg'] as Color).withOpacity(0.5), blurRadius: 8, offset: const Offset(0, 4))]
+                 ),
+                 child: Icon(f['icon'] as IconData, color: f['color'] as Color, size: 28),
+               ),
+               const SizedBox(height: 8),
+               Text(f['label'] as String, style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w500), textAlign: TextAlign.center)
+             ],
+           ),
+         );
+      },
+    );
+
+
+
+  }
+
+  // [NEW] Drawer for Mobile Navigation
+  Widget _buildDrawer(BuildContext context) {
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          UserAccountsDrawerHeader(
+            accountName: const Text('Rana Merchant'),
+            accountEmail: const Text('store@rana.id'),
+            currentAccountPicture: const CircleAvatar(backgroundColor: Colors.white, child: Icon(Icons.store, color: Color(0xFF1E293B))),
+            decoration: const BoxDecoration(color: Color(0xFF1E293B)),
+          ),
+          ListTile(leading: const Icon(Icons.point_of_sale), title: const Text('Kasir (POS)'), onTap: () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const PosScreen())); }),
+          ListTile(leading: const Icon(Icons.inventory_2), title: const Text('Produk'), onTap: () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const AddProductScreen())); }),
+          ListTile(leading: const Icon(Icons.bar_chart), title: const Text('Laporan'), onTap: () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const ReportScreen())); }),
+          ListTile(leading: const Icon(Icons.campaign), title: const Text('Iklan'), onTap: () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const MarketingScreen())); }),
+          ListTile(leading: const Icon(Icons.support_agent), title: const Text('Bantuan'), onTap: () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const SupportScreen())); }),
+          const Divider(),
+          ListTile(leading: const Icon(Icons.settings), title: const Text('Pengaturan'), onTap: () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())); }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoCarousel() {
+     return SingleChildScrollView(
+       scrollDirection: Axis.horizontal,
+       padding: const EdgeInsets.symmetric(horizontal: 24),
+       child: Row(
+         children: [
+            _buildInfoCard(Colors.blue, "Tips Jualan", "Cara meningkatkan omzet 2x lipat"),
+            const SizedBox(width: 16),
+            _buildInfoCard(Colors.orange, "Promo Alat", "Diskon printer thermal 50%"),
+            const SizedBox(width: 16),
+            _buildInfoCard(Colors.green, "Komunitas", "Gabung grup WhatsApp Juragan"),
+         ],
+       ),
+     );
+  }
+
+  Widget _buildInfoCard(Color color, String title, String sub) {
+    return Container(
+      width: 240,
+      height: 120,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(16)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)), child: Text(title, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold))),
+          const SizedBox(height: 8),
+          Text(sub, style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.bold), maxLines: 2)
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAiCard(BuildContext context) { // Modified to fit list
+
     bool isAlert = _aiInsight!['type'] == 'ALERT';
     return Container(
       margin: const EdgeInsets.fromLTRB(24, 24, 24, 0),
@@ -644,7 +1015,7 @@ class _HomeScreenState extends State<HomeScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: SizedBox(
           width: 400,
-          child: PaymentScreen(cart: cart, scrollController: ScrollController()),
+          child: PaymentScreen(cart: cart),
         )
       )
     );
@@ -659,204 +1030,4 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
 
-  Widget _buildDrawer(BuildContext context) {
-      return Drawer(
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: [
-            DrawerHeader(
-              decoration: const BoxDecoration(color: Color(0xFF1E293B)),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Icon(Icons.store, color: Colors.indigo.shade100, size: 48),
-                  const SizedBox(height: 8),
-                  const Text('Rana Merchant', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
-                ],
-              ),
-            ),
-             ListTile(leading: const Icon(Icons.point_of_sale), title: const Text('Kasir (POS)'), onTap: () => Navigator.pop(context)),
-             ListTile(leading: const Icon(Icons.add_box), title: const Text('Tambah Produk'), onTap: () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const AddProductScreen())).then((val) { if (val == true) _loadProducts(); }); }),
-             ListTile(leading: const Icon(Icons.bar_chart), title: const Text('Laporan & Grafik'), onTap: () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const ReportScreen())); }),
-             ListTile(leading: const Icon(Icons.inventory), title: const Text('Stock Opname'), onTap: () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const StockOpnameScreen())); }),
-             ListTile(leading: const Icon(Icons.shopping_bag), title: const Text('Pesanan Online (Baru!)', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)), onTap: () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const OrderListScreen())); }),
-             ListTile(leading: const Icon(Icons.account_balance_wallet), title: const Text('Dompet Merchant'), onTap: () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const WalletScreen())); }),
-             ListTile(leading: const Icon(Icons.campaign), title: const Text('Iklan Otomatis'), onTap: () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const MarketingScreen())); }),
-             ListTile(leading: const Icon(Icons.storefront), title: const Text('Belanja Stok'), onTap: () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const PurchaseScreen())); }),
-             const Divider(),
-             ListTile(
-              leading: const Icon(Icons.settings),
-              title: const Text('Pengaturan'),
-              onTap: () {
-                 Navigator.pop(context);
-                 Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
-              },
-            ),
-        ],
-      ),
-    );
-  }
 }
-
-// Re-use PaymentScreen and TransactionSuccessDialog from previous implementation
-// But adapted to be used in Dialog for Desktop
-class PaymentScreen extends StatefulWidget {
-  final CartProvider cart;
-  final ScrollController scrollController;
-  
-  const PaymentScreen({super.key, required this.cart, required this.scrollController});
-
-  @override
-  State<PaymentScreen> createState() => _PaymentScreenState();
-}
-
-class _PaymentScreenState extends State<PaymentScreen> {
-  String method = 'CASH';
-  double payAmount = 0;
-  bool _isProcessing = false;
-  
-  void setAmount(double val) {
-     setState(() => payAmount = val);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    double total = widget.cart.totalAmount;
-    double change = payAmount - total;
-    
-    // Quick cash suggestions
-    final suggestions = [total, 20000.0, 50000.0, 100000.0];
-
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Text('Metode Pembayaran', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              _buildMethodCard('CASH', Icons.payments, true),
-              const SizedBox(width: 12),
-              _buildMethodCard('QRIS', Icons.qr_code_2, false),
-            ],
-          ),
-          
-          if (method == 'CASH') ...[
-            const SizedBox(height: 24),
-            TextField(
-              keyboardType: TextInputType.number,
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              decoration: const InputDecoration(
-                prefixText: 'Rp ',
-                labelText: 'Nominal Diterima',
-                border: OutlineInputBorder()
-              ),
-              onChanged: (v) => setAmount(double.tryParse(v) ?? 0),
-              controller: TextEditingController(text: payAmount == 0 ? '' : payAmount.toStringAsFixed(0))..selection = TextSelection.fromPosition(TextPosition(offset: (payAmount == 0 ? '' : payAmount.toStringAsFixed(0)).length)),
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              children: suggestions.map((amt) {
-                if (amt < total && amt != total) return const SizedBox.shrink(); 
-                return ActionChip(
-                  label: Text('Rp ${amt.toStringAsFixed(0)}'),
-                  onPressed: () => setAmount(amt),
-                  backgroundColor: payAmount == amt ? Colors.green[100] : null,
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 24),
-             Container(
-               padding: const EdgeInsets.all(16),
-               decoration: BoxDecoration(
-                 color: change >= 0 ? Colors.green[50] : Colors.red[50],
-                 borderRadius: BorderRadius.circular(12),
-                 border: Border.all(color: change >= 0 ? Colors.green[200]! : Colors.red[200]!)
-               ),
-               child: Row(
-                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                 children: [
-                   const Text('Kembalian', style: TextStyle(fontSize: 16)),
-                   Text('Rp ${change < 0 ? 0 : change.toStringAsFixed(0)}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                 ],
-               ),
-             )
-          ],
-          
-          const SizedBox(height: 24),
-          FilledButton(
-            onPressed: _isProcessing || (method == 'CASH' && payAmount < total) ? null : () async {
-              setState(() => _isProcessing = true);
-              try {
-                await widget.cart.checkout('tenant-1', 'store-1', 'cashier-1', paymentMethod: method);
-                if (!mounted) return;
-                Navigator.pop(context, true);
-              } catch (e) {
-                setState(() => _isProcessing = false);
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-              }
-            },
-            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF4F46E5), padding: const EdgeInsets.symmetric(vertical: 16)),
-            child: _isProcessing ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white)) : const Text('SELESAIKAN'),
-          )
-        ],
-      ),
-    );
-  }
-  
-  Widget _buildMethodCard(String id, IconData icon, bool selected) {
-    final isSelected = method == id;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => setState(() { method = id; payAmount = 0; }),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          decoration: BoxDecoration(
-             color: isSelected ? const Color(0xFF4F46E5) : Colors.white,
-             borderRadius: BorderRadius.circular(12),
-             border: Border.all(color: isSelected ? const Color(0xFF4F46E5) : Colors.grey[300]!),
-          ),
-          child: Column(
-            children: [
-              Icon(icon, color: isSelected ? Colors.white : Colors.grey[600], size: 24),
-              const SizedBox(height: 8),
-              Text(id, style: TextStyle(color: isSelected ? Colors.white : Colors.grey[600], fontWeight: FontWeight.bold))
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class TransactionSuccessDialog extends StatelessWidget {
-  const TransactionSuccessDialog({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    Future.delayed(const Duration(seconds: 3), () {
-      if (context.mounted) Navigator.of(context).pop();
-    });
-
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      child: Padding(
-        padding: const EdgeInsets.all(32.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.check_circle, color: Colors.green, size: 80),
-            const SizedBox(height: 24),
-            const Text('Transaksi Berhasil!', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.green)),
-          ],
-        ),
-      ),
-    );
-  }
-}
-

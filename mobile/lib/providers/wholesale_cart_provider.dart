@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rana_merchant/data/remote/api_service.dart';
 
 class WholesaleCartItem {
   final String id;
@@ -20,8 +21,16 @@ class WholesaleCartItem {
 
 class WholesaleCartProvider with ChangeNotifier {
   final Map<String, WholesaleCartItem> _items = {};
+  
+  // Coupon State
+  String? _couponCode;
+  double _discountAmount = 0;
+  bool _isFreeShipping = false;
 
   Map<String, WholesaleCartItem> get items => _items;
+  String? get couponCode => _couponCode;
+  double get discountAmount => _discountAmount;
+  bool get isFreeShipping => _isFreeShipping;
 
   int get itemCount {
     return _items.length;
@@ -61,6 +70,7 @@ class WholesaleCartProvider with ChangeNotifier {
         ),
       );
     }
+    _resetCoupon(); // Reset coupon on cart change to re-validate via user action if needed (or auto-recalculate, but simplest is reset)
     notifyListeners();
   }
 
@@ -81,16 +91,73 @@ class WholesaleCartProvider with ChangeNotifier {
     } else {
       _items.remove(id);
     }
+    _resetCoupon();
     notifyListeners();
   }
 
   void removeItem(String id) {
     _items.remove(id);
+    _resetCoupon();
     notifyListeners();
   }
 
   void clear() {
     _items.clear();
+    _resetCoupon();
     notifyListeners();
+  }
+  
+  void _resetCoupon() {
+    _couponCode = null;
+    _discountAmount = 0;
+    _isFreeShipping = false;
+  }
+
+  Future<void> applyCoupon(String code) async {
+    try {
+      final result = await ApiService().validateCoupon(code, totalAmount);
+      _couponCode = result['coupon']['code'];
+      _discountAmount = (result['discount'] as num).toDouble();
+      _isFreeShipping = result['coupon']['type'] == 'FREE_SHIPPING';
+      notifyListeners();
+    } catch (e) {
+      _resetCoupon();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  void removeCoupon() {
+    _resetCoupon();
+    notifyListeners();
+  }
+
+  Future<void> checkout(String tenantId, String paymentMethod, String address, double shippingCost) async {
+    final List<Map<String, dynamic>> orderItems = [];
+    _items.forEach((key, item) {
+      orderItems.add({
+        'productId': item.id,
+        'quantity': item.quantity,
+        'price': item.price
+      });
+    });
+
+    if (orderItems.isEmpty) return;
+    
+    // If free shipping, explicit shipping cost sent to server should still be the cost, 
+    // AND we send couponCode. Backend handles the deduction logic (sets discountAmount = shippingCost).
+    // Or we send 0? Backend logic I wrote: "discountAmount = finalShippingCost". 
+    // So we send variable shippingCost as usual.
+
+    await ApiService().createWholesaleOrder(
+      tenantId: tenantId, 
+      items: orderItems, 
+      paymentMethod: paymentMethod, 
+      shippingAddress: address,
+      shippingCost: shippingCost,
+      couponCode: _couponCode
+    );
+
+    clear();
   }
 }

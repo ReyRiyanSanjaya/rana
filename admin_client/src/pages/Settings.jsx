@@ -9,31 +9,55 @@ import Button from '../components/ui/Button';
 const Settings = () => {
     const [settings, setSettings] = useState({
         PLATFORM_QRIS_URL: '',
-        PLATFORM_BANK_INFO: ''
+        BANK_NAME: '',
+        BANK_ACCOUNT_NUMBER: '',
+        BANK_ACCOUNT_NAME: '',
+        PLATFORM_FEE_PERCENTAGE: ''
     });
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         api.get('/admin/settings').then(res => {
-            setSettings(prev => ({ ...prev, ...res.data.data }));
+            if (res.data.data) {
+                setSettings(prev => ({ ...prev, ...res.data.data }));
+            }
         });
     }, []);
 
-    const handleChange = (e) => {
-        setSettings({ ...settings, [e.target.name]: e.target.value });
+    const handleChange = (name, value) => {
+        setSettings(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleSave = async (key) => {
+    const handleSave = async (key, description) => {
         setLoading(true);
         try {
             await api.post('/admin/settings', {
                 key,
-                value: settings[key],
-                description: key === 'PLATFORM_QRIS_URL' ? 'Central QRIS Image URL' : 'Bank Info Description'
+                value: String(settings[key]),
+                description
             });
             alert("Setting saved!");
         } catch (error) {
+            console.error(error);
             alert("Failed to save");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSaveBankInfo = async () => {
+        setLoading(true);
+        try {
+            await Promise.all([
+                api.post('/admin/settings', { key: 'BANK_NAME', value: settings.BANK_NAME, description: 'Bank Name' }),
+                api.post('/admin/settings', { key: 'BANK_ACCOUNT_NUMBER', value: settings.BANK_ACCOUNT_NUMBER, description: 'Account Number' }),
+                api.post('/admin/settings', { key: 'BANK_ACCOUNT_NAME', value: settings.BANK_ACCOUNT_NAME, description: 'Account Name' }),
+                api.post('/admin/settings', { key: 'PLATFORM_FEE_PERCENTAGE', value: settings.PLATFORM_FEE_PERCENTAGE, description: 'Platform Fee %' }),
+            ]);
+            alert("Bank & Fee Settings Saved!");
+        } catch (error) {
+            console.error(error);
+            alert("Failed to save some settings");
         } finally {
             setLoading(false);
         }
@@ -65,7 +89,7 @@ const Settings = () => {
                             helperText="Paste the direct URL to the QRIS image file."
                             name="PLATFORM_QRIS_URL"
                             value={settings.PLATFORM_QRIS_URL}
-                            onChange={handleChange}
+                            onChange={(e) => handleChange('PLATFORM_QRIS_URL', e.target.value)}
                             placeholder="https://example.com/images/qris.png"
                         />
 
@@ -77,7 +101,7 @@ const Settings = () => {
 
                         <div className="pt-2">
                             <Button
-                                onClick={() => handleSave('PLATFORM_QRIS_URL')}
+                                onClick={() => handleSave('PLATFORM_QRIS_URL', 'Central QRIS Image URL')}
                                 isLoading={loading}
                                 className="w-full sm:w-auto"
                             >
@@ -116,7 +140,7 @@ const Settings = () => {
                                 onChange={(e) => handleChange('BANK_ACCOUNT_NUMBER', e.target.value)}
                             />
                         </div>
-                        <div>
+                        <div className="md:col-span-2">
                             <label className="block text-sm font-medium text-slate-700 mb-1">Account Holder Name</label>
                             <Input
                                 placeholder="PT Rana Tech"
@@ -141,6 +165,16 @@ const Settings = () => {
                             </div>
                             <p className="text-xs text-slate-500 mt-1">This percentage will be automatically deducted from every approved withdrawal.</p>
                         </div>
+                    </div>
+
+                    <div className="pt-4 mt-2">
+                        <Button
+                            onClick={handleSaveBankInfo}
+                            isLoading={loading}
+                            className="w-full sm:w-auto"
+                        >
+                            Save Bank & Fees
+                        </Button>
                     </div>
                 </Card>
             </div>

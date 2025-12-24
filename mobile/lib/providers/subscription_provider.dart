@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rana_merchant/data/remote/api_service.dart';
 
 enum SubscriptionStatus {
   trial,    // 7 Days Free
@@ -25,16 +26,57 @@ class SubscriptionProvider with ChangeNotifier {
     return false; 
   }
 
-  // Simulate Check from Server
-  Future<void> codeCheckSubscription() async {
-    // In real app, call ApiService.getSubscriptionStatus()
-    // For now, we keep the default (Trial) or load from prefs
+  List<dynamic> _packages = [];
+  List<dynamic> get packages => _packages;
+  
+  bool _isLoading = false;
+  bool get isLoading => _isLoading;
+
+  Future<void> fetchPackages() async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      _packages = await ApiService().getSubscriptionPackages();
+    } catch (e) {
+      print('Error fetching packages: $e');
+    }
+    _isLoading = false;
     notifyListeners();
   }
 
-  Future<void> requestUpgrade() async {
-    // Simulate User Requesting Upgrade / Uploading Proof
-    _status = SubscriptionStatus.pending;
+  // Check from Server
+  Future<void> codeCheckSubscription() async {
+    try {
+      print('DEBUG: Checking subscription status...');
+      final data = await ApiService().getSubscriptionStatus();
+      print('DEBUG: Server Response: $data');
+      // data: { subscriptionStatus, plan, trialEndsAt }
+      
+      final statusStr = data['subscriptionStatus'];
+      if (statusStr == 'ACTIVE') _status = SubscriptionStatus.active;
+      else if (statusStr == 'TRIAL') _status = SubscriptionStatus.trial;
+      else if (statusStr == 'EXPIRED') _status = SubscriptionStatus.expired;
+      
+      print('DEBUG: Updated Status to $_status');
+      notifyListeners();
+    } catch (e) {
+      print('Check Sub Failed: $e');
+      rethrow; // Allow UI to handle/show error
+    }
+  }
+
+  Future<void> requestUpgrade(String proofUrl) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      // API now takes tenantId from token
+      await ApiService().requestSubscription(proofUrl);
+      _status = SubscriptionStatus.pending;
+    } catch (e) {
+       print('Error requesting upgrade: $e');
+       rethrow;
+    }
+    _isLoading = false;
     notifyListeners();
   }
 

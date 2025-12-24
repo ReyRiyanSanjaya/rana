@@ -54,6 +54,11 @@ function App() {
                             <CashManagement />
                         </ProtectedRoute>
                     } />
+                    <Route path="/reports" element={
+                        <ProtectedRoute allowedRoles={['OWNER', 'STORE_MANAGER']}>
+                            <Reports />
+                        </ProtectedRoute>
+                    } />
                     <Route path="/subscription" element={
                         <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
                             <Subscription />

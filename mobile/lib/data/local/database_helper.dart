@@ -9,7 +9,7 @@ class DatabaseHelper {
 
   Future<Database> get database async {
     if (_database != null) return _database!;
-    _database = await _initDB('rana_pos.db');
+    _database = await _initDB('rana_pos_fixed.db'); // [FIX] Force fresh DB to avoid migration issues
     return _database!;
   }
 
@@ -19,7 +19,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 5, // [FIX] Force higher version to trigger migration
+      version: 6, // [FIX] Increment version for migration
       onCreate: _createDB,
       onUpgrade: _onUpgrade, 
     );
@@ -27,14 +27,30 @@ class DatabaseHelper {
 
   // [NEW] Migration Logic
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    // Check if column exists or just force add for this version bump
-    if (oldVersion < 5) {
-      // Try Adding costPrice. Use try-catch to avoid error if it already exists (from partial migrations)
-      try {
+    if (oldVersion < 6) {
+       // Add missing columns to 'transactions'
+       final columnsToAdd = [
+         'storeId TEXT', 
+         'cashierId TEXT', 
+         'discount REAL DEFAULT 0', 
+         'tax REAL DEFAULT 0',
+         'customerName TEXT',
+         'notes TEXT',
+         'paymentMethod TEXT' // Ensure this exists too
+       ];
+
+       for (var col in columnsToAdd) {
+         try {
+           await db.execute('ALTER TABLE transactions ADD COLUMN $col');
+         } catch (e) {
+           // Column likely exists
+         }
+       }
+       
+       // Also ensure costPrice in items
+       try {
         await db.execute('ALTER TABLE transaction_items ADD COLUMN costPrice REAL DEFAULT 0');
-      } catch (e) {
-        // Column likely exists, ignore
-      }
+       } catch (e) {}
     }
   }
 
@@ -74,8 +90,14 @@ class DatabaseHelper {
       CREATE TABLE transactions (
         offlineId TEXT PRIMARY KEY,
         tenantId TEXT,
+        storeId TEXT,       -- [NEW]
+        cashierId TEXT,     -- [NEW]
         totalAmount REAL,
+        discount REAL DEFAULT 0, -- [NEW]
+        tax REAL DEFAULT 0,      -- [NEW]
         paymentMethod TEXT, -- CASH, QRIS
+        customerName TEXT,  -- [NEW]
+        notes TEXT,         -- [NEW]
         status TEXT, -- PENDING, COMPLETED, VOID
         occurredAt TEXT,
         syncStatus INTEGER DEFAULT 0 
@@ -203,7 +225,7 @@ class DatabaseHelper {
     final txnRes = await db.rawQuery('''
       SELECT 
         COUNT(*) as totalTransactions, 
-        SUM(total) as grossSales
+        SUM(totalAmount) as grossSales
       FROM transactions 
       WHERE occurredAt BETWEEN ? AND ?
     ''', [startStr, endStr]);
@@ -227,7 +249,7 @@ class DatabaseHelper {
     final trendRes = await db.rawQuery('''
       SELECT 
         substr(occurredAt, 1, 10) as date, 
-        SUM(total) as dailyTotal
+        SUM(totalAmount) as dailyTotal
       FROM transactions
       WHERE occurredAt BETWEEN ? AND ?
       GROUP BY date
@@ -286,7 +308,7 @@ class DatabaseHelper {
       SELECT 
         paymentMethod, 
         COUNT(*) as count,
-        SUM(total) as totalAmount
+        SUM(totalAmount) as totalAmount
       FROM transactions
       WHERE occurredAt BETWEEN ? AND ?
       GROUP BY paymentMethod
@@ -302,5 +324,12 @@ class DatabaseHelper {
       whereArgs: [threshold],
       orderBy: 'stock ASC'
     );
+  }
+  // [NEW] Get Tenant Info
+  Future<Map<String, dynamic>?> getTenantInfo() async {
+    final db = await instance.database;
+    final res = await db.query('tenants', limit: 1);
+    if (res.isNotEmpty) return res.first;
+    return null;
   }
 }

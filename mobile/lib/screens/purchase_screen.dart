@@ -3,7 +3,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:rana_merchant/providers/wholesale_cart_provider.dart';
-import 'package:rana_merchant/screens/wholesale_cart_screen.dart'; // We will create this next
+import 'package:rana_merchant/providers/wholesale_cart_provider.dart';
+import 'package:rana_merchant/screens/wholesale_cart_screen.dart';
+import 'package:rana_merchant/screens/wholesale_history_screen.dart'; // [NEW]
+import 'package:rana_merchant/data/remote/api_service.dart';
 
 class PurchaseScreen extends StatefulWidget {
   const PurchaseScreen({super.key});
@@ -13,27 +16,55 @@ class PurchaseScreen extends StatefulWidget {
 }
 
 class _PurchaseScreenState extends State<PurchaseScreen> {
-  final List<String> _categories = ['Semua', 'Sembako', 'Minuman', 'Rokok', 'Perlengkapan'];
+  List<dynamic> _categories = [];
+  List<dynamic> _products = [];
+  List<dynamic> _banners = []; // [NEW]
+  bool _isLoading = true;
   String _selectedCat = 'Semua';
   String _searchQuery = '';
 
-  final List<Map<String, dynamic>> _allItems = [
-    { 'id': '1', 'name': 'Beras Premium 50Kg (Karung)', 'price': 650000, 'category': 'Sembako', 'supplier': 'Agen Beras Makmur', 'image': 'https://via.placeholder.com/300', 'rating': '4.8', 'sold': '1.2rb' },
-    { 'id': '2', 'name': 'Minyak Goreng 2L (Dus isi 6)', 'price': 180000, 'category': 'Sembako', 'supplier': 'Sembako Jaya', 'image': 'https://via.placeholder.com/300', 'rating': '4.9', 'sold': '850' },
-    { 'id': '3', 'name': 'Gula Pasir 1Kg (Dus isi 20)', 'price': 320000, 'category': 'Sembako', 'supplier': 'Sembako Jaya', 'image': 'https://via.placeholder.com/300', 'rating': '4.7', 'sold': '500+' },
-    { 'id': '4', 'name': 'Indomie Goreng (Dus isi 40)', 'price': 115000, 'category': 'Sembako', 'supplier': 'Indo Grosir', 'image': 'https://via.placeholder.com/300', 'rating': '5.0', 'sold': '2rb' },
-    { 'id': '5', 'name': 'Telur Ayam Ras (Peti 15kg)', 'price': 385000, 'category': 'Sembako', 'supplier': 'Peternakan Sejahtera', 'image': 'https://via.placeholder.com/300', 'rating': '4.6', 'sold': '300+' },
-    { 'id': '6', 'name': 'Tepung Terigu (Karung 25kg)', 'price': 210000, 'category': 'Sembako', 'supplier': 'Boga Sari Agent', 'image': 'https://via.placeholder.com/300', 'rating': '4.8', 'sold': '400' },
-    { 'id': '7', 'name': 'Teh Pucuk Harum (Dus)', 'price': 65000, 'category': 'Minuman', 'supplier': 'Indo Grosir', 'image': 'https://via.placeholder.com/300', 'rating': '4.5', 'sold': '1rb' },
-    { 'id': '8', 'name': 'Gudang Garam Surya (Slop)', 'price': 320000, 'category': 'Rokok', 'supplier': 'Agen Rokok 88', 'image': 'https://via.placeholder.com/300', 'rating': '4.9', 'sold': '5rb' },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _fetchData();
+  }
 
-  List<Map<String, dynamic>> get _filteredItems {
-    return _allItems.where((item) {
-      final matchCat = _selectedCat == 'Semua' || item['category'] == _selectedCat;
-      final matchSearch = item['name'].toString().toLowerCase().contains(_searchQuery.toLowerCase());
-      return matchCat && matchSearch;
-    }).toList();
+  Future<void> _fetchData() async {
+    try {
+      final cats = await ApiService().getWholesaleCategories();
+      final prods = await ApiService().getWholesaleProducts();
+      final banners = await ApiService().getWholesaleBanners(); // [NEW]
+      
+      if (mounted) {
+        setState(() {
+          _categories = ['Semua', ...(cats ?? []).map((c) => c['name'] ?? 'Unknown')];
+          _products = prods ?? [];
+          _banners = banners ?? [];
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
+      print('Error fetching purchase data: $e');
+    }
+  }
+
+  Future<void> _refreshProducts() async {
+     setState(() => _isLoading = true);
+     try {
+       final prods = await ApiService().getWholesaleProducts(
+         category: _selectedCat,
+         search: _searchQuery
+       );
+       if (mounted) {
+         setState(() {
+           _products = prods ?? []; 
+           _isLoading = false;
+         });
+       }
+     } catch (e) {
+       if (mounted) setState(() => _isLoading = false);
+     }
   }
 
   @override
@@ -45,117 +76,141 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
         elevation: 0,
         actions: [
           Consumer<WholesaleCartProvider>(
-            builder: (ctx, cart, _) => Padding(
-              padding: const EdgeInsets.only(right: 16.0),
-              child: Center(
-                child: Badge(
-                  isLabelVisible: cart.itemCount > 0,
-                  label: Text('${cart.itemCount}'), 
-                  child: IconButton(
-                    icon: Icon(Icons.shopping_cart_outlined, color: Colors.blue.shade900),
-                    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WholesaleCartScreen())),
+            builder: (ctx, cart, _) => Row(
+              children: [
+                IconButton(
+                  icon: Icon(Icons.history, color: Colors.blue.shade900),
+                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WholesaleHistoryScreen())),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(right: 16.0),
+                  child: Center(
+                    child: Badge(
+                      isLabelVisible: cart.itemCount > 0,
+                      label: Text('${cart.itemCount}'), 
+                      child: IconButton(
+                        icon: Icon(Icons.shopping_cart_outlined, color: Colors.blue.shade900),
+                        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WholesaleCartScreen())),
+                      ),
+                    ),
                   ),
                 ),
-              ),
+              ],
             ),
           )
         ],
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 1. Search Bar (Functional)
-            Container(
-              padding: const EdgeInsets.all(16),
-              color: Colors.white,
-              child: TextField(
-                onChanged: (val) => setState(() => _searchQuery = val),
-                decoration: InputDecoration(
-                  hintText: 'Cari barang grosir...',
-                  prefixIcon: const Icon(Icons.search),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-                  filled: true,
-                  fillColor: Colors.grey.shade100,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
-                ),
-              ),
-            ),
-
-            // 2. Banner
-            SizedBox(
-              height: 140,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                children: [
-                  _buildBanner(Colors.blue, "Diskon Juragan", "Potongan 50rb!", Icons.discount),
-                  const SizedBox(width: 12),
-                  _buildBanner(Colors.orange, "Gratis Ongkir", "Min. Blj 1 Juta", Icons.local_shipping),
-                   const SizedBox(width: 12),
-                  _buildBanner(Colors.green, "Produk Baru", "Harga Perkenalan", Icons.new_releases),
-                ],
-              ),
-            ),
-
-            // 3. Categories (Functional)
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: _categories.map((c) => Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(
-                      label: Text(c),
-                      selected: _selectedCat == c,
-                      onSelected: (val) => setState(() => _selectedCat = c),
-                      selectedColor: Colors.blue.shade100,
-                      labelStyle: TextStyle(color: _selectedCat == c ? Colors.blue.shade900 : Colors.black87),
-                    ),
-                  )).toList(),
-                ),
-              ),
-            ),
-
-            // 4. Product Grid
-            if (_filteredItems.isEmpty)
-              Padding(
-                padding: const EdgeInsets.all(32),
-                child: Center(child: Text('Barang tidak ditemukan', style: GoogleFonts.poppins(color: Colors.grey))),
-              )
-            else
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    childAspectRatio: 0.70, // Taller for better info
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
+      body: _isLoading 
+        ? const Center(child: CircularProgressIndicator()) 
+        : SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 1. Search Bar (Functional)
+              Container(
+                padding: const EdgeInsets.all(16),
+                color: Colors.white,
+                child: TextField(
+                  onChanged: (val) {
+                    _searchQuery = val;
+                    // Debounce or just search on submit? Let's search on submit or loose 
+                    // For simplicity, let's just trigger refresh on submit or every few chars?
+                    // Actually, let's rely on client side filtering if the list is small, OR call API.
+                    // The ApiService has search params. Let's call API.
+                     _refreshProducts();
+                  },
+                  decoration: InputDecoration(
+                    hintText: 'Cari barang grosir...',
+                    prefixIcon: const Icon(Icons.search),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                    filled: true,
+                    fillColor: Colors.grey.shade100,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
                   ),
-                  itemCount: _filteredItems.length,
-                  itemBuilder: (context, index) => _buildProductCard(_filteredItems[index]),
                 ),
               ),
-            
-            const SizedBox(height: 32),
-          ],
-        ),
+
+              // 2. Banner
+              SizedBox(
+                height: 140,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  children: _banners.isEmpty 
+                    ? [
+                        _buildBanner(Colors.blue, "Diskon Juragan", "Potongan 50rb!", Icons.discount, null),
+                        const SizedBox(width: 12),
+                        _buildBanner(Colors.orange, "Gratis Ongkir", "Min. Blj 1 Juta", Icons.local_shipping, null),
+                      ] 
+                    : _banners.map((b) => Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: _buildBanner(Colors.blue, b['title'], b['description'] ?? '', Icons.star, b['imageUrl']),
+                      )).toList(),
+                ),
+              ),
+
+              // 3. Categories (Functional)
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: _categories.map((c) => Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ChoiceChip(
+                        label: Text(c.toString()),
+                        selected: _selectedCat == c,
+                        onSelected: (val) {
+                          setState(() => _selectedCat = c.toString());
+                          _refreshProducts();
+                        },
+                        selectedColor: Colors.blue.shade100,
+                        labelStyle: TextStyle(color: _selectedCat == c ? Colors.blue.shade900 : Colors.black87),
+                      ),
+                    )).toList(),
+                  ),
+                ),
+              ),
+
+              // 4. Product Grid
+              if (_products.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Center(child: Text('Barang tidak ditemukan', style: GoogleFonts.poppins(color: Colors.grey))),
+                )
+              else
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      childAspectRatio: 0.70, // Taller for better info
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                    ),
+                    itemCount: _products.length,
+                    itemBuilder: (context, index) => _buildProductCard(_products[index]),
+                  ),
+                ),
+              
+              const SizedBox(height: 32),
+            ],
+          ),
       ),
     );
   }
 
-  Widget _buildBanner(Color color, String title, String sub, IconData icon) {
+  Widget _buildBanner(Color color, String title, String sub, IconData icon, String? imageUrl) {
     return Container(
       width: 260,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: imageUrl != null ? Colors.white : color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3))
+        border: Border.all(color: color.withOpacity(0.3)),
+        image: imageUrl != null ? DecorationImage(image: NetworkImage(imageUrl), fit: BoxFit.cover, colorFilter: ColorFilter.mode(Colors.black.withOpacity(0.4), BlendMode.darken)) : null
       ),
       child: Row(
         children: [
@@ -164,9 +219,10 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(title, style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16, color: color.withOpacity(0.8))),
-                Text(sub, style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey.shade700)),
+                Text(title, style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16, color: imageUrl != null ? Colors.white : color.withOpacity(0.8))),
+                Text(sub, style: GoogleFonts.poppins(fontSize: 12, color: imageUrl != null ? Colors.white70 : Colors.grey.shade700), maxLines: 2, overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 8),
+                if (imageUrl == null)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(4)),
@@ -175,14 +231,15 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
               ],
             ),
           ),
-          Icon(icon, size: 64, color: color.withOpacity(0.2))
+          if (imageUrl == null) Icon(icon, size: 64, color: color.withOpacity(0.2))
         ],
       ),
     );
   }
 
-  Widget _buildProductCard(Map<String, dynamic> item) {
-    final fmtPrice = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(item['price']);
+  Widget _buildProductCard(dynamic item) {
+    final double price = (item['price'] is int) ? (item['price'] as int).toDouble() : (item['price'] as double);
+    final fmtPrice = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(price);
     
     return GestureDetector(
       onTap: () {
@@ -211,9 +268,13 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                 decoration: BoxDecoration(
                   color: Colors.grey.shade100,
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                  image: const DecorationImage(image: NetworkImage('https://via.placeholder.com/300'), fit: BoxFit.cover) 
+                  image: (item['imageUrl'] != null && item['imageUrl'] != '') 
+                    ? DecorationImage(image: NetworkImage(item['imageUrl']), fit: BoxFit.cover)
+                    : null
                 ),
-                child: Stack(
+                child: (item['imageUrl'] == null || item['imageUrl'] == '') 
+                  ? Center(child: Icon(Icons.image, color: Colors.grey.shade400))
+                  : Stack(
                   children: [
                     Positioned(
                       top: 8, right: 8,
@@ -236,7 +297,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal:6, vertical: 2),
                     decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(4)),
-                    child: Text(item['category'], style: GoogleFonts.poppins(fontSize: 10, color: Colors.grey.shade700)),
+                    child: Text(item['category']?['name'] ?? 'General', style: GoogleFonts.poppins(fontSize: 10, color: Colors.grey.shade700)),
                   ),
                   const SizedBox(height: 4),
                   Text(item['name'], maxLines: 2, overflow: TextOverflow.ellipsis, style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w500)),
@@ -247,15 +308,15 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                     children: [
                       const Icon(Icons.store, size: 12, color: Colors.grey),
                       const SizedBox(width: 4),
-                      Expanded(child: Text(item['supplier'], style: const TextStyle(fontSize: 10, color: Colors.grey), overflow: TextOverflow.ellipsis)),
+                      Expanded(child: Text(item['supplierName'] ?? 'No Supplier', style: const TextStyle(fontSize: 10, color: Colors.grey), overflow: TextOverflow.ellipsis)),
                     ],
                   ),
                   const SizedBox(height: 4),
                   Row(
                     children: [
                        const Icon(Icons.star, size: 12, color: Colors.amber),
-                       Text(' ${item['rating']} ', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
-                       Text('| ${item['sold']} Terjual', style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                       Text(' ${item['rating'] ?? 0.0} ', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                       Text('| ${item['soldCount'] ?? 0} Terjual', style: const TextStyle(fontSize: 10, color: Colors.grey)),
                     ],
                   )
                 ],
@@ -284,7 +345,10 @@ class _ProductDetailSheetState extends State<_ProductDetailSheet> {
 
   @override
   Widget build(BuildContext context) {
-     final fmtPrice = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(widget.item['price']);
+    final double price = (widget.item['price'] is int) ? (widget.item['price'] as int).toDouble() : (widget.item['price'] as double);
+    final fmtPrice = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(price);
+
+    final imageUrl = widget.item['imageUrl'];
 
     return Scaffold(
       appBar: AppBar(
@@ -301,7 +365,13 @@ class _ProductDetailSheetState extends State<_ProductDetailSheet> {
                child: Column(
                  crossAxisAlignment: CrossAxisAlignment.stretch,
                  children: [
-                   Container(height: 300, color: Colors.grey.shade200, child: const Icon(Icons.image, size: 120, color: Colors.grey)),
+                   Container(
+                     height: 300, 
+                     color: Colors.grey.shade200, 
+                     child: (imageUrl != null && imageUrl != '')
+                       ? Image.network(imageUrl, fit: BoxFit.cover)
+                       : const Icon(Icons.image, size: 120, color: Colors.grey)
+                   ),
                    Padding(
                      padding: const EdgeInsets.all(16),
                      child: Column(
@@ -315,11 +385,11 @@ class _ProductDetailSheetState extends State<_ProductDetailSheet> {
                          ListTile(
                            contentPadding: EdgeInsets.zero,
                            leading: const CircleAvatar(child: Icon(Icons.store)),
-                           title: Text(widget.item['supplier'], style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+                           title: Text(widget.item['supplierName'] ?? 'No Supplier', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
                            subtitle: Row(
                               children: [
-                                Icon(Icons.star, size: 14, color: Colors.amber),
-                                Text(' ${widget.item['rating']} (999+ Ulasan)', style: TextStyle(fontSize: 12)),
+                                const Icon(Icons.star, size: 14, color: Colors.amber),
+                                Text(' ${widget.item['rating'] ?? '4.5'}', style: const TextStyle(fontSize: 12)),
                               ],
                            ),
                            trailing: OutlinedButton(onPressed: (){}, child: const Text('Kunjungi')),
@@ -329,7 +399,7 @@ class _ProductDetailSheetState extends State<_ProductDetailSheet> {
                          Text('Deskripsi Produk', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16)),
                          const SizedBox(height: 8),
                          Text(
-                           "Barang original langsung dari pabrik/distributor resmi. Kualitas terjamin dan harga termurah untuk para juragan UMKM.\n\nSpesifikasi:\n- Berat: 50Kg/Dus\n- Expired: Masih Lama (2026)\n- Pengiriman: Kargo / Kurir Instan\n\nGaransi retur jika barang rusak saat diterima. Wajib video unboxing untuk klaim.",
+                           widget.item['description'] ?? "Tidak ada deskripsi.",
                            style: GoogleFonts.poppins(color: Colors.grey.shade700, height: 1.6),
                          ),
                        ],
@@ -365,9 +435,9 @@ class _ProductDetailSheetState extends State<_ProductDetailSheet> {
                         Provider.of<WholesaleCartProvider>(context, listen: false).addItem(
                           widget.item['id'], 
                           widget.item['name'], 
-                          (widget.item['price'] as int).toDouble(), 
-                          widget.item['image'], 
-                          widget.item['supplier']
+                          price, 
+                          widget.item['imageUrl'] ?? '', 
+                          widget.item['supplierName'] ?? 'No Supplier'
                         );
 
                         Navigator.pop(context);
