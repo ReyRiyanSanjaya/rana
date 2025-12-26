@@ -1,0 +1,10 @@
+[2025-12-26T14:55:02.304Z] Receiving Sync: {"offlineId":"TEST-OFFLINE-1766760902243","storeId":"860ca321-5825-4ae7-bd12-58d5d998a7b9","totalAmount":10000,"occurredAt":"2025-12-26T14:55:02.243Z","items":[]}
+[2025-12-26T14:55:02.446Z] Success: cf36377b-47c6-47e0-8cd3-dafe898af365
+[2025-12-26T14:57:28.414Z] Receiving Sync: {"offlineId":"60027f9d-5f46-4b5f-9692-bcb7577204f7","storeId":"860ca321-5825-4ae7-bd12-58d5d998a7b9","cashierId":"a0781e1b-b3bb-4cb1-89cd-9634621c7e48","totalAmount":15000,"paymentMethod":"CASH","occurredAt":"2025-12-26T21:57:21.847","items":[{"productId":"03c87ca3-97e0-4754-a1e0-e225c6d56e35","quantity":3,"price":5000}]}
+[2025-12-26T14:57:28.904Z] Success: 6aa1c555-ef68-4be9-9262-1443bb40bb63
+[2025-12-26T15:00:35.565Z] Receiving Sync: {"offlineId":"TEST-OFFLINE-1766761235504","storeId":"860ca321-5825-4ae7-bd12-58d5d998a7b9","totalAmount":10000,"occurredAt":"2025-12-26T15:00:35.504Z","items":[]}
+[2025-12-26T15:00:35.635Z] Success: 447c8fe1-e7f2-498b-b01c-0c18c29fa463
+[2025-12-26T15:08:51.955Z] Receiving Sync: {"offlineId":"7df39351-6490-4d62-b452-f0a6093669d9","storeId":"860ca321-5825-4ae7-bd12-58d5d998a7b9","cashierId":"a0781e1b-b3bb-4cb1-89cd-9634621c7e48","totalAmount":25000,"paymentMethod":"CASH","occurredAt":"2025-12-26T22:08:09.813","items":[{"productId":"03c87ca3-97e0-4754-a1e0-e225c6d56e35","quantity":2,"price":5000},{"productId":"3854737e-9268-4638-be09-15063bb92e5f","quantity":1,"price":15000}]}
+[2025-12-26T15:08:52.091Z] Success: 506e5a7e-5188-4e88-8dd4-93d8673401a5
+[2025-12-26T15:12:38.837Z] Receiving Sync: {"offlineId":"d38d703d-a350-4da8-a683-ba09b35b4a55","storeId":"860ca321-5825-4ae7-bd12-58d5d998a7b9","cashierId":"a0781e1b-b3bb-4cb1-89cd-9634621c7e48","totalAmount":25000,"paymentMethod":"CASH","occurredAt":"2025-12-26T22:12:35.125","items":[{"productId":"03c87ca3-97e0-4754-a1e0-e225c6d56e35","quantity":2,"price":5000},{"productId":"3854737e-9268-4638-be09-15063bb92e5f","quantity":1,"price":15000}]}
+[2025-12-26T15:12:39.070Z] Success: 012f5864-0525-4be9-bdb9-dd798c96d93f

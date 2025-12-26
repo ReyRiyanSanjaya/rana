@@ -19,6 +19,7 @@ import 'package:rana_merchant/screens/subscription_screen.dart';
 import 'package:rana_merchant/screens/stock_opname_screen.dart';
 import 'package:rana_merchant/screens/purchase_screen.dart';
 import 'package:rana_merchant/screens/order_list_screen.dart';
+import 'package:rana_merchant/providers/wallet_provider.dart'; // [FIX] Added missing import
 import 'package:rana_merchant/screens/wallet_screen.dart';
 import 'package:rana_merchant/screens/scan_screen.dart';
 import 'package:lottie/lottie.dart';
@@ -35,6 +36,9 @@ import 'package:rana_merchant/services/sync_service.dart'; // [NEW]
 import 'package:rana_merchant/services/connectivity_service.dart'; // [NEW]
 import 'package:rana_merchant/widgets/no_connection_screen.dart'; // [NEW]
 import 'package:rana_merchant/screens/ppob_screen.dart'; // [NEW] feature
+import 'package:rana_merchant/screens/notification_screen.dart'; // [NEW]
+import 'package:rana_merchant/screens/blog_detail_screen.dart'; // [NEW]
+import 'package:rana_merchant/screens/blog_list_screen.dart'; // [NEW]
 import 'dart:async'; // For Timer
 
 
@@ -55,6 +59,51 @@ class _HomeScreenState extends State<HomeScreen> {
   final ScrollController _scrollController = ScrollController(); // [NEW] For Sticky Header
   bool _isScrolled = false;
   Map<String, dynamic>? _aiInsight;
+  Future<List<dynamic>>? _appMenusFuture; // [NEW]
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>(); // [FIX] Added Key
+
+  // [NEW] Icon Mapper
+  IconData _getIcon(String name) {
+    switch (name.toUpperCase()) {
+      case 'POS': return Icons.point_of_sale;
+      case 'PRODUCT': return Icons.inventory_2;
+      case 'REPORT': return Icons.bar_chart;
+      case 'STOCK': return Icons.inventory_2; // [NEW]
+      case 'ADS': return Icons.campaign;
+      case 'SUPPORT': return Icons.support_agent;
+      case 'SETTINGS': return Icons.settings;
+      case 'KULAKAN': return Icons.storefront;
+      case 'PPOB': return Icons.payment;
+      case 'WALLET': return Icons.account_balance_wallet;
+      case 'SCAN': return Icons.qr_code_scanner;
+      case 'ORDER': return Icons.shopping_bag;
+      default: return Icons.circle;
+    }
+  }
+
+  // [NEW] Route Mapper
+  Widget _getScreen(String route) {
+    switch (route) {
+      case '/pos': return const PosScreen();
+      case '/products': return const AddProductScreen();
+      case '/reports': return const ReportScreen();
+      case '/stock': return const StockOpnameScreen(); // [NEW]
+      case '/marketing': return const MarketingScreen();
+      case '/support': return const SupportScreen();
+      case '/settings': return const SettingsScreen();
+      case '/kulakan': return const PurchaseScreen();
+      case '/ppob': return const PpobScreen();
+      case '/wallet': return const WalletScreen();
+      case '/orders': return const OrderListScreen();
+      default: return const Scaffold(body: Center(child: Text("Feature not available")));
+    }
+  }
+
+  // [NEW] Color Mapper (Simple hash or predefined)
+  Color _getColor(String key) {
+     final colors = [const Color(0xFFF59E0B), const Color(0xFF3B82F6), const Color(0xFF10B981), const Color(0xFFEC4899), const Color(0xFF8B5CF6), const Color(0xFF06B6D4), const Color(0xFF6366F1)];
+     return colors[key.length % colors.length];
+  }
 
 
 
@@ -63,6 +112,9 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _loadProducts();
     _loadInsight();
+    _appMenusFuture = ApiService().fetchAppMenus();
+    // [NEW] Load Wallet Data for Home Card
+    Future.microtask(() => context.read<WalletProvider>().loadData());
     
     // Check Subscription after build
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -214,6 +266,7 @@ class _HomeScreenState extends State<HomeScreen> {
     var cart = Provider.of<CartProvider>(context);
 
     return Scaffold(
+      key: _scaffoldKey, // [FIX] Assigned Key
       backgroundColor: const Color(0xFFF3F4F6), 
       drawer: _buildDrawer(context),
       body: LayoutBuilder(
@@ -350,51 +403,69 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // [FIXED] Sticky Sliver AppBar - Updated
+  // [UPDATED] Animated Sliver AppBar without Search - Red Theme
   Widget _buildSliverAppBar(BuildContext context) {
     return SliverAppBar(
-      expandedHeight: 120,
+      expandedHeight: 140, // Slightly taller for better effect
       pinned: true,
-      backgroundColor: const Color(0xFF1E293B),
-      flexibleSpace: FlexibleSpaceBar(
-        background: Stack(
-          children: [
-            // Decorative Gradients
-            // Decorative Gradients (Fixed: Use BoxShadow for glow instead of invalid filter param)
-            Positioned(top: -50, right: -50, child: Container(width: 200, height: 200, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.blue.withOpacity(0.2), boxShadow: [BoxShadow(color: Colors.blue.withOpacity(0.4), blurRadius: 100, spreadRadius: 10)]))),
-            Positioned(bottom: -30, left: -30, child: Container(width: 150, height: 150, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.pink.withOpacity(0.1), boxShadow: [BoxShadow(color: Colors.pink.withOpacity(0.3), blurRadius: 100, spreadRadius: 10)]))),
-            
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 60, 24, 0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                   Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Halo, Juragan!', style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12)), Text('Rana Store', style: GoogleFonts.poppins(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold))]),
-                   Row(children: [IconButton(onPressed: (){}, icon: const Icon(Icons.notifications_outlined, color: Colors.white)), const CircleAvatar(backgroundColor: Colors.white24, child: Icon(Icons.person, color: Colors.white))]),
-                ],
-              ),
-            )
-          ],
-        ),
+      backgroundColor: const Color(0xFFBF092F), // Red Brand
+      stretch: true, // Enable stretch effect
+      // [NEW] Fixed Title and Actions so they don't scroll away
+      centerTitle: false,
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+            Text('Selamat Pagi,', style: GoogleFonts.outfit(color: Colors.white70, fontSize: 12)),
+            Text('Rana Store', style: GoogleFonts.outfit(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+        ],
       ),
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(60),
-        child: Container(
-           padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-           child: TextField(
-             onChanged: (val) => setState(() => _searchQuery = val),
-             style: const TextStyle(color: Colors.white),
-             decoration: InputDecoration(
-               hintText: 'Cari produk atau fitur...',
-               hintStyle: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 14),
-               prefixIcon: const Icon(Icons.search, color: Colors.white70),
-               suffixIcon: Container(padding: const EdgeInsets.all(8), child: const Icon(Icons.mic, color: Colors.white)), // Voice Visual
-               filled: true,
-               fillColor: Colors.white.withOpacity(0.15),
-               border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-               contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-               isDense: true,
-             ),
-           ),
+      actions: [
+        IconButton(
+          onPressed: (){ 
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationScreen()));
+          }, 
+          icon: const Icon(Icons.notifications_outlined, color: Colors.white),
+          style: IconButton.styleFrom(backgroundColor: Colors.white.withOpacity(0.2))
+        ),
+        const SizedBox(width: 8),
+        InkWell(
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())), // Go to profile/settings
+          child: const CircleAvatar(backgroundColor: Colors.white, child: Icon(Icons.person, color: Color(0xFFBF092F)))
+        ),
+        const SizedBox(width: 16),
+      ],
+      flexibleSpace: FlexibleSpaceBar(
+        stretchModes: const [StretchMode.zoomBackground, StretchMode.blurBackground],
+        background: Stack(
+          fit: StackFit.expand,
+          children: [
+            // 1. Dynamic Background Gradient (Red Theme)
+            Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF9F0013), Color(0xFFBF092F), Color(0xFFE11D48)],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter
+                )
+              ),
+            ),
+            
+            // 2. Animated Orbs/Glows (Tuned for Red)
+            Positioned(
+              top: -50, right: -50, 
+              child: Container(
+                width: 200, height: 200, 
+                decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.orange.withOpacity(0.15), boxShadow: [BoxShadow(color: Colors.orange.withOpacity(0.3), blurRadius: 80, spreadRadius: 10)])
+              ).animate(onPlay: (c) => c.repeat(reverse: true)).scale(duration: 3.seconds, begin: const Offset(1,1), end: const Offset(1.2,1.2))
+            ),
+            Positioned(
+              bottom: 0, left: -30, 
+              child: Container(
+                width: 150, height: 150, 
+                decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withOpacity(0.1), boxShadow: [BoxShadow(color: Colors.white.withOpacity(0.2), blurRadius: 80, spreadRadius: 5)])
+              ).animate(onPlay: (c) => c.repeat(reverse: true)).moveY(duration: 4.seconds, begin: 0, end: -20)
+            ),
+          ],
         ),
       ),
     );
@@ -416,14 +487,14 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
   
-  // [NEW] Glassmorphism Wallet Card
+  // [UPDATED] Red Glassmorphism Wallet Card
   Widget _buildWalletCard(BuildContext context) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 24),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
-        gradient: LinearGradient(colors: [const Color(0xFF6366F1), const Color(0xFF818CF8)], begin: Alignment.topLeft, end: Alignment.bottomRight),
-        boxShadow: [BoxShadow(color: const Color(0xFF6366F1).withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))],
+        gradient: const LinearGradient(colors: [Color(0xFFBF092F), Color(0xFFE11D48)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+        boxShadow: [BoxShadow(color: const Color(0xFFBF092F).withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))],
       ),
       child: Stack(
         children: [
@@ -432,31 +503,40 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: const EdgeInsets.all(24),
             child: Column(
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Saldo Dompet', style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12)),
-                        const SizedBox(height: 4),
-                        Text('Rp 2.500.000', style: GoogleFonts.poppins(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 4),
-                        Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(20)), child: Text('Member Bronze', style: GoogleFonts.poppins(color: Colors.white, fontSize: 10))),
-                      ],
-                    ),
-                    const Icon(Icons.account_balance_wallet, color: Colors.white54, size: 32)
-                  ],
+                InkWell(
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WalletScreen())),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Saldo Dompet', style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12)),
+                          const SizedBox(height: 4),
+                          // TODO: Connect to Provider for Real Balance
+                          Consumer<WalletProvider>(
+                            builder: (context, provider, _) => Text(
+                              NumberFormat.simpleCurrency(locale: 'id_ID', decimalDigits: 0).format(provider.balance), 
+                              style: GoogleFonts.poppins(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)
+                            )
+                          ),
+                          const SizedBox(height: 4),
+                          Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(20)), child: Text('Merchant Pro', style: GoogleFonts.poppins(color: Colors.white, fontSize: 10))),
+                        ],
+                      ),
+                      const Icon(Icons.account_balance_wallet, color: Colors.white54, size: 32)
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 24),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                     _buildGlassAction(Icons.add_circle_outline, 'Top Up'),
-                     _buildGlassAction(Icons.arrow_circle_up_outlined, 'Transfer'),
-                     _buildGlassAction(Icons.history, 'Riwayat'),
-                     _buildGlassAction(Icons.qr_code_scanner, 'Scan'),
+                     _buildGlassAction(Icons.add_circle_outline, 'Top Up', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WalletScreen()))), // Direct to wallet for now
+                     _buildGlassAction(Icons.arrow_circle_up_outlined, 'Transfer', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WalletScreen()))),
+                     _buildGlassAction(Icons.history, 'Riwayat', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WalletScreen()))),
+                     _buildGlassAction(Icons.qr_code_scanner, 'Scan', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ScanScreen()))),
                   ],
                 )
               ],
@@ -467,75 +547,116 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildGlassAction(IconData icon, String label) {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(16)),
-          child: Icon(icon, color: Colors.white, size: 24),
-        ),
-        const SizedBox(height: 8),
-        Text(label, style: GoogleFonts.poppins(color: Colors.white, fontSize: 12))
-      ],
+  Widget _buildGlassAction(IconData icon, String label, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(16)),
+            child: Icon(icon, color: Colors.white, size: 24),
+          ),
+          const SizedBox(height: 8),
+          Text(label, style: GoogleFonts.poppins(color: Colors.white, fontSize: 12))
+        ],
+      ),
     );
   }
 
   // [UPDATED] Feature Grid with Soft Colors
   // [UPDATED] Feature Grid with Soft Colors
+  // [UPDATED] Feature Grid with Dynamic Menus
   Widget _buildFeatureGrid(BuildContext context) {
-    final features = [
-       {'icon': Icons.point_of_sale, 'label': 'Kasir', 'color': const Color(0xFFF59E0B), 'bg': const Color(0xFFFEF3C7), 'dest': const PosScreen(), 'online': false}, 
-       {'icon': Icons.inventory_2, 'label': 'Produk', 'color': const Color(0xFF3B82F6), 'bg': const Color(0xFFEFF6FF), 'dest': const AddProductScreen(), 'online': false},
-       {'icon': Icons.bar_chart, 'label': 'Laporan', 'color': const Color(0xFF10B981), 'bg': const Color(0xFFECFDF5), 'dest': const ReportScreen(), 'online': false},
-       {'icon': Icons.storefront, 'label': 'Kulakan', 'color': const Color(0xFFEC4899), 'bg': const Color(0xFFFDF2F8), 'dest': const PurchaseScreen(), 'online': true}, // Online
-       
-       {'icon': Icons.campaign, 'label': 'Iklan', 'color': const Color(0xFF8B5CF6), 'bg': const Color(0xFFF5F3FF), 'dest': const MarketingScreen(), 'online': true}, // Online
-       {'icon': Icons.support_agent, 'label': 'Bantuan', 'color': const Color(0xFF06B6D4), 'bg': const Color(0xFFECFEFF), 'dest': const SupportScreen(), 'online': true}, // Online
-       {'icon': Icons.settings, 'label': 'Setting', 'color': const Color(0xFF6B7280), 'bg': const Color(0xFFF3F4F6), 'dest': const SettingsScreen(), 'online': false},
-       {'icon': Icons.payment, 'label': 'PPOB', 'color': const Color(0xFF6366F1), 'bg': const Color(0xFFEEF2FF), 'dest': const PpobScreen(), 'online': false}, // [UPDATED] PPOB (Offline bypass)
-    ];
+    return FutureBuilder<List<dynamic>>(
+      future: _appMenusFuture,
+      builder: (context, snapshot) {
+        List<dynamic> menuItems = [];
 
-    return GridView.builder(
-      physics: const NeverScrollableScrollPhysics(),
-      shrinkWrap: true,
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 4, mainAxisSpacing: 24, crossAxisSpacing: 16, childAspectRatio: 0.75),
-      itemCount: features.length,
-      itemBuilder: (ctx, i) {
-         final f = features[i];
-         return InkWell(
-           borderRadius: BorderRadius.circular(16),
-           onTap: f['dest'] != null 
-             ? () { 
-                 if (f['online'] == true) {
-                   _navigateToProtected(f['dest'] as Widget);
-                 } else {
-                   Navigator.push(context, MaterialPageRoute(builder: (_) => f['dest'] as Widget));
-                 }
-               } 
-             : (){},
-           child: Column(
-             children: [
-               Container(
-                 padding: const EdgeInsets.all(16),
-                 decoration: BoxDecoration(
-                   color: f['bg'] as Color, // Soft BG
-                   borderRadius: BorderRadius.circular(20),
-                   boxShadow: [BoxShadow(color: (f['bg'] as Color).withOpacity(0.5), blurRadius: 8, offset: const Offset(0, 4))]
-                 ),
-                 child: Icon(f['icon'] as IconData, color: f['color'] as Color, size: 28),
-               ),
-               const SizedBox(height: 8),
-               Text(f['label'] as String, style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w500), textAlign: TextAlign.center)
-             ],
+        // FALLBACK if error or empty (Offline First approach: Use defaults if API fails and no cache - effectively simpler here)
+        // Ideally we should cache this list in SQLite/Prefs. For V1 we fallback to defaults.
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+           // Default Static Menu
+           menuItems = [
+             {'label': 'Kasir', 'key': 'POS', 'route': '/pos'},
+             {'label': 'Produk', 'key': 'PRODUCT', 'route': '/products'},
+             {'label': 'Laporan', 'key': 'REPORT', 'route': '/reports'},
+             {'label': 'Stok', 'key': 'STOCK', 'route': '/stock'}, // [NEW] Restored Stock Menu
+             {'label': 'Kulakan', 'key': 'KULAKAN', 'route': '/kulakan'},
+             {'label': 'Iklan', 'key': 'ADS', 'route': '/marketing'},
+             {'label': 'Bantuan', 'key': 'SUPPORT', 'route': '/support'},
+             {'label': 'PPOB', 'key': 'PPOB', 'route': '/ppob'},
+           ];
+        } else {
+           menuItems = List.from(snapshot.data!);
+           menuItems.removeWhere((m) => m['key'] == 'SETTINGS'); // [FIX] Remove Setting menu as requested
+           // [FIX] Force "Stok" menu if missing from backend
+           if (!menuItems.any((m) => m['key'] == 'STOCK')) {
+              // Insert at index 3 (after Laporan) or append
+              if (menuItems.length >= 3) {
+                 menuItems.insert(3, {'label': 'Stok', 'key': 'STOCK', 'route': '/stock'});
+              } else {
+                 menuItems.add({'label': 'Stok', 'key': 'STOCK', 'route': '/stock'});
+              }
+           }
+        }
+
+        return GridView.builder(
+          physics: const NeverScrollableScrollPhysics(),
+          shrinkWrap: true,
+           padding: const EdgeInsets.symmetric(horizontal: 24),
+           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+             crossAxisCount: 4, 
+             mainAxisSpacing: 24, 
+             crossAxisSpacing: 16, 
+             childAspectRatio: 0.8
            ),
-         );
-      },
+           itemCount: menuItems.length,
+           itemBuilder: (ctx, i) {
+              final m = menuItems[i];
+              final String label = m['label'] ?? 'Menu';
+              final String key = m['key'] ?? '';
+              final String route = m['route'] ?? '';
+              final String iconName = m['icon'] ?? key; // Use key as fallback for icon map
+              
+              final IconData icon = _getIcon(iconName);
+              final Color color = _getColor(key);
+              final Color bg = color.withOpacity(0.08); // Softer background
+              
+              return InkWell(
+                borderRadius: BorderRadius.circular(24),
+                onTap: () {
+                   final screen = _getScreen(route);
+                   Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
+                },
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(color: color.withOpacity(0.15), blurRadius: 12, offset: const Offset(0, 6)),
+                          BoxShadow(color: Colors.white, blurRadius: 0, spreadRadius: -2) // Inner glow trick
+                        ]
+                      ),
+                      child: Icon(icon, color: color, size: 28),
+                    ).animate(target: 1).scale(duration: 200.ms, curve: Curves.easeOutBack), // Slight bounce on load
+                    const SizedBox(height: 12),
+                    Text(
+                      label, 
+                      style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w500, color: const Color(0xFF475569)), 
+                      textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis
+                    )
+                  ],
+                ),
+              ).animate().fade(duration: 400.ms, delay: (50 * i).ms).slideY(begin: 0.2, end: 0); // Staggered entrance
+           },
+        );
+      }
     );
-
-
-
   }
 
   // [NEW] Drawer for Mobile Navigation
@@ -562,23 +683,125 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // [NEW] Dynamic Blog Carousel
   Widget _buildInfoCarousel() {
-     return SingleChildScrollView(
-       scrollDirection: Axis.horizontal,
-       padding: const EdgeInsets.symmetric(horizontal: 24),
-       child: Row(
-         children: [
-            _buildInfoCard(Colors.blue, "Tips Jualan", "Cara meningkatkan omzet 2x lipat"),
-            const SizedBox(width: 16),
-            _buildInfoCard(Colors.orange, "Promo Alat", "Diskon printer thermal 50%"),
-            const SizedBox(width: 16),
-            _buildInfoCard(Colors.green, "Komunitas", "Gabung grup WhatsApp Juragan"),
-         ],
-       ),
-     );
+    return Column(
+      children: [
+        // Header
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text("Berita & Edukasi", style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
+              TextButton(
+                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BlogListScreen())),
+                child: Text("Lihat Semua", style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: const Color(0xFFBF092F)))
+              )
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        // List
+        FutureBuilder<List<dynamic>>(
+      future: ApiService().getBlogPosts(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.data!.isEmpty) return const SizedBox.shrink();
+
+        final posts = snapshot.data!;
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: posts.map((post) {
+              return GestureDetector(
+                onTap: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => BlogDetailScreen(post: post)));
+                },
+                child: Container(
+                  width: 300,
+                  margin: const EdgeInsets.only(right: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Image with Hero
+                      Container(
+                        height: 180,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 16, offset: const Offset(0, 8))
+                          ]
+                        ),
+                        clipBehavior: Clip.antiAlias,
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            if (post['imageUrl'] != null && post['imageUrl'] != '')
+                              Image.network(post['imageUrl'], fit: BoxFit.cover)
+                            else
+                              Container(color: const Color(0xFFF1F5F9), child: const Icon(Icons.article, size: 64, color: Color(0xFFCBD5E1))),
+                            
+                            // Overlay gradient
+                            Container(
+                                decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                        begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                                        colors: [Colors.transparent, Colors.black.withOpacity(0.3)]
+                                    )
+                                )
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      // Meta
+                      Row(
+                        children: [
+                          Text(
+                            post['tags']?.isNotEmpty == true ? post['tags'][0].toUpperCase() : 'NEWS', 
+                            style: GoogleFonts.inter(color: const Color(0xFF6366F1), fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5)
+                          ),
+                          const SizedBox(width: 8),
+                          Icon(Icons.circle, size: 4, color: Colors.grey[300]),
+                          const SizedBox(width: 8),
+                          Text(
+                            post['readTime'] ?? '3 min read', 
+                            style: GoogleFonts.inter(color: Colors.grey[500], fontSize: 11, fontWeight: FontWeight.w500)
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        post['title'] ?? 'No Title', 
+                        style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF0F172A), height: 1.4), 
+                        maxLines: 2, 
+                        overflow: TextOverflow.ellipsis
+                      ),
+                      const SizedBox(height: 8),
+                      // Extract plain text summary from content if summary not provided (simple logic)
+                      Text(
+                        post['summary'] ?? (post['content'] ?? '').replaceAll(RegExp(r'<[^>]*>'), '').substring(0, 50) + '...', // Strip HTML tags basically
+                        style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF64748B), height: 1.5), 
+                        maxLines: 2, 
+                        overflow: TextOverflow.ellipsis
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        );
+      },
+    )
+      ],
+    );
   }
 
-  Widget _buildInfoCard(Color color, String title, String sub) {
+  Widget _buildStaticInfoCard(Color color, String title, String sub) { // Renamed old helper just in case
+
     return Container(
       width: 240,
       height: 120,
@@ -709,7 +932,13 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildHeader(BuildContext context, {bool isMobile = false}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      color: const Color(0xFF1E293B), // Dark Header like screenshot
+      decoration: const BoxDecoration(
+          gradient: LinearGradient(
+              colors: [Color(0xFF9F0013), Color(0xFFBF092F)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight
+          )
+      ),
       child: SafeArea( // For mobile status bar
         bottom: false,
         child: Row(
@@ -730,32 +959,15 @@ class _HomeScreenState extends State<HomeScreen> {
                 )
               ],
             ),
-            const SizedBox(width: 32),
-            Expanded(
-              child: TextField(
-                onChanged: (val) => setState(() => _searchQuery = val),
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: 'Cari produk (Nama atau SKU)...',
-                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
-                  prefixIcon: Icon(Icons.search, color: Colors.white.withOpacity(0.7)),
-                  filled: true,
-                  fillColor: Colors.white.withOpacity(0.1),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
-                  isDense: true,
-                ),
-              ),
-            ),
-            const SizedBox(width: 16),
+            const Spacer(), // Replaces TextField
             IconButton(
               onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MarketingScreen())),
-              icon: const Icon(Icons.campaign, color: Colors.pinkAccent),
+              icon: const Icon(Icons.campaign, color: Colors.white),
               tooltip: 'Iklan Otomatis',
             ),
             IconButton(
               onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PurchaseScreen())),
-              icon: const Icon(Icons.storefront, color: Colors.tealAccent),
+              icon: const Icon(Icons.storefront, color: Colors.white),
               tooltip: 'Kulakan',
             ),
             IconButton(
@@ -764,12 +976,23 @@ class _HomeScreenState extends State<HomeScreen> {
                 await ApiService().syncAllData();
                 _loadProducts(); 
               },
-              icon: const Icon(Icons.sync, color: Colors.white70),
+              icon: const Icon(Icons.sync, color: Colors.white),
               tooltip: 'Sync Data',
+            ),
+            // [NEW] Notification Icon
+            IconButton(
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationScreen())),
+              icon: const Icon(Icons.notifications_outlined, color: Colors.white),
+              tooltip: 'Notifikasi',
+            ),
+            IconButton(
+              onPressed: () => _scaffoldKey.currentState?.openEndDrawer(),
+              icon: const Icon(Icons.menu_rounded, color: Colors.white),
+              tooltip: 'Keranjang',
             ),
             IconButton(
               onPressed: () {}, // Logout placeholder
-              icon: const Icon(Icons.logout, color: Colors.redAccent),
+              icon: const Icon(Icons.logout, color: Colors.white),
               tooltip: 'Logout',
             )
           ],
@@ -796,7 +1019,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: isSelected ? Colors.white : Colors.grey[700],
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal
                 ),
-                backgroundColor: isSelected ? const Color(0xFF4F46E5) : Colors.grey[100],
+                backgroundColor: isSelected ? const Color(0xFFBF092F) : Colors.grey[100],
                 side: BorderSide.none,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                 onPressed: () => setState(() => _selectedCategory = cat),
@@ -840,7 +1063,7 @@ class _HomeScreenState extends State<HomeScreen> {
           },
         );
       },
-    );
+    ).animate().fadeIn(duration: 500.ms); // Fade in the whole grid, items have their own animations inside ProductCard
   }
 
   // --- Cart Sidebar Logic ---
@@ -858,15 +1081,15 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.shopping_cart_outlined, color: Color(0xFF4F46E5)),
+                  const Icon(Icons.shopping_cart_outlined, color: Color(0xFFBF092F)),
                   const SizedBox(width: 8),
-                  const Text('Keranjang Belanja', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF4F46E5))),
+                  const Text('Keranjang Belanja', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFBF092F))),
                 ],
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                decoration: BoxDecoration(color: const Color(0xFFEEF2FF), borderRadius: BorderRadius.circular(12)),
-                child: Text('${cart.itemCount} Items', style: const TextStyle(color: Color(0xFF4F46E5), fontSize: 12, fontWeight: FontWeight.bold)),
+                decoration: BoxDecoration(color: const Color(0xFFFFF1F2), borderRadius: BorderRadius.circular(12)), // Light Red
+                child: Text('${cart.itemCount} Items', style: const TextStyle(color: Color(0xFFBF092F), fontSize: 12, fontWeight: FontWeight.bold)),
               )
             ],
           ),
@@ -974,7 +1197,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       },
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: const Color(0xFF818CF8), // Periwinkle Blue/Purple like screenshot
+                    backgroundColor: const Color(0xFFBF092F), // [FIX] Red Brand
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ), 
                   child: Row(

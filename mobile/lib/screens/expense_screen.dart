@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:dio/dio.dart';
+import 'package:rana_merchant/data/local/database_helper.dart';
 
 class ExpenseScreen extends StatefulWidget {
   const ExpenseScreen({super.key});
@@ -15,26 +15,30 @@ class _ExpenseScreenState extends State<ExpenseScreen> {
   bool _isLoading = false;
 
   Future<void> _submitExpense() async {
+    final amount = double.tryParse(_amountCtrl.text);
+    if (amount == null || amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Masukkan jumlah yang valid')));
+      return;
+    }
+
     setState(() => _isLoading = true);
     try {
-      // Direct call to API (Expenses are usually online-only or queued)
-      // For MVP, assuming online for expenses
-      final dio = Dio(BaseOptions(baseUrl: 'http://10.0.2.2:4000/api'));
-      
-      await dio.post('/reports/expenses', data: {
-         'storeId': 'store-1', // Mock
-         'amount': double.tryParse(_amountCtrl.text) ?? 0,
-         'category': _category,
-         'description': _descCtrl.text,
-         'date': DateTime.now().toIso8601String()
+      // Save locally
+      await DatabaseHelper.instance.insertExpense({
+        'storeId': 'store-1', // Default or sync with settings
+        'amount': amount,
+        'category': _category,
+        'description': _descCtrl.text,
+        'date': DateTime.now().toIso8601String(),
+        'synced': 0
       });
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Expense Recorded!')));
-        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pengeluaran Berhasil Disimpan'), backgroundColor: Colors.green));
+        Navigator.pop(context, true); // Return true to trigger refresh
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal: $e')));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

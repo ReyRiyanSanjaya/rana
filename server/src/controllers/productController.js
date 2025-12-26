@@ -29,17 +29,44 @@ const getProducts = async (req, res) => {
 // Create Product
 const createProduct = async (req, res) => {
     try {
-        const { name, sku, basePrice, sellingPrice, stock, minStock, categoryId, description } = req.body;
+        const { name, sku, basePrice, sellingPrice, stock, minStock, categoryId, category, description } = req.body;
 
         // Dynamic fetch for demo purposes since auth might be off
         let tenant = await prisma.tenant.findFirst({ where: { name: 'Demo Tenant' } });
         if (!tenant) {
-            // Fallback if seed didn't run? Should ideally fail, but let's handle grace.
-            return errorResponse(res, "Demo tenant not found. Please run seed.", 500);
+            // [FIX] Self-healing: Create Demo Tenant if missing
+            console.log("Demo Tenant missing. Creating...");
+            tenant = await prisma.tenant.create({
+                data: { name: 'Demo Tenant', plan: 'FREE', subscriptionStatus: 'ACTIVE' }
+            });
         }
 
         // Find demo store
-        const demoStore = await prisma.store.findFirst({ where: { tenantId: tenant.id } });
+        let demoStore = await prisma.store.findFirst({ where: { tenantId: tenant.id } });
+        if (!demoStore) {
+            // [FIX] Self-healing: Create Demo Store if missing
+            console.log("Demo Store missing. Creating...");
+            demoStore = await prisma.store.create({
+                data: { tenantId: tenant.id, name: 'Main Store', balance: 0 }
+            });
+        }
+
+        // [FIX] Handle Category String (Find or Create)
+        let finalCategoryId = categoryId;
+        if (!finalCategoryId && category) {
+            let cat = await prisma.category.findFirst({
+                where: { tenantId: tenant.id, name: category }
+            });
+            if (!cat) {
+                cat = await prisma.category.create({
+                    data: {
+                        tenantId: tenant.id,
+                        name: category
+                    }
+                });
+            }
+            finalCategoryId = cat.id;
+        }
 
         const product = await prisma.product.create({
             data: {
@@ -49,7 +76,7 @@ const createProduct = async (req, res) => {
                 sellingPrice: isNaN(parseFloat(sellingPrice)) ? 0 : parseFloat(sellingPrice),
                 stock: isNaN(parseInt(stock)) ? 0 : parseInt(stock),
                 minStock: isNaN(parseInt(minStock)) ? 0 : parseInt(minStock),
-                category: categoryId ? { connect: { id: categoryId } } : undefined,
+                category: finalCategoryId ? { connect: { id: finalCategoryId } } : undefined,
                 description,
                 tenant: { connect: { id: tenant.id } },
                 storeId: demoStore ? demoStore.id : undefined
@@ -71,6 +98,7 @@ const createProduct = async (req, res) => {
 
         return successResponse(res, product, "Product created successfully", 201);
     } catch (error) {
+        console.error("Create Product Error:", error); // Log error for debugging
         return errorResponse(res, "Failed to create product", 500, error);
     }
 };
@@ -79,7 +107,29 @@ const createProduct = async (req, res) => {
 const updateProduct = async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, sku, basePrice, sellingPrice, minStock, categoryId, description } = req.body;
+        const { name, sku, basePrice, sellingPrice, minStock, categoryId, category, description } = req.body;
+
+        // [FIX] Handle Category String (Find or Create) - Need Tenant ID.
+        // Assuming we can get tenant from the existing product if not in req.user
+        let finalCategoryId = categoryId;
+
+        if (!finalCategoryId && category) {
+            const existingProduct = await prisma.product.findUnique({ where: { id }, select: { tenantId: true } });
+            if (existingProduct) {
+                let cat = await prisma.category.findFirst({
+                    where: { tenantId: existingProduct.tenantId, name: category }
+                });
+                if (!cat) {
+                    cat = await prisma.category.create({
+                        data: {
+                            tenantId: existingProduct.tenantId,
+                            name: category
+                        }
+                    });
+                }
+                finalCategoryId = cat.id;
+            }
+        }
 
         const product = await prisma.product.update({
             where: { id },
@@ -89,13 +139,14 @@ const updateProduct = async (req, res) => {
                 basePrice: basePrice ? parseFloat(basePrice) : undefined,
                 sellingPrice: sellingPrice ? parseFloat(sellingPrice) : undefined,
                 minStock: minStock ? parseInt(minStock) : undefined,
-                categoryId: categoryId || undefined,
+                categoryId: finalCategoryId || undefined,
                 description
             }
         });
 
         return successResponse(res, product, "Product updated successfully");
     } catch (error) {
+        console.error("Update Product Error:", error);
         return errorResponse(res, "Failed to update product", 500, error);
     }
 };

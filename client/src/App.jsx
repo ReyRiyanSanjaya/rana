@@ -8,11 +8,17 @@ import CashManagement from './pages/CashManagement';
 import Subscription from './pages/Subscription';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider } from './context/AuthContext';
-
-
 import Login from './pages/Login';
+import Register from './pages/Register'; // [NEW]
 import Stores from './pages/Stores';
 import Reports from './pages/Reports';
+import Landing from './pages/Landing'; // [NEW]
+import BlogList from './pages/BlogList'; // [NEW]
+import BlogDetail from './pages/BlogDetail'; // [NEW]
+import About from './pages/About'; // [NEW]
+import Features from './pages/Features'; // [NEW]
+import Contact from './pages/Contact'; // [NEW]
+import Support from './pages/Support'; // [NEW]
 
 // Placeholders for other routes
 const Placeholder = ({ title }) => (
@@ -22,15 +28,24 @@ const Placeholder = ({ title }) => (
     </div>
 );
 
-
-
 function App() {
     return (
         <AuthProvider>
             <Router>
                 <Routes>
+                    {/* Public Routes - Portal */}
+                    <Route path="/" element={<Landing />} />
+                    <Route path="/blog" element={<BlogList />} />
+                    <Route path="/blog/:slug" element={<BlogDetail />} />
+                    <Route path="/about" element={<About />} />
+                    <Route path="/features" element={<Features />} />
+                    <Route path="/contact" element={<Contact />} />
                     <Route path="/login" element={<Login />} />
-                    <Route path="/" element={<Dashboard />} />
+                    <Route path="/register" element={<Register />} />
+
+                    {/* Protected Merchant Routes */}
+                    <Route path="/dashboard" element={<Dashboard />} />
+
                     <Route path="/pos" element={
                         <ProtectedRoute>
                             <POSMode />
@@ -46,8 +61,6 @@ function App() {
                             <Inventory />
                         </ProtectedRoute>
                     } />
-
-                    {/* Protected Routes */}
 
                     <Route path="/cash-management" element={
                         <ProtectedRoute allowedRoles={['OWNER', 'STORE_MANAGER']}>
@@ -65,8 +78,6 @@ function App() {
                         </ProtectedRoute>
                     } />
 
-                    {/* Backwards compatibility / other routes */}
-
                     <Route path="/cash-ops" element={
                         <ProtectedRoute allowedRoles={['OWNER', 'STORE_MANAGER']}>
                             <CashManagement />
@@ -81,6 +92,11 @@ function App() {
                     <Route path="/settings" element={
                         <ProtectedRoute>
                             <Placeholder title="Settings" />
+                        </ProtectedRoute>
+                    } />
+                    <Route path="/support" element={
+                        <ProtectedRoute>
+                            <Support />
                         </ProtectedRoute>
                     } />
                 </Routes>

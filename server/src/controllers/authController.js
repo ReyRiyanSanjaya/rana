@@ -101,4 +101,59 @@ const login = async (req, res) => {
     }
 };
 
-module.exports = { register, login };
+// [NEW] Update Store Profile (Mobile)
+const updateStoreProfile = async (req, res) => {
+    try {
+        const { tenantId } = req.user;
+        const { businessName, waNumber, address, latitude, longitude } = req.body;
+
+        // Update Tenant Info
+        await prisma.tenant.update({
+            where: { id: tenantId },
+            data: {
+                name: businessName,
+                phoneNumber: waNumber
+            }
+        });
+
+        // Update Store Info (Assuming data for primary store)
+        // Find store by tenantId
+        const store = await prisma.store.findFirst({ where: { tenantId } });
+        if (store) {
+            await prisma.store.update({
+                where: { id: store.id },
+                data: {
+                    address,
+                    latitude: latitude ? parseFloat(latitude) : undefined,
+                    longitude: longitude ? parseFloat(longitude) : undefined
+                }
+            });
+        }
+
+        successResponse(res, null, "Profile updated successfully");
+    } catch (error) {
+        errorResponse(res, "Failed to update profile", 500, error);
+    }
+};
+
+const getProfile = async (req, res) => {
+    try {
+        const { id } = req.user;
+        const user = await prisma.user.findUnique({
+            where: { id },
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+                createdAt: true
+            }
+        });
+        if (!user) return errorResponse(res, "User not found", 404);
+        successResponse(res, user);
+    } catch (error) {
+        errorResponse(res, "Failed to fetch profile", 500);
+    }
+};
+
+module.exports = { register, login, getProfile, updateStoreProfile };

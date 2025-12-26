@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:provider/provider.dart'; // [NEW]
+import 'package:rana_merchant/providers/wallet_provider.dart'; // [NEW]
 import 'package:rana_merchant/services/shopee_service.dart';
+import 'package:rana_merchant/screens/wallet_screen.dart'; // [NEW] Import WalletScreen
+import 'package:intl/intl.dart'; 
 
 class PpobScreen extends StatefulWidget {
   const PpobScreen({super.key});
@@ -29,6 +33,8 @@ class _PpobScreenState extends State<PpobScreen> with SingleTickerProviderStateM
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    // Fetch Wallet Data on Init
+    Future.microtask(() => context.read<WalletProvider>().loadData());
   }
 
   @override
@@ -43,16 +49,17 @@ class _PpobScreenState extends State<PpobScreen> with SingleTickerProviderStateM
         title: Column(
           children: [
             Text('PPOB & Tagihan', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 18)),
-            Text('Powered by Shopee Partner', style: GoogleFonts.poppins(fontWeight: FontWeight.w400, color: Colors.orangeAccent, fontSize: 10)),
+            Text('Powered by Shopee Partner', style: GoogleFonts.poppins(fontWeight: FontWeight.w400, color: Colors.white.withOpacity(0.8), fontSize: 10)),
           ],
         ),
-        backgroundColor: const Color(0xFF1E293B), // Match Home Theme
+        iconTheme: const IconThemeData(color: Colors.white), // [FIX] Ensure Back Arrow is White
         elevation: 0,
         centerTitle: true,
         bottom: TabBar(
             controller: _tabController,
-            indicatorColor: Colors.orange,
-            labelStyle: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+            indicatorColor: Colors.white, // [FIX] Indicator to White
+            labelStyle: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: Colors.white), // [FIX] Label White
+            unselectedLabelColor: Colors.white.withOpacity(0.6), // [FIX] Unselected Light White
             tabs: const [
                Tab(text: "Layanan"),
                Tab(text: "Riwayat Transaksi"),
@@ -79,27 +86,37 @@ class _PpobScreenState extends State<PpobScreen> with SingleTickerProviderStateM
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [Color(0xFF4F46E5), Color(0xFF818CF8)]),
+              color: Theme.of(context).primaryColor, // [FIX] Use Theme Primary Color
               borderRadius: BorderRadius.circular(20),
-              boxShadow: [BoxShadow(color: const Color(0xFF4F46E5).withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8))]
+              boxShadow: [BoxShadow(color: Theme.of(context).primaryColor.withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8))]
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                 Column(
-                   crossAxisAlignment: CrossAxisAlignment.start,
-                   children: [
-                     Text('Saldo Aktif', style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12)),
-                     const SizedBox(height: 4),
-                     Text('Rp 2.500.000', style: GoogleFonts.poppins(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
-                   ],
-                 ),
-                 ElevatedButton(
-                   onPressed: (){}, 
-                   style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: const Color(0xFF4F46E5), shape: const StadiumBorder()),
-                   child: const Text('Top Up'),
-                 )
-              ],
+            child: Consumer<WalletProvider>( // [NEW] Consume Wallet
+              builder: (context, wallet, _) {
+                final balanceFormat = NumberFormat.currency(locale: 'id', symbol: 'Rp ', decimalDigits: 0);
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                     Column(
+                       crossAxisAlignment: CrossAxisAlignment.start,
+                       children: [
+                         Text('Saldo Aktif', style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12)),
+                         const SizedBox(height: 4),
+                         // Show Real Balance
+                         Text(balanceFormat.format(wallet.balance), style: GoogleFonts.poppins(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                       ],
+                     ),
+                     ElevatedButton(
+                       onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WalletScreen())), // [FIX] Navigate to Wallet
+                       style: ElevatedButton.styleFrom(
+                         backgroundColor: Colors.white, 
+                         foregroundColor: Theme.of(context).primaryColor, // [FIX] Text color matches theme
+                         shape: const StadiumBorder()
+                       ),
+                       child: const Text('Top Up'),
+                     )
+                  ],
+                );
+              }
             ),
           ).animate().slideY(begin: 0.2, end: 0, duration: 400.ms),
 
@@ -307,13 +324,35 @@ class _TransactionSheetState extends State<_TransactionSheet> {
           SizedBox(
             width: double.infinity,
             height: 50,
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Permintaan ke Shopee diproses...'), backgroundColor: Colors.orange));
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: widget.color, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-              child: const Text('Lanjutkan Pembayaran'),
+            child: Consumer<WalletProvider>(
+              builder: (context, wallet, _) {
+                return ElevatedButton(
+                  onPressed: wallet.isLoading ? null : () async {
+                     final amountInput = _products != null && _selectedSku != null 
+                        ? _products!.firstWhere((p) => p['id'] == _selectedSku)['price']
+                        : 0; // Handle manual input if needed but for now PPOB is product based
+                     
+                     if (amountInput == 0) return;
+
+                     try {
+                        await wallet.payTransaction(
+                          (amountInput as num).toDouble(), 
+                          "Beli ${widget.serviceName} - ${_selectedSku ?? ''}"
+                        );
+                        if (context.mounted) {
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pembayaran Berhasil!'), backgroundColor: Colors.green));
+                        }
+                     } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal: ${e.toString()}'), backgroundColor: Colors.red));
+                     }
+                  },
+                  style: ElevatedButton.styleFrom(backgroundColor: widget.color, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                  child: wallet.isLoading 
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white))
+                    : const Text('Lanjutkan Pembayaran'),
+                );
+              }
             ),
           )
         ],

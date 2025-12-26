@@ -33,41 +33,105 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Riwayat Transaksi')),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: 1, // History is index 1
+        onDestinationSelected: (idx) {
+           if (idx == 0) {
+              Navigator.of(context).popUntil((route) => route.isFirst);
+           }
+           // Other routes can be added here if we want full switching
+           // else if (idx == 3) ...
+        },
+        backgroundColor: Colors.white,
+        indicatorColor: Colors.red.shade100,
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home_filled), label: 'Beranda'),
+          NavigationDestination(icon: Icon(Icons.history_outlined), selectedIcon: Icon(Icons.history), label: 'Transaksi'),
+          NavigationDestination(icon: Icon(Icons.qr_code_scanner_rounded), label: 'Scan'),
+          NavigationDestination(icon: Icon(Icons.bar_chart_outlined), selectedIcon: Icon(Icons.bar_chart), label: 'Laporan'),
+          NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Akun'),
+        ],
+      ),
       body: _isLoading 
         ? const Center(child: CircularProgressIndicator()) 
         : _transactions.isEmpty 
-            ? const Center(child: Text('Belum ada transaksi', style: TextStyle(color: Colors.grey)))
-            : ListView.builder(
-                itemCount: _transactions.length,
-                itemBuilder: (context, index) {
-                  final txn = _transactions[index];
-                  final isSynced = txn['status'] == 'SYNCED';
-                  final date = DateTime.tryParse(txn['occurredAt'] ?? '') ?? DateTime.now();
-                  final dateStr = DateFormat('dd MMM HH:mm').format(date);
-
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: isSynced ? Colors.green.shade100 : Colors.orange.shade100,
-                        child: Icon(
-                          isSynced ? Icons.cloud_done : Icons.cloud_upload,
-                          color: isSynced ? Colors.green : Colors.orange,
-                          size: 20,
+            ? RefreshIndicator(
+                onRefresh: _loadHistory,
+                child: CustomScrollView(
+                  slivers: [
+                    _buildSliverAppBar(),
+                    const SliverFillRemaining(
+                      child: Center(child: Text('Belum ada transaksi', style: TextStyle(color: Colors.grey))),
+                    )
+                  ],
+                ),
+              )
+            : RefreshIndicator(
+                onRefresh: _loadHistory,
+                child: CustomScrollView(
+                  slivers: [
+                    _buildSliverAppBar(),
+                    SliverPadding(
+                      padding: const EdgeInsets.all(16),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            final txn = _transactions[index];
+                            final isSynced = txn['status'] == 'SYNCED';
+                            final date = DateTime.tryParse(txn['occurredAt'] ?? '') ?? DateTime.now();
+                            final dateStr = DateFormat('dd MMM HH:mm').format(date);
+            
+                            return Card(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
+                              elevation: 2,
+                              child: ListTile(
+                                leading: CircleAvatar(
+                                  backgroundColor: isSynced ? Colors.green.shade50 : Colors.orange.shade50,
+                                  child: Icon(
+                                    isSynced ? Icons.check_circle : Icons.sync,
+                                    color: isSynced ? Colors.green : Colors.orange,
+                                    size: 20,
+                                  ),
+                                ),
+                                title: Text('Order #${txn['offlineId'].toString().substring(0,8)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                subtitle: Text('$dateStr • Rp ${NumberFormat('#,##0', 'id_ID').format(txn['total'] ?? 0)}'),
+                                trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+                                onTap: () {
+                                     // Show Detail logic
+                                     _showPhoneDialog(context, txn, []); // Passing empty items for now as they are not loaded in list
+                                },
+                              ),
+                            );
+                          },
+                          childCount: _transactions.length,
                         ),
                       ),
-                      title: Text('Order #${txn['offlineId'].toString().substring(0,8)}'),
-                      subtitle: Text('$dateStr • Rp ${txn['total']}'),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () {
-                           // Show Detail logic
-                      },
                     ),
-                  );
-                },
+                  ],
+                ),
               ),
+    );
+  }
+
+  SliverAppBar _buildSliverAppBar() {
+    return SliverAppBar(
+      pinned: true,
+      backgroundColor: const Color(0xFFBF092F),
+      iconTheme: const IconThemeData(color: Colors.white),
+      title: const Text('Riwayat Transaksi', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+      centerTitle: true,
+      flexibleSpace: FlexibleSpaceBar(
+        background: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF9F0013), Color(0xFFBF092F), Color(0xFFE11D48)],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter
+            )
+          ),
+        ),
+      ),
     );
   }
 

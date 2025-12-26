@@ -13,6 +13,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 
 import 'package:rana_merchant/providers/wholesale_cart_provider.dart'; // [NEW]
+import 'package:rana_merchant/providers/wallet_provider.dart'; // [NEW]
 
 void main() {
   if (kIsWeb) {
@@ -43,6 +44,7 @@ class RanaApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => CartProvider()),
         ChangeNotifierProvider(create: (_) => WholesaleCartProvider()), // [NEW]
+        ChangeNotifierProvider(create: (_) => WalletProvider()), // [NEW]
       ],
       child: MaterialApp(
         title: 'Rana Merchant',
@@ -50,23 +52,25 @@ class RanaApp extends StatelessWidget {
         theme: ThemeData(
           useMaterial3: true,
           colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFF6366F1), // Soft Indigo
-            primary: const Color(0xFF4F46E5),
-            secondary: const Color(0xFFEC4899), // Soft Pink accent
-            surface: const Color(0xFFFFFFFF), // Pure white surface
-            surfaceContainerHighest: const Color(0xFFF8FAFC), // Very light slate for contrast
+            seedColor: const Color(0xFFBF092F), // [FIX] New Brand Red
+            primary: const Color(0xFFBF092F),
+            onPrimary: Colors.white, // [FIX] Ensure text on primary is white
+            secondary: const Color(0xFFE11D48), // Lighter red accent
+            surface: const Color(0xFFFFFFFF), 
+            surfaceContainerHighest: const Color(0xFFF8FAFC), 
           ),
           scaffoldBackgroundColor: const Color(0xFFF1F5F9), // Soft slate gray bg
           splashFactory: InkSparkle.splashFactory, // Sparkle splash for M3
           appBarTheme: const AppBarTheme(
-            backgroundColor: Colors.white,
-            foregroundColor: Color(0xFF1E293B), // Slate 800
+            backgroundColor: Color(0xFFBF092F), // [FIX] Global Red Brand
+            foregroundColor: Colors.white,
+            iconTheme: const IconThemeData(color: Colors.white), // [FIX] Ensure icons are white
             elevation: 0,
             scrolledUnderElevation: 0,
             shape: Border(bottom: BorderSide(color: Color(0xFFF1F5F9), width: 1)),
             centerTitle: true,
             titleTextStyle: TextStyle(
-              color: Color(0xFF1E293B), 
+              color: Colors.white, 
               fontSize: 18, 
               fontWeight: FontWeight.w600,
               fontFamily: 'Inter',
@@ -95,7 +99,7 @@ class RanaApp extends StatelessWidget {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(20),
-              borderSide: const BorderSide(color: Color(0xFF6366F1), width: 2), // Ring
+              borderSide: const BorderSide(color: Color(0xFFBF092F), width: 2), // Red Ring
             ),
             contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
             floatingLabelBehavior: FloatingLabelBehavior.always,
@@ -103,8 +107,8 @@ class RanaApp extends StatelessWidget {
           filledButtonTheme: FilledButtonThemeData(
             style: FilledButton.styleFrom(
               elevation: 4,
-              shadowColor: const Color(0xFF4F46E5).withOpacity(0.4), // Colored shadow
-              backgroundColor: const Color(0xFF4F46E5),
+              shadowColor: const Color(0xFFBF092F).withOpacity(0.4), // Red shadow
+              backgroundColor: const Color(0xFFBF092F),
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),

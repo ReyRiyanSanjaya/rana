@@ -49,6 +49,22 @@ const updatePaymentInfo = async (req, res) => {
     }
 };
 
+
+
+
+
+const getAppMenus = async (req, res) => {
+    try {
+        const menus = await prisma.appMenu.findMany({
+            where: { isActive: true },
+            orderBy: { order: 'asc' }
+        });
+        successResponse(res, menus);
+    } catch (error) {
+        errorResponse(res, "Failed to fetch app menus", 500);
+    }
+};
+
 const getActiveAnnouncements = async (req, res) => {
     try {
         const announcements = await prisma.announcement.findMany({
@@ -61,4 +77,38 @@ const getActiveAnnouncements = async (req, res) => {
     }
 };
 
-module.exports = { getPaymentInfo, updatePaymentInfo, getActiveAnnouncements };
+// [NEW] Get Notifications (Public/System but requires Tenant Context via Header/Query?)
+// Actually mobile app probably sends tenantId in header or we infer from context.
+// For now let's assume query or header 'x-tenant-id'.
+const getNotifications = async (req, res) => {
+    try {
+        const tenantId = req.headers['x-tenant-id'];
+        if (!tenantId) return successResponse(res, []); // Silent fail if no context
+
+        const notifications = await prisma.notification.findMany({
+            where: { tenantId },
+            orderBy: { createdAt: 'desc' },
+            take: 20
+        });
+        successResponse(res, notifications);
+    } catch (error) {
+        errorResponse(res, "Failed to fetch notifications", 500);
+    }
+};
+
+const getPublicSettings = async (req, res) => {
+    try {
+        const settings = await prisma.systemSettings.findMany({
+            where: {
+                key: { startsWith: 'CMS_' }
+            }
+        });
+        const settingsMap = {};
+        settings.forEach(s => settingsMap[s.key] = s.value);
+        successResponse(res, settingsMap);
+    } catch (error) {
+        errorResponse(res, "Failed to fetch public settings", 500);
+    }
+};
+
+module.exports = { getPaymentInfo, updatePaymentInfo, getActiveAnnouncements, getAppMenus, getNotifications, getPublicSettings };

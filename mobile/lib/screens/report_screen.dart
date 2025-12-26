@@ -3,6 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:rana_merchant/data/local/database_helper.dart';
+import 'package:rana_merchant/screens/expense_screen.dart';
 
 class ReportScreen extends StatefulWidget {
   const ReportScreen({super.key});
@@ -21,6 +22,8 @@ class _ReportScreenState extends State<ReportScreen> {
   List<Map<String, dynamic>> _categorySales = [];
   List<Map<String, dynamic>> _paymentMethods = [];
   List<Map<String, dynamic>> _lowStock = [];
+  List<Map<String, dynamic>> _expenses = []; // [NEW]
+  int _touchedIndex = -1; // [NEW] For Pie Chart interaction
 
   final currency = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
 
@@ -44,6 +47,7 @@ class _ReportScreenState extends State<ReportScreen> {
       final categories = await DatabaseHelper.instance.getSalesByCategory(start: start, end: end);
       final payments = await DatabaseHelper.instance.getSalesByPaymentMethod(start: start, end: end);
       final lowStock = await DatabaseHelper.instance.getLowStockProducts(threshold: 5);
+      final expenses = await DatabaseHelper.instance.getExpenses(start: start, end: end); // [NEW]
 
       if (mounted) {
         setState(() {
@@ -57,6 +61,7 @@ class _ReportScreenState extends State<ReportScreen> {
           _categorySales = List<Map<String, dynamic>>.from(categories);
           _paymentMethods = List<Map<String, dynamic>>.from(payments);
           _lowStock = List<Map<String, dynamic>>.from(lowStock);
+          _expenses = List<Map<String, dynamic>>.from(expenses); // [NEW]
           _isLoading = false;
         });
       }
@@ -70,6 +75,7 @@ class _ReportScreenState extends State<ReportScreen> {
              'totalTransactions': 0, 
              'grossSales': 0.0, 
              'netProfit': 0.0, 
+             'totalExpenses': 0.0, // [FIX] Add fallback
              'averageOrderValue': 0.0, 
              'trend': <Map<String, dynamic>>[] // [FIX] Strictly typed empty list
            };
@@ -111,40 +117,67 @@ class _ReportScreenState extends State<ReportScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB), // Cool Gray
-      appBar: AppBar(
-        title: const Text('Laporan Bisnis', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87)),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black87),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.calendar_today_outlined),
-            onPressed: _pickDateRange,
-            tooltip: 'Pilih Tanggal',
-          ),
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.only(right: 16.0, left: 8.0),
-              child: Text(
-                '${DateFormat('dd/MM').format(_startDate)} - ${DateFormat('dd/MM').format(_endDate)}',
-                style: const TextStyle(color: Colors.black54, fontWeight: FontWeight.w600),
-              ),
-            ),
-          )
-        ],
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () async {
+          // Navigate to Expense Screen
+          final result = await Navigator.push(context, MaterialPageRoute(builder: (_) => const ExpenseScreen()));
+          if (result == true) _fetchData(); // Refresh if expense added
+        },
+        label: const Text('Catat Pengeluaran'),
+        icon: const Icon(Icons.add_card),
+        backgroundColor: const Color(0xFFEF4444),
       ),
+
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
               onRefresh: _fetchData,
-              child: ListView(
-                padding: const EdgeInsets.all(20),
-                children: [
+              child: CustomScrollView( // [FIX] Switch to CustomScrollView for SliverAppBar
+                slivers: [
+                  SliverAppBar(
+                    pinned: true,
+                    backgroundColor: const Color(0xFFBF092F), // Red Brand
+                    iconTheme: const IconThemeData(color: Colors.white),
+                    title: const Text('Laporan Bisnis', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                    actions: [
+                      IconButton(
+                        icon: const Icon(Icons.calendar_today_outlined),
+                        onPressed: _pickDateRange,
+                        tooltip: 'Pilih Tanggal',
+                      ),
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: 16.0, left: 8.0),
+                          child: Text(
+                            '${DateFormat('dd/MM').format(_startDate)} - ${DateFormat('dd/MM').format(_endDate)}',
+                            style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w600), // White text
+                          ),
+                        ),
+                      )
+                    ],
+                    flexibleSpace: FlexibleSpaceBar(
+                       background: Container(
+                         decoration: const BoxDecoration(
+                           gradient: LinearGradient(
+                             colors: [Color(0xFF9F0013), Color(0xFFBF092F), Color(0xFFE11D48)],
+                             begin: Alignment.topCenter,
+                             end: Alignment.bottomCenter
+                           )
+                         ),
+                       ),
+                    ),
+                  ),
+                  SliverPadding(
+                    padding: const EdgeInsets.all(20),
+                    sliver: SliverList(
+                      delegate: SliverChildListDelegate([
                    // 1. Executive Summary Cards
                    Row(
                      children: [
                        Expanded(child: _buildGradientCard('Omzet', _summary['grossSales'], const [Color(0xFF4F46E5), Color(0xFF818CF8)], Icons.attach_money)),
-                       const SizedBox(width: 16),
+                       const SizedBox(width: 12),
+                       Expanded(child: _buildGradientCard('Biaya', _summary['totalExpenses'] ?? 0.0, const [Color(0xFFEF4444), Color(0xFFF87171)], Icons.money_off)),
+                       const SizedBox(width: 12),
                        Expanded(child: _buildGradientCard('Laba Bersih', _summary['netProfit'], const [Color(0xFF059669), Color(0xFF34D399)], Icons.trending_up)),
                      ],
                    ).animate().fadeIn(duration: 600.ms).slideY(begin: 0.2, end: 0),
@@ -264,6 +297,40 @@ class _ReportScreenState extends State<ReportScreen> {
 
                    const SizedBox(height: 32),
 
+                   const SizedBox(height: 32),
+ 
+                   // [NEW] Expense List
+                   if (_expenses.isNotEmpty) ...[
+                      const Text('Riwayat Pengeluaran', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+                      const SizedBox(height: 16),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.grey[200]!),
+                        ),
+                        child: Column(
+                          children: _expenses.map((e) {
+                            final date = DateTime.tryParse(e['date'] ?? '');
+                            final dateStr = date != null ? DateFormat('dd MMM HH:mm').format(date) : '-';
+                            return ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor: Colors.red.shade50,
+                                child: Icon(Icons.money_off, color: Colors.red.shade400, size: 20),
+                              ),
+                              title: Text(e['description'] ?? 'Pengeluaran', style: const TextStyle(fontWeight: FontWeight.w600)),
+                              subtitle: Text(dateStr, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                              trailing: Text(
+                                '- ${currency.format(e['amount'])}',
+                                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red.shade700),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ).animate().fadeIn(delay: 550.ms),
+                      const SizedBox(height: 32),
+                   ],
+
                    // 5. Top Products Table
                    const Text('Produk Terlaris', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
                    const SizedBox(height: 16),
@@ -293,6 +360,9 @@ class _ReportScreenState extends State<ReportScreen> {
                    ).animate().fadeIn(delay: 600.ms),
                    
                    const SizedBox(height: 48),
+                  ]),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -348,33 +418,78 @@ class _ReportScreenState extends State<ReportScreen> {
   Widget _buildCategoryPieChart() {
     if (_categorySales.isEmpty) return const Center(child: Text('Belum ada data'));
 
-    return PieChart(
-      PieChartData(
-        sectionsSpace: 2,
-        centerSpaceRadius: 40,
-        sections: _categorySales.asMap().entries.map((entry) {
-          final index = entry.key;
-          final data = entry.value;
-          final value = (data['totalSales'] as num).toDouble();
-          
-          final colors = [
-            const Color(0xFF4F46E5),
-            const Color(0xFFEC4899),
-            const Color(0xFFF59E0B),
-            const Color(0xFF10B981),
-            const Color(0xFF6366F1),
-          ];
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+         PieChart(
+          PieChartData(
+            pieTouchData: PieTouchData(
+              touchCallback: (FlTouchEvent event, pieTouchResponse) {
+                setState(() {
+                  if (!event.isInterestedForInteractions ||
+                      pieTouchResponse == null ||
+                      pieTouchResponse.touchedSection == null) {
+                    _touchedIndex = -1;
+                    return;
+                  }
+                  _touchedIndex = pieTouchResponse.touchedSection!.touchedSectionIndex;
+                });
+              },
+            ),
+            sectionsSpace: 2,
+            centerSpaceRadius: 40,
+            sections: _categorySales.asMap().entries.map((entry) {
+              final index = entry.key;
+              final data = entry.value;
+              final value = (data['totalSales'] as num).toDouble();
+              final isTouched = index == _touchedIndex;
+              final radius = isTouched ? 60.0 : 50.0;
+              
+              final colors = [
+                const Color(0xFF4F46E5),
+                const Color(0xFFEC4899),
+                const Color(0xFFF59E0B),
+                const Color(0xFF10B981),
+                const Color(0xFF6366F1),
+              ];
 
-          return PieChartSectionData(
-            color: colors[index % colors.length],
-            value: value,
-            title: '${((value / _summary['grossSales']) * 100).toStringAsFixed(0)}%',
-            radius: 50,
-            titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
-          );
-        }).toList(),
-      ),
+              return PieChartSectionData(
+                color: colors[index % colors.length],
+                value: value,
+                title: isTouched ? currency.format(value) : '${((value / _summary['grossSales']) * 100).toStringAsFixed(0)}%',
+                radius: radius,
+                titleStyle: TextStyle(
+                  fontSize: isTouched ? 10 : 12, 
+                  fontWeight: FontWeight.bold, 
+                  color: Colors.white
+                ),
+                badgeWidget: isTouched ? _buildBadge(data['category']) : null,
+                badgePositionPercentageOffset: .98,
+              );
+            }).toList(),
+          ),
+        ),
+         // Center Info
+        if (_touchedIndex != -1 && _touchedIndex < _categorySales.length)
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+               Text(_categorySales[_touchedIndex]['category'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+               // Text(currency.format(_categorySales[_touchedIndex]['totalSales']), style: const TextStyle(fontSize: 10, color: Colors.indigo)),
+            ],
+          )
+        else
+          const Text('Total', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+      ],
     );
+  }
+
+  Widget _buildBadge(String text) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4), boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 4)]),
+        child: Text(text, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+      );
   }
 
   Widget _buildGradientCard(String title, double value, List<Color> colors, IconData icon) {

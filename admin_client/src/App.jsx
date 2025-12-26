@@ -13,7 +13,15 @@ import SubscriptionRequests from './pages/SubscriptionRequests';
 import Reports from './pages/Reports'; // [NEW]
 import Kulakan from './pages/Kulakan'; // [NEW]
 import Profile from './pages/Profile'; // [NEW]
+import AuditLogs from './pages/AuditLogs'; // [NEW]
+import ContentManager from './pages/ContentManager'; // [NEW]
 import Billing from './pages/Billing'; // [NEW]
+import AppMenus from './pages/AppMenus'; // [NEW]
+import MerchantDetail from './pages/MerchantDetail'; // [NEW]
+import AdminUsers from './pages/AdminUsers'; // [NEW]
+import TopUps from './pages/TopUps'; // [NEW]
+import Transactions from './pages/Transactions'; // [NEW]
+import ManageMenu from './pages/ManageMenu'; // [NEW]
 import AdminLayout from './components/AdminLayout';
 
 const ProtectedRoute = ({ children }) => {
@@ -23,6 +31,7 @@ const ProtectedRoute = ({ children }) => {
 };
 
 import Dashboard from './pages/Dashboard';
+import BlogManager from './pages/BlogManager'; // [NEW]
 
 function App() {
   return (
@@ -30,6 +39,36 @@ function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
 
+        {/* Admin Layout for authenticated routes */}
+        <Route path="/admin" element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
+          <Route index element={<Dashboard />} /> {/* Default route for /admin */}
+          <Route path="users" element={<AdminUsers />} />
+          <Route path="audit-logs" element={<AuditLogs />} />
+          <Route path="content" element={<ContentManager />} />
+          <Route path="blog" element={<BlogManager />} /> {/* [NEW] */}
+
+          // ...
+
+          <Route path="billing" element={<Billing />} />
+          {/* Add other routes that should be under AdminLayout here */}
+          <Route path="withdrawals" element={<Withdrawals />} />
+          <Route path="topups" element={<TopUps />} /> {/* [NEW] */}
+          <Route path="merchants" element={<Merchants />} />
+          <Route path="merchants/:id" element={<MerchantDetail />} />
+          <Route path="merchants/:storeId/menu" element={<ManageMenu />} />
+          <Route path="subscriptions" element={<SubscriptionRequests />} />
+          <Route path="map" element={<AcquisitionMap />} />
+          <Route path="reports" element={<Reports />} />
+          <Route path="kulakan" element={<Kulakan />} />
+          <Route path="profile" element={<Profile />} />
+          <Route path="packages" element={<Packages />} />
+          <Route path="broadcasts" element={<Broadcasts />} />
+          <Route path="support" element={<Support />} />
+          <Route path="settings" element={<Settings />} />
+          <Route path="app-menus" element={<AppMenus />} />
+        </Route>
+
+        {/* Old routes, potentially to be removed or moved under /admin */}
         <Route path="/" element={
           <ProtectedRoute><Dashboard /></ProtectedRoute>
         } />
@@ -41,6 +80,8 @@ function App() {
         <Route path="/merchants" element={
           <ProtectedRoute><Merchants /></ProtectedRoute>
         } />
+
+        <Route path="/merchants/:id" element={<ProtectedRoute><MerchantDetail /></ProtectedRoute>} /> {/* [NEW] */}
 
         <Route path="/subscriptions" element={
           <ProtectedRoute><SubscriptionRequests /></ProtectedRoute>
@@ -80,6 +121,26 @@ function App() {
 
         <Route path="/settings" element={
           <ProtectedRoute><Settings /></ProtectedRoute>
+        } />
+
+        <Route path="/audit-logs" element={
+          <ProtectedRoute><AuditLogs /></ProtectedRoute>
+        } />
+
+        <Route path="/content-manager" element={
+          <ProtectedRoute><ContentManager /></ProtectedRoute>
+        } />
+
+        <Route path="/app-menus" element={
+          <ProtectedRoute><AppMenus /></ProtectedRoute>
+        } />
+
+        <Route path="/admins" element={
+          <ProtectedRoute><AdminUsers /></ProtectedRoute>
+        } />
+
+        <Route path="/transactions" element={
+          <ProtectedRoute><Transactions /></ProtectedRoute>
         } />
       </Routes>
     </Router>

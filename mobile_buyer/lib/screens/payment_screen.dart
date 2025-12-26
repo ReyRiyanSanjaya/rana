@@ -42,16 +42,15 @@ class _PaymentScreenState extends State<PaymentScreen> {
     try {
       // Logic for File Upload would go here.
       // For now, we confirm directly.
-      await MarketApiService().confirmPayment(widget.orderId);
+      final order = await MarketApiService().confirmPayment(widget.orderId);
       
       if(mounted) {
-         // Determine next step based on updated order, or just push to detail
-         // Ideally fetch order again.
-         // For now, assume success and go to Detail
-         Navigator.pop(context); // Close Payment
-         // Navigate to Order Detail? Or back to Home?
-         // Let's go to Home with Success Message
          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pembayaran Dikonfirmasi!')));
+         Navigator.pop(context); // Close Payment
+         Navigator.pushReplacement(
+           context,
+           MaterialPageRoute(builder: (_) => OrderDetailScreen(order: order)),
+         );
       }
     } catch (e) {
       if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal: $e')));

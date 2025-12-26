@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:rana_merchant/providers/cart_provider.dart';
+import 'package:provider/provider.dart';
+import 'package:rana_merchant/providers/auth_provider.dart';
 import 'package:rana_merchant/services/sound_service.dart';
 
 class PaymentScreen extends StatefulWidget {
@@ -18,8 +20,26 @@ class _PaymentScreenState extends State<PaymentScreen> {
   double payAmount = 0;
   bool _isProcessing = false;
   
+  late TextEditingController _amountController;
+
+  @override
+  void initState() {
+    super.initState();
+    _amountController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _amountController.dispose();
+    super.dispose();
+  }
+
   void setAmount(double val) {
-     setState(() => payAmount = val);
+     setState(() {
+       payAmount = val;
+       _amountController.text = val == 0 ? '' : val.toStringAsFixed(0);
+       _amountController.selection = TextSelection.fromPosition(TextPosition(offset: _amountController.text.length));
+     });
   }
 
   @override
@@ -62,8 +82,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 labelText: 'Nominal Diterima',
                 border: OutlineInputBorder()
               ),
-              onChanged: (v) => setAmount(double.tryParse(v) ?? 0),
-              controller: TextEditingController(text: payAmount == 0 ? '' : payAmount.toStringAsFixed(0))..selection = TextSelection.fromPosition(TextPosition(offset: (payAmount == 0 ? '' : payAmount.toStringAsFixed(0)).length)),
+              controller: _amountController,
+              onChanged: (v) {
+                // Don't call setAmount here to avoid loop with controller text update
+                setState(() => payAmount = double.tryParse(v) ?? 0);
+              },
             ),
             const SizedBox(height: 12),
             Wrap(
@@ -96,11 +119,25 @@ class _PaymentScreenState extends State<PaymentScreen> {
           ],
           
           const SizedBox(height: 24),
+
           FilledButton(
             onPressed: _isProcessing || (method == 'CASH' && payAmount < total) ? null : () async {
               setState(() => _isProcessing = true);
               try {
-                await widget.cart.checkout('tenant-1', 'store-1', 'cashier-1', paymentMethod: method);
+                final auth = Provider.of<AuthProvider>(context, listen: false);
+                final user = auth.currentUser;
+
+                if (user == null || user['storeId'] == null) {
+                   throw Exception('User data or Store configuration missing. Please login again.');
+                }
+
+                await widget.cart.checkout(
+                  user['tenantId'], 
+                  user['storeId'], 
+                  user['id'], // Cashier ID
+                  paymentMethod: method
+                );
+                
                 if (!mounted) return;
                 Navigator.pop(context, true);
               } catch (e) {
@@ -142,15 +179,24 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 }
 
-class TransactionSuccessDialog extends StatelessWidget {
+class TransactionSuccessDialog extends StatefulWidget {
   const TransactionSuccessDialog({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    Future.delayed(const Duration(seconds: 3), () {
-      if (context.mounted) Navigator.of(context).pop();
-    });
+  State<TransactionSuccessDialog> createState() => _TransactionSuccessDialogState();
+}
 
+class _TransactionSuccessDialogState extends State<TransactionSuccessDialog> {
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(const Duration(seconds: 2), () { // 2 seconds is snappy enough
+       if (mounted) Navigator.of(context).pop();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: Padding(

@@ -77,10 +77,11 @@ class MarketApiService {
     }
   }
 
-  Future<void> confirmPayment(String orderId) async {
+  Future<Map<String, dynamic>> confirmPayment(String orderId) async {
      try {
       final response = await _dio.post('/market/order/confirm', data: {'orderId': orderId});
       if (!response.data['success']) throw Exception(response.data['message']);
+      return response.data['data'];
     } catch (e) {
       throw Exception('Confirm Failed: $e');
     }

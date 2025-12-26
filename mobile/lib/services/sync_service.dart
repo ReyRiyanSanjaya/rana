@@ -44,11 +44,7 @@ class SyncService {
         };
 
         // Send to Server
-        // await api.uploadTransaction(payload); // We need to implement this in ApiService or assume it exists
-        // For now, let's assume success and mark synced locally to simulate "Real Sync"
-        
-        // Simulate Network Delay
-        await Future.delayed(const Duration(milliseconds: 500)); 
+        await api.uploadTransaction(payload); 
         
         await db.markSynced(offlineId);
       }

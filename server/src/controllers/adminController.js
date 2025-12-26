@@ -1,5 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+const bcrypt = require('bcrypt'); // [NEW]
 const { successResponse, errorResponse } = require('../utils/response');
 
 // Get Withdrawals with filtering
@@ -72,6 +73,107 @@ const approveWithdrawal = async (req, res) => {
         return successResponse(res, updated, "Withdrawal Approved");
     } catch (error) {
         return errorResponse(res, "Failed to approve withdrawal", 500, error);
+    }
+};
+
+// ... existing code ...
+
+// [NEW] Get TopUps with filtering
+const getTopUps = async (req, res) => {
+    try {
+        const { status } = req.query; // PENDING, APPROVED, REJECTED
+        const whereClause = status ? { status } : {};
+
+        const topups = await prisma.topUpRequest.findMany({
+            where: whereClause,
+            include: {
+                store: {
+                    select: {
+                        name: true,
+                        tenant: {
+                            select: { name: true }
+                        }
+                    }
+                }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        return successResponse(res, topups);
+    } catch (error) {
+        return errorResponse(res, "Failed to fetch top-ups", 500, error);
+    }
+};
+
+// [NEW] Approve TopUp
+const approveTopUp = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        return await prisma.$transaction(async (tx) => {
+            const topup = await tx.topUpRequest.findUnique({ where: { id } });
+            if (!topup) throw new Error("TopUp request not found");
+            if (topup.status !== 'PENDING') throw new Error("TopUp already processed");
+
+            // 1. Update Status
+            const updated = await tx.topUpRequest.update({
+                where: { id },
+                data: {
+                    status: 'APPROVED',
+                    updatedAt: new Date()
+                }
+            });
+
+            // 2. Add Balance to Store
+            await tx.store.update({
+                where: { id: topup.storeId },
+                data: {
+                    balance: { increment: topup.amount }
+                }
+            });
+
+            // 3. Create Cashflow Log
+            await tx.cashflowLog.create({
+                data: {
+                    tenantId: topup.tenantId, // Assuming model has tenantId or fetching from store. Model has it.
+                    storeId: topup.storeId,
+                    amount: topup.amount,
+                    type: 'CASH_IN',
+                    category: 'TOP_UP',
+                    description: `Top Up Approved #${topup.id.substring(0, 8)}`,
+                    occurredAt: new Date()
+                }
+            });
+
+            return updated;
+        })
+            .then(result => successResponse(res, result, "Top Up Approved"))
+            .catch(err => errorResponse(res, err.message || "Failed to approve", 400));
+
+    } catch (error) {
+        return errorResponse(res, "Failed to approve top-up", 500, error);
+    }
+};
+
+// [NEW] Reject TopUp
+const rejectTopUp = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { reason } = req.body;
+
+        const updated = await prisma.topUpRequest.update({
+            where: { id },
+            data: {
+                status: 'REJECTED',
+                updatedAt: new Date()
+            }
+        });
+
+        // Optional: Notify user about rejection reason
+
+        return successResponse(res, updated, "Top Up Rejected");
+    } catch (error) {
+        return errorResponse(res, "Failed to reject top-up", 500, error);
     }
 };
 
@@ -213,145 +315,6 @@ const getDashboardStats = async (req, res) => {
     } catch (error) {
         console.error(error);
         errorResponse(res, "Failed to fetch dashboard stats", 500);
-    };
-
-    // [NEW] Subscription Package Management
-    const getPackages = async (req, res) => {
-        try {
-            const packages = await prisma.subscriptionPackage.findMany({
-                where: { isActive: true },
-                orderBy: { price: 'asc' }
-            });
-            successResponse(res, packages);
-        } catch (error) {
-            errorResponse(res, "Failed to fetch packages", 500);
-        }
-    };
-
-    const createPackage = async (req, res) => {
-        try {
-            const { name, price, durationDays, description } = req.body;
-            const newPackage = await prisma.subscriptionPackage.create({
-                data: { name, price: parseFloat(price), durationDays: parseInt(durationDays), description }
-            });
-            successResponse(res, newPackage, "Package created");
-        } catch (error) {
-            errorResponse(res, "Failed to create package", 500);
-        }
-    };
-
-    const deletePackage = async (req, res) => {
-        try {
-            const { id } = req.params;
-            await prisma.subscriptionPackage.update({
-                where: { id },
-                data: { isActive: false } // Soft delete
-            });
-            successResponse(res, null, "Package deleted");
-        } catch (error) {
-            errorResponse(res, "Failed to delete package", 500);
-        }
-    };
-
-    // [NEW] Get Payout Chart Data (Last 7 Days)
-    const getPayoutChart = async (req, res) => {
-        try {
-            const sevenDaysAgo = new Date();
-            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-            const withdrawals = await prisma.withdrawal.groupBy({
-                by: ['createdAt'],
-                _sum: { amount: true },
-                where: {
-                    status: 'APPROVED',
-                    createdAt: { gte: sevenDaysAgo }
-                },
-                orderBy: { createdAt: 'asc' }
-            });
-
-            // Format data for Recharts (group by date string)
-            const chartData = [];
-            for (let i = 6; i >= 0; i--) {
-                const d = new Date();
-                d.setDate(d.getDate() - i);
-                const dateStr = d.toISOString().split('T')[0];
-
-                // Find existing data or default to 0
-                // Note: Prisma groupBy on DateTime might return specific timestamps. 
-                // Better to raw query or JS process. JS process for simplicity here with small data.
-                chartData.push({ date: dateStr, amount: 0 });
-            }
-
-            // We re-query properly or just doing raw aggregation might be better, 
-            // but for simplicity let's fetch APPROVED recently and map in JS.
-            const recentApproved = await prisma.withdrawal.findMany({
-                where: {
-                    status: 'APPROVED',
-                    createdAt: { gte: sevenDaysAgo }
-                },
-                select: { createdAt: true, amount: true }
-            });
-
-            recentApproved.forEach(w => {
-                const dateStr = new Date(w.createdAt).toISOString().split('T')[0];
-                const entry = chartData.find(d => d.date === dateStr);
-                if (entry) entry.amount += w.amount;
-            });
-
-            successResponse(res, chartData);
-        } catch (error) {
-            console.error(error);
-            errorResponse(res, "Failed to fetch chart data", 500);
-        }
-    };
-
-    // [NEW] Get Merchants List
-    const getMerchants = async (req, res) => {
-        try {
-            const merchants = await prisma.store.findMany({
-                include: {
-                    tenant: {
-                        select: {
-                            name: true
-                        }
-                    },
-                    users: {
-                        where: { role: 'OWNER' },
-                        take: 1,
-                        select: { email: true, name: true }
-                    }
-                },
-                orderBy: { createdAt: 'desc' }
-            });
-            successResponse(res, merchants);
-        } catch (error) {
-            console.error(error);
-            errorResponse(res, "Failed to fetch merchants", 500);
-        }
-    };
-
-    // [NEW] Export Withdrawals (Returns all data for CSV)
-    const exportWithdrawals = async (req, res) => {
-        try {
-            const withdrawals = await prisma.withdrawal.findMany({
-                include: {
-                    store: {
-                        select: { name: true, tenant: { select: { name: true } } }
-                    }
-                },
-                orderBy: { createdAt: 'desc' }
-            });
-            successResponse(res, withdrawals);
-        } catch (error) {
-            console.error(error);
-            errorResponse(res, "Failed to export data", 500);
-        }
-    };
-
-    module.exports = {
-        getWithdrawals,
-        approveWithdrawal,
-        rejectWithdrawal,
     }
 };
 
@@ -453,6 +416,9 @@ const getMerchants = async (req, res) => {
                 tenant: {
                     select: {
                         name: true,
+                        plan: true,
+                        subscriptionStatus: true,
+                        trialEndsAt: true
                     }
                 }
             },
@@ -560,6 +526,259 @@ const deleteMerchant = async (req, res) => {
         successResponse(res, null, "Merchant deactivated (Subscription Cancelled)");
     } catch (error) {
         errorResponse(res, "Failed to deactivate merchant", 500);
+    }
+};
+
+// [NEW] Get Merchant Detail (Comprehensive)
+const getMerchantDetail = async (req, res) => {
+    try {
+        const { id } = req.params; // Store ID
+        const store = await prisma.store.findUnique({
+            where: { id },
+            include: {
+                tenant: {
+                    include: {
+                        users: { select: { id: true, name: true, email: true, role: true } },
+                        // subscriptions: true, // REMOVED: Field does not exist, using fields on Tenant
+                    }
+                },
+                _count: {
+                    select: { transactions: true, stock: true }
+                }
+            }
+        });
+
+        if (!store) return errorResponse(res, "Merchant not found", 404);
+
+        // Fetch recent wallet history
+        const walletHistory = await prisma.cashflowLog.findMany({
+            where: { storeId: id },
+            orderBy: { occurredAt: 'desc' },
+            take: 10
+        });
+
+        // Calculate Stats (e.g. Total GMV) - optimized with aggregate
+        const stats = await prisma.transaction.aggregate({
+            where: { storeId: id },
+            _sum: { totalAmount: true }
+        });
+
+        const detail = {
+            ...store,
+            walletHistory,
+            totalGmv: stats._sum.totalAmount || 0,
+            subscription: {
+                plan: store.tenant.plan,
+                status: store.tenant.subscriptionStatus,
+                trialEndsAt: store.tenant.trialEndsAt
+            }
+        };
+
+        successResponse(res, detail);
+    } catch (error) {
+        console.error(error);
+        errorResponse(res, "Failed to fetch merchant details", 500);
+    }
+};
+
+// [NEW] Adjust Merchant Wallet
+const adjustMerchantWallet = async (req, res) => {
+    try {
+        const { storeId } = req.params;
+        const { type, amount, reason } = req.body; // type: 'CREDIT' or 'DEBIT'
+        const numericAmount = parseFloat(amount);
+
+        if (isNaN(numericAmount) || numericAmount <= 0) return errorResponse(res, "Invalid amount", 400);
+
+        await prisma.$transaction(async (tx) => {
+            const store = await tx.store.findUnique({ where: { id: storeId } });
+            if (!store) throw new Error("Store not found");
+
+            let newBalance = store.balance;
+            if (type === 'CREDIT') {
+                newBalance += numericAmount;
+            } else {
+                newBalance -= numericAmount;
+            }
+
+            await tx.store.update({
+                where: { id: storeId },
+                data: { balance: newBalance }
+            });
+
+            await tx.cashflowLog.create({
+                data: {
+                    tenantId: store.tenantId,
+                    storeId: store.id,
+                    amount: numericAmount,
+                    type: type === 'CREDIT' ? 'CASH_IN' : 'CASH_OUT',
+                    category: 'ADJUSTMENT',
+                    description: `Admin Adjustment: ${reason}`,
+                    occurredAt: new Date()
+                }
+            });
+
+            // [INTEGRATION] Auto-send Notification
+            await tx.notification.create({
+                data: {
+                    tenantId: store.tenantId,
+                    title: type === 'CREDIT' ? 'Saldo Diterima' : 'Penyesuaian Saldo',
+                    body: `Wallet Anda telah di-${type === 'CREDIT' ? 'kredit' : 'debit'} sebesar Rp ${numericAmount.toLocaleString()}. Alasan: ${reason}`
+                }
+            });
+        });
+
+        successResponse(res, null, "Wallet adjusted successfully");
+
+    } catch (error) {
+        console.error(error);
+        errorResponse(res, error.message || "Failed to adjust wallet", 500);
+    }
+};
+
+// [NEW] Send Notification to Merchant
+const sendNotification = async (req, res) => {
+    try {
+        const { tenantId } = req.params;
+        const { title, body } = req.body;
+
+        await prisma.notification.create({
+            data: {
+                tenantId,
+                title,
+                body
+            }
+        });
+
+        // In real world: Trigger FCM / Socket here
+
+        successResponse(res, null, "Notification sent");
+    } catch (error) {
+        errorResponse(res, "Failed to send notification", 500);
+    }
+};
+
+// [NEW] Update Merchant Subscription
+const updateMerchantSubscription = async (req, res) => {
+    try {
+        const { tenantId } = req.params;
+        const { plan, subscriptionStatus } = req.body;
+
+        // Validate plan and status if needed, or rely on Prisma Enum check
+
+        const tenant = await prisma.tenant.update({
+            where: { id: tenantId },
+            data: {
+                plan,
+                subscriptionStatus
+            }
+        });
+
+        successResponse(res, tenant, "Subscription updated");
+    } catch (error) {
+        // console.error(error); 
+        errorResponse(res, "Failed to update subscription", 500);
+    }
+};
+
+// [NEW] Get Merchant Products
+const getMerchantProducts = async (req, res) => {
+    try {
+        const { storeId } = req.params;
+        const products = await prisma.product.findMany({
+            where: { storeId, isActive: true },
+            include: { category: true },
+            orderBy: { name: 'asc' }
+        });
+        successResponse(res, products);
+    } catch (error) {
+        console.error(error);
+        errorResponse(res, "Failed to fetch products", 500);
+    }
+};
+
+// [NEW] Create Merchant Product
+const createMerchantProduct = async (req, res) => {
+    try {
+        const { storeId } = req.params;
+        const { name, basePrice, sellingPrice, stock, categoryId, description, imageUrl } = req.body;
+
+        const store = await prisma.store.findUnique({ where: { id: storeId } });
+        if (!store) return errorResponse(res, "Store not found", 404);
+
+        const product = await prisma.product.create({
+            data: {
+                tenantId: store.tenantId,
+                storeId: store.id,
+                name,
+                basePrice: parseFloat(basePrice) || 0,
+                sellingPrice: parseFloat(sellingPrice) || 0,
+                stock: parseInt(stock) || 0,
+                categoryId: categoryId || undefined,
+                description,
+                imageUrl,
+                isActive: true
+            }
+        });
+
+        // Log Initial Stock
+        if (stock > 0) {
+            await prisma.inventoryLog.create({
+                data: {
+                    productId: product.id,
+                    storeId: store.id,
+                    type: 'IN',
+                    quantity: parseInt(stock),
+                    reason: 'Initial Admin Creation',
+                    createdAt: new Date()
+                }
+            });
+        }
+
+        successResponse(res, product, "Product created");
+    } catch (error) {
+        console.error(error);
+        errorResponse(res, "Failed to create product", 500);
+    }
+};
+
+// [NEW] Update Merchant Product
+const updateMerchantProduct = async (req, res) => {
+    try {
+        const { productId } = req.params;
+        const { name, basePrice, sellingPrice, stock, categoryId, description, imageUrl } = req.body;
+
+        const product = await prisma.product.update({
+            where: { id: productId },
+            data: {
+                name,
+                basePrice: basePrice ? parseFloat(basePrice) : undefined,
+                sellingPrice: sellingPrice ? parseFloat(sellingPrice) : undefined,
+                stock: stock ? parseInt(stock) : undefined,
+                categoryId: categoryId || undefined,
+                description,
+                imageUrl
+            }
+        });
+        successResponse(res, product, "Product updated");
+    } catch (error) {
+        console.error(error);
+        errorResponse(res, "Failed to update product", 500);
+    }
+};
+
+// [NEW] Delete Merchant Product
+const deleteMerchantProduct = async (req, res) => {
+    try {
+        const { productId } = req.params;
+        await prisma.product.update({
+            where: { id: productId },
+            data: { isActive: false }
+        });
+        successResponse(res, null, "Product deleted");
+    } catch (error) {
+        console.error(error);
+        errorResponse(res, "Failed to delete product", 500);
     }
 };
 
@@ -792,26 +1011,397 @@ const getBusinessAnalytics = async (req, res) => {
     }
 };
 
+// [NEW] App Menu Management
+const getAppMenus = async (req, res) => {
+    try {
+        const menus = await prisma.appMenu.findMany({
+            orderBy: { order: 'asc' }
+        });
+        successResponse(res, menus);
+    } catch (error) {
+        errorResponse(res, "Failed to fetch menus", 500);
+    }
+};
+
+const createAppMenu = async (req, res) => {
+    try {
+        const { key, label, icon, route, order } = req.body;
+        const menu = await prisma.appMenu.create({
+            data: {
+                key,
+                label,
+                icon,
+                route,
+                order: parseInt(order) || 0,
+                isActive: true
+            }
+        });
+        successResponse(res, menu, "Menu created");
+    } catch (error) {
+        console.error(error);
+        if (error.code === 'P2002') return errorResponse(res, "Menu key already exists", 400);
+        errorResponse(res, "Failed to create menu", 500);
+    }
+};
+
+const updateAppMenu = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { key, label, icon, route, isActive, order } = req.body;
+
+        const menu = await prisma.appMenu.update({
+            where: { id },
+            data: {
+                key,
+                label,
+                icon,
+                route,
+                isActive: isActive !== undefined ? isActive : undefined,
+                order: order !== undefined ? parseInt(order) : undefined
+            }
+        });
+        successResponse(res, menu, "Menu updated");
+    } catch (error) {
+        console.error(error);
+        errorResponse(res, "Failed to update menu", 500);
+    }
+};
+
+const deleteAppMenu = async (req, res) => {
+    try {
+        const { id } = req.params;
+        await prisma.appMenu.delete({ where: { id } });
+        successResponse(res, null, "Menu deleted");
+    } catch (error) {
+        errorResponse(res, "Failed to delete menu", 500);
+    }
+};
+
+// [NEW] Reset User Password
+const resetUserPassword = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { password } = req.body;
+
+        if (!password || password.length < 6) return errorResponse(res, "Password must be at least 6 characters", 400);
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        await prisma.user.update({
+            where: { id },
+            data: { passwordHash: hashedPassword }
+        });
+
+        await logAudit('SYSTEM', req.user?.id, 'RESET_PASSWORD', 'User', id, { updatedBy: req.user?.id });
+
+        successResponse(res, null, "Password reset successfully");
+    } catch (error) {
+        errorResponse(res, "Failed to reset password", 500);
+    }
+};
+
+// [NEW] Get All Transactions
+const getAllTransactions = async (req, res) => {
+    try {
+        const { page = 1, limit = 20, storeId, startDate, endDate, area, category, paymentStatus, paymentMethod } = req.query;
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+
+        const where = {};
+        if (storeId) where.storeId = storeId;
+        if (paymentStatus) where.paymentStatus = paymentStatus;
+        if (paymentMethod) where.paymentMethod = paymentMethod;
+
+        if (startDate && endDate) {
+            where.occurredAt = {
+                gte: new Date(startDate),
+                lte: new Date(endDate)
+            };
+        }
+
+        // Filter by Store fields (Area/Location, Category)
+        if (area || category) {
+            where.store = {
+                ...(area && { location: { contains: area, mode: 'insensitive' } }),
+                ...(category && { category: { equals: category, mode: 'insensitive' } })
+            };
+        }
+
+        const [transactions, total] = await Promise.all([
+            prisma.transaction.findMany({
+                where,
+                include: {
+                    store: { select: { name: true, location: true, category: true } },
+                    tenant: { select: { name: true } }
+                },
+                skip,
+                take: parseInt(limit),
+                orderBy: { occurredAt: 'desc' }
+            }),
+            prisma.transaction.count({ where })
+        ]);
+
+        successResponse(res, { transactions, total, page: parseInt(page), totalPages: Math.ceil(total / parseInt(limit)) });
+    } catch (error) {
+        console.error(error);
+        errorResponse(res, "Failed to fetch transactions", 500);
+    }
+};
+
+// [NEW] Export Transactions
+const exportTransactions = async (req, res) => {
+    try {
+        const { storeId, startDate, endDate, area, category, paymentStatus, paymentMethod } = req.query;
+
+        const where = {};
+        if (storeId) where.storeId = storeId;
+        if (paymentStatus) where.paymentStatus = paymentStatus;
+        if (paymentMethod) where.paymentMethod = paymentMethod;
+
+        if (startDate && endDate) {
+            where.occurredAt = {
+                gte: new Date(startDate),
+                lte: new Date(endDate)
+            };
+        }
+
+        // Filter by Store fields
+        if (area || category) {
+            where.store = {
+                ...(area && { location: { contains: area, mode: 'insensitive' } }),
+                ...(category && { category: { equals: category, mode: 'insensitive' } })
+            };
+        }
+
+        const transactions = await prisma.transaction.findMany({
+            where,
+            include: {
+                store: { select: { name: true, location: true, category: true } },
+                tenant: { select: { name: true } },
+                user: { select: { name: true } } // Cashier
+            },
+            orderBy: { occurredAt: 'desc' }
+        });
+
+        successResponse(res, transactions);
+    } catch (error) {
+        console.error(error);
+        errorResponse(res, "Failed to export transactions", 500);
+    }
+};
+
+
+
 module.exports = {
     getWithdrawals,
     approveWithdrawal,
     rejectWithdrawal,
-    getSettings,
-    updateSettings,
     getDashboardStats,
-    getMerchants,
-    exportWithdrawals,
     getPayoutChart,
+    getMerchants,
+    createMerchant,
+    deleteMerchant,
+    getMerchantProducts,
+    createMerchantProduct,
+    updateMerchantProduct,
+    deleteMerchantProduct,
     getPackages,
     createPackage,
     deletePackage,
-    getAnnouncements,
-    createAnnouncement,
-    deleteAnnouncement,
-    createMerchant,
-    deleteMerchant,
     getSubscriptionRequests,
     approveSubscriptionRequest,
     rejectSubscriptionRequest,
-    getBusinessAnalytics // Exported
+    getBusinessAnalytics,
+    getSettings,
+    updateSettings,
+    exportWithdrawals,
+    updateMerchantSubscription, // [NEW]
+    getAnnouncements,
+    createAnnouncement,
+    deleteAnnouncement,
+    getAppMenus,
+    createAppMenu,
+    updateAppMenu,
+    deleteAppMenu,
+    getMerchantDetail, // [NEW]
+    adjustMerchantWallet, // [NEW]
+    sendNotification, // [NEW]
+    resetUserPassword,
+    getTopUps,
+    approveTopUp,
+    rejectTopUp,
+    getAllTransactions, // [NEW]
+    exportTransactions, // [NEW]
+
+    // [NEW] Get Admin Users
+    getAdminUsers: async (req, res) => {
+        try {
+            const admins = await prisma.user.findMany({
+                where: { role: 'SUPER_ADMIN' },
+                orderBy: { createdAt: 'desc' },
+                select: { id: true, name: true, email: true, createdAt: true, role: true }
+            });
+            successResponse(res, admins, "Admin users retrieved");
+        } catch (error) {
+            errorResponse(res, "Failed to fetch admins", 500);
+        }
+    },
+
+    // [NEW] Create Admin User
+    createAdminUser: async (req, res) => {
+        try {
+            const { name, email, password } = req.body;
+            if (!email || !password || password.length < 6) return errorResponse(res, "Invalid input", 400);
+
+            const hashedPassword = await bcrypt.hash(password, 10);
+
+            // We need a tenant for the user. Usually Super Admins belong to a 'System' tenant or we pick the first available. 
+            // valid way: check if existing admin has tenantId, reuse it. Or find any tenant (hacky). 
+            // Better: find a Tenant with name 'Rana Platform', if not create one.
+            let tenant = await prisma.tenant.findFirst({ where: { name: 'Rana Platform' } });
+            if (!tenant) {
+                tenant = await prisma.tenant.create({ data: { name: 'Rana Platform', plan: 'ENTERPRISE', subscriptionStatus: 'ACTIVE' } });
+            }
+
+            const admin = await prisma.user.create({
+                data: {
+                    name,
+                    email,
+                    passwordHash: hashedPassword,
+                    role: 'SUPER_ADMIN',
+                    tenantId: tenant.id
+                }
+            });
+
+            await logAudit(tenant.id, req.user?.id, 'CREATE_ADMIN', 'User', admin.id, { email });
+
+            successResponse(res, { id: admin.id, email: admin.email }, "Admin created successfully");
+        } catch (error) {
+            console.error(error);
+            if (error.code === 'P2002') return errorResponse(res, "Email already exists", 400);
+            errorResponse(res, "Failed to create admin", 500);
+        }
+    },
+
+    // [NEW] Delete Admin User
+    deleteAdminUser: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const currentUserId = req.user.id; // From verifyToken middleware
+            if (id === currentUserId) return errorResponse(res, "Cannot delete yourself", 403);
+
+            await prisma.user.delete({ where: { id } });
+            await logAudit('SYSTEM', req.user?.id, 'DELETE_ADMIN', 'User', id, {});
+            successResponse(res, null, "Admin deleted");
+        } catch (error) {
+            errorResponse(res, "Failed to delete admin", 500);
+        }
+    },
+
+    // [NEW] Get Platform Subscription (Billing)
+    getPlatformSubscription: async (req, res) => {
+        try {
+            // Static for now, as requested.
+            const data = {
+                plan: "Enterprise",
+                status: "ACTIVE",
+                features: ["Unlimited Merchants", "Advanced Analytics", "Priority Support", "White-label Options"],
+                nextBillingDate: "Lifetime Access",
+                paymentMethod: "Corporate Billing"
+            };
+            successResponse(res, data, "Billing info retrieved");
+        } catch (error) {
+            errorResponse(res, "Failed to fetch billing", 500);
+        }
+    },
+
+    // [NEW] Export Dashboard Data
+    exportDashboardData: async (req, res) => {
+        try {
+            // Aggregate high level stats
+            const [merchants, transactions] = await Promise.all([
+                prisma.tenant.findMany({ select: { id: true, name: true, plan: true, createdAt: true, subscriptionStatus: true } }),
+                prisma.transaction.findMany({
+                    take: 1000,
+                    orderBy: { occurredAt: 'desc' },
+                    include: { store: { select: { name: true } } }
+                })
+            ]);
+
+            // Simplified CSV generation
+            const merchantCsv = merchants.map(m => `${m.name},${m.plan},${m.subscriptionStatus},${m.createdAt.toISOString()}`).join('\n');
+            const data = {
+                merchants: merchants,
+                recentTransactions: transactions,
+                generatedAt: new Date()
+            };
+
+            successResponse(res, data, "Export data ready");
+        } catch (error) {
+            errorResponse(res, "Failed to export data", 500);
+        }
+    },
+
+    // [NEW] Get Audit Logs
+    getAuditLogs: async (req, res) => {
+        try {
+            const logs = await prisma.auditLog.findMany({
+                orderBy: { occurredAt: 'desc' },
+                take: 100
+            });
+            successResponse(res, logs, "Audit logs retrieved");
+        } catch (error) {
+            errorResponse(res, "Failed to fetch audit logs", 500);
+        }
+    },
+
+    // [NEW] Global Search
+    globalSearch: async (req, res) => {
+        try {
+            const { q } = req.query;
+            if (!q || q.length < 3) return successResponse(res, { merchants: [], users: [], products: [] }, "Query too short");
+
+            const [merchants, users, products] = await Promise.all([
+                prisma.tenant.findMany({
+                    where: { name: { contains: q, mode: 'insensitive' } },
+                    take: 5,
+                    select: { id: true, name: true, plan: true }
+                }),
+                prisma.user.findMany({
+                    where: { OR: [{ name: { contains: q, mode: 'insensitive' } }, { email: { contains: q, mode: 'insensitive' } }] },
+                    take: 5,
+                    select: { id: true, name: true, email: true, role: true }
+                }),
+                prisma.product.findMany({
+                    where: { name: { contains: q, mode: 'insensitive' } },
+                    take: 5,
+                    select: { id: true, name: true, sellingPrice: true }
+                })
+            ]);
+
+            successResponse(res, { merchants, users, products }, "Search results");
+        } catch (error) {
+            errorResponse(res, "Search failed", 500);
+        }
+    }
 };
+
+// [HELPER] Internal Audit Logger
+const logAudit = async (tenantId, userId, action, entity, entityId, details) => {
+    try {
+        await prisma.auditLog.create({
+            data: {
+                tenantId: tenantId || 'SYSTEM',
+                userId: userId,
+                action: action,
+                entity: entity,
+                entityId: entityId,
+                newValue: JSON.stringify(details)
+            }
+        });
+    } catch (e) {
+        console.error("Audit Log Error:", e);
+    }
+};
+
+// Exporting logAudit for use in other controllers if needed (though mostly internal here)
+module.exports.logAudit = logAudit;

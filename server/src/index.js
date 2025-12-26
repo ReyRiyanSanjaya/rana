@@ -13,9 +13,14 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 
 // Middleware
-app.use(helmet());
+// Middleware
+app.use(cors({ origin: true, credentials: true })); // [FIX] Allow all origins dynamically
+app.options('*', cors()); // [FIX] Enable Pre-Flight for all routes
+
+app.use(helmet({
+    crossOriginResourcePolicy: false, // [FIX] Allow resources to be loaded cross-origin
+}));
 app.use(compression()); // Gzip Compression
-app.use(cors());
 app.use(express.json()); // For parsing application/json
 app.use(morgan('dev'));
 
@@ -41,9 +46,11 @@ app.use('/api/admin', require('./routes/adminRoutes')); // [NEW] Super Admin API
 app.use('/api/wallet', require('./routes/walletRoutes')); // [NEW] Merchant Wallet API
 app.use('/api/inventory', require('./routes/inventoryRoutes')); // [NEW] Inventory API
 app.use('/api/products', require('./routes/productRoutes')); // [NEW] Product CRUD API
+app.use('/api/tickets', require('./routes/merchantTicketRoutes')); // [NEW] Merchant Tickets
 
 const wholesaleRoutes = require('./routes/wholesaleRoutes');
 app.use('/api/wholesale', wholesaleRoutes); // [NEW]
+app.use('/api/blog', require('./routes/blogRoutes')); // [NEW] Blog System
 
 // Error Handler
 app.use((err, req, res, next) => {

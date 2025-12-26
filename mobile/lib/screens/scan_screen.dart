@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import 'package:rana_merchant/data/remote/api_service.dart';
+import 'package:rana_merchant/services/order_service.dart';
 
 class ScanScreen extends StatefulWidget {
   const ScanScreen({super.key});
@@ -23,7 +23,7 @@ class _ScanScreenState extends State<ScanScreen> {
         
         try {
           // Play Sound or Haptic (Optional)
-          await ApiService().scanQrOrder(code);
+          await OrderService().scanQrOrder(code);
           
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order Verified! Saldo Masuk.'), backgroundColor: Colors.green));
@@ -45,7 +45,39 @@ class _ScanScreenState extends State<ScanScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Scan QR Pickup')),
+      appBar: AppBar(
+        title: const Text('Scan QR Pickup', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        backgroundColor: const Color(0xFFBF092F),
+        iconTheme: const IconThemeData(color: Colors.white),
+        centerTitle: true,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF9F0013), Color(0xFFBF092F), Color(0xFFE11D48)],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter
+            )
+          ),
+        ),
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: 2, // Scan is index 2
+        onDestinationSelected: (idx) {
+           if (idx == 0) {
+              Navigator.of(context).popUntil((route) => route.isFirst);
+           }
+           // Handle others if needed
+        },
+        backgroundColor: Colors.white,
+        indicatorColor: Colors.red.shade100,
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home_filled), label: 'Beranda'),
+          NavigationDestination(icon: Icon(Icons.history_outlined), selectedIcon: Icon(Icons.history), label: 'Transaksi'),
+          NavigationDestination(icon: Icon(Icons.qr_code_scanner_rounded), label: 'Scan'),
+          NavigationDestination(icon: Icon(Icons.bar_chart_outlined), selectedIcon: Icon(Icons.bar_chart), label: 'Laporan'),
+          NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Akun'),
+        ],
+      ),
       body: MobileScanner(
         onDetect: _onDetect,
       ),

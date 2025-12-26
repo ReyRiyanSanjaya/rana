@@ -1,18 +1,28 @@
 import React from 'react';
+import api from '../api';
 import AdminLayout from '../components/AdminLayout';
 import Card from '../components/ui/Card';
 import { User, Mail, Shield, Key } from 'lucide-react';
 import Input from '../components/ui/Input';
-import Button from '../components/ui/Button';
+import Button from '../components/ui/button';
 
 const Profile = () => {
     // In a real app, fetch this from API or Context
-    const user = {
-        name: 'Admin User',
-        email: 'admin@rana.id',
-        role: 'Super Admin',
-        joined: 'December 2024'
-    };
+    const [user, setUser] = React.useState({
+        name: '', email: '', role: '', joined: ''
+    });
+
+    React.useEffect(() => {
+        api.get('/auth/me').then(res => {
+            const data = res.data.data;
+            setUser({
+                name: data.name,
+                email: data.email,
+                role: data.role,
+                joined: new Date(data.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+            });
+        }).catch(err => console.error(err));
+    }, []);
 
     return (
         <AdminLayout>

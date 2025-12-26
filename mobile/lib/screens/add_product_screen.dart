@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:rana_merchant/data/local/database_helper.dart';
 import 'package:rana_merchant/data/remote/api_service.dart';
 import 'package:rana_merchant/constants.dart';
+import 'package:dio/dio.dart';
 
 class AddProductScreen extends StatefulWidget {
   final Map<String, dynamic>? product; // [NEW] Optional product for editing
@@ -17,12 +18,14 @@ class _AddProductScreenState extends State<AddProductScreen> {
   final _skuCtrl = TextEditingController(); 
   final _sellPriceCtrl = TextEditingController();
   final _costPriceCtrl = TextEditingController();
+  List<String> _existingCategories = []; // [NEW] Dynamic Categories
   String _selectedCategory = 'Beverage'; 
   bool _isLoading = false;
-
+  
   @override
   void initState() {
     super.initState();
+    _loadCategories(); // [NEW] Load categories
     if (widget.product != null) {
       final p = widget.product!;
       _nameCtrl.text = p['name'];
@@ -31,6 +34,21 @@ class _AddProductScreenState extends State<AddProductScreen> {
       _costPriceCtrl.text = (p['costPrice'] ?? 0).toString();
       _selectedCategory = p['category'] ?? 'Beverage';
     }
+  }
+
+  // [NEW] Fetch unique categories from DB
+  Future<void> _loadCategories() async {
+    final products = await DatabaseHelper.instance.getAllProducts();
+    final Set<String> cats = {};
+    for (var p in products) {
+      if (p['category'] != null && p['category'].toString().isNotEmpty) {
+        cats.add(p['category']);
+      }
+    }
+    // Add default if empty
+    if (cats.isEmpty) cats.addAll(['Makanan', 'Minuman', 'Sembako']);
+    
+    if (mounted) setState(() => _existingCategories = cats.toList());
   }
 
   Future<void> _submit() async {
@@ -95,8 +113,11 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
       if (mounted) Navigator.pop(context, true); 
       
+    } on DioException catch (e) {
+      final msg = e.response?.data['message'] ?? e.message ?? 'Terjadi Kesalahan Server';
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal: $msg'), backgroundColor: Colors.red));
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal: $e'), backgroundColor: Colors.red));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -124,13 +145,43 @@ class _AddProductScreenState extends State<AddProductScreen> {
                 validator: (v) => v!.isEmpty ? 'Wajib diisi' : null,
               ),
               const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                value: AppConstants.productCategories.contains(_selectedCategory) ? _selectedCategory : 'Beverage',
-                decoration: const InputDecoration(labelText: 'Kategori', border: OutlineInputBorder(), prefixIcon: Icon(Icons.category)),
-                items: AppConstants.productCategories.where((c) => c != 'All').map((cat) {
-                  return DropdownMenuItem(value: cat, child: Text(cat));
-                }).toList(),
-                onChanged: (val) => setState(() => _selectedCategory = val!),
+              // [NEW] Autocomplete for Category
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  return Autocomplete<String>(
+                    initialValue: TextEditingValue(text: _selectedCategory),
+                    optionsBuilder: (TextEditingValue textEditingValue) {
+                      if (textEditingValue.text == '') {
+                        return const Iterable<String>.empty();
+                      }
+                      return _existingCategories.where((String option) {
+                        return option.toLowerCase().contains(textEditingValue.text.toLowerCase());
+                      });
+                    },
+                    onSelected: (String selection) {
+                      setState(() => _selectedCategory = selection);
+                    },
+                    fieldViewBuilder: (context, textEditingController, focusNode, onFieldSubmitted) {
+                      // Initial check to ensure controller is in sync if state changed externally
+                      if (textEditingController.text != _selectedCategory && _selectedCategory.isNotEmpty && textEditingController.text.isEmpty) {
+                          textEditingController.text = _selectedCategory;
+                      }
+
+                      return TextFormField(
+                        controller: textEditingController,
+                        focusNode: focusNode,
+                        decoration: const InputDecoration(
+                           labelText: 'Kategori', 
+                           border: OutlineInputBorder(), 
+                           prefixIcon: Icon(Icons.category),
+                           hintText: 'Pilih atau Ketik Kategori Baru'
+                        ),
+                        validator: (v) => v!.isEmpty ? 'Wajib diisi' : null,
+                        onChanged: (val) => _selectedCategory = val, // Update state on typing
+                      );
+                    },
+                  );
+                }
               ),
               const SizedBox(height: 16),
               Row(

@@ -117,6 +117,19 @@ class DatabaseHelper {
         FOREIGN KEY (transactionOfflineId) REFERENCES transactions (offlineId) ON DELETE CASCADE
       )
     ''');
+
+    // 5. Expenses (Offline First)
+    await db.execute('''
+      CREATE TABLE expenses (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        storeId TEXT,
+        amount REAL,
+        category TEXT, -- EXPENSE_PETTY, EXPENSE_OPERATIONAL
+        description TEXT,
+        date TEXT,
+        synced INTEGER DEFAULT 0
+      )
+    ''');
   }
 
   // --- CRUD Operations ---
@@ -209,6 +222,25 @@ class DatabaseHelper {
     );
   }
 
+  // --- EXPENSE OPERATIONS ---
+
+  Future<void> insertExpense(Map<String, dynamic> data) async {
+    final db = await instance.database;
+    await db.insert('expenses', data);
+  }
+
+  Future<List<Map<String, dynamic>>> getExpenses({DateTime? start, DateTime? end}) async {
+    final db = await instance.database;
+     final startDate = start ?? DateTime.now().subtract(const Duration(days: 30));
+    final endDate = end ?? DateTime.now();
+
+    return await db.query(
+      'expenses',
+      where: 'date BETWEEN ? AND ?',
+      whereArgs: [startDate.toIso8601String(), endDate.toIso8601String()]
+    );
+  }
+
   // --- REPORTING QUERIES ---
 
   Future<Map<String, dynamic>> getSalesReport({DateTime? start, DateTime? end}) async {
@@ -256,10 +288,23 @@ class DatabaseHelper {
       ORDER BY date ASC
     ''', [startStr, endStr]);
 
+    // [NEW] 4. Total Expenses
+    final expRes = await db.rawQuery('''
+      SELECT SUM(amount) as totalExpenses 
+      FROM expenses 
+      WHERE date BETWEEN ? AND ?
+    ''', [startStr, endStr]);
+
+    final totalExpenses = (expRes.first['totalExpenses'] as num?)?.toDouble() ?? 0.0;
+    
+    // Net Profit = (Sales - COGS) - Expenses
+    final netProfit = totalProfit - totalExpenses;
+
     return {
       'totalTransactions': totalTransactions,
       'grossSales': grossSales,
-      'netProfit': totalProfit,
+      'netProfit': netProfit,
+      'totalExpenses': totalExpenses, // [NEW] Return this too
       'averageOrderValue': totalTransactions > 0 ? grossSales / totalTransactions : 0,
       'trend': trendRes
     };

@@ -408,5 +408,47 @@ module.exports = {
         } catch (error) {
             return errorResponse(res, "Failed to delete banner", 500, error);
         }
+    },
+
+    // [NEW] Update Banner
+    updateBanner: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { title, imageUrl, description, isActive } = req.body;
+            const banner = await prisma.wholesaleBanner.update({
+                where: { id },
+                data: {
+                    title, imageUrl, description,
+                    isActive: isActive !== undefined ? isActive : undefined
+                }
+            });
+            return successResponse(res, banner, "Banner updated");
+        } catch (error) {
+            return errorResponse(res, "Failed to update banner", 500, error);
+        }
+    },
+
+    // [NEW] Update Coupon
+    updateCoupon: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { code, type, value, minOrder, maxDiscount, startDate, endDate, isActive } = req.body;
+
+            const coupon = await prisma.wholesaleCoupon.update({
+                where: { id },
+                data: {
+                    code, type,
+                    value: value ? parseFloat(value) : undefined,
+                    minOrder: minOrder !== undefined ? parseFloat(minOrder) : undefined,
+                    maxDiscount: maxDiscount !== undefined ? parseFloat(maxDiscount) : undefined,
+                    startDate: startDate ? new Date(startDate) : undefined,
+                    endDate: endDate ? new Date(endDate) : undefined,
+                    isActive: isActive !== undefined ? isActive : undefined
+                }
+            });
+            return successResponse(res, coupon, "Coupon updated");
+        } catch (error) {
+            return errorResponse(res, "Failed to update coupon", 500, error);
+        }
     }
 };

@@ -8,7 +8,7 @@ export default {
     theme: {
         extend: {
             colors: {
-                primary: '#4F46E5', // Indigo 600
+                primary: '#BF092F', // Red Brand
                 secondary: '#0F172A', // Slate 900
                 success: '#10B981',
                 warning: '#F59E0B',

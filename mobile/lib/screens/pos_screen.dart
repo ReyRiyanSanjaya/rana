@@ -9,6 +9,9 @@ import 'package:rana_merchant/widgets/product_card.dart';
 import 'package:rana_merchant/services/sound_service.dart';
 import 'package:rana_merchant/screens/scan_screen.dart';
 import 'package:rana_merchant/screens/payment_screen.dart'; // [NEW] Refactored
+import 'package:rana_merchant/providers/auth_provider.dart'; // [NEW] Import AuthProvider
+import 'package:rana_merchant/services/sync_service.dart'; // [NEW] For manual sync
+
 
 class PosScreen extends StatefulWidget {
   const PosScreen({super.key});
@@ -24,7 +27,7 @@ class _PosScreenState extends State<PosScreen> {
   String _searchQuery = '';
   String _selectedCategory = 'All';
 
-  final List<String> _categories = ['All', 'Makanan', 'Minuman', 'Sembako', 'Alat Tulis', 'Lainnya'];
+  List<String> _categories = ['All']; // [FIX] Dynamic Categories
 
   @override
   void initState() {
@@ -34,8 +37,18 @@ class _PosScreenState extends State<PosScreen> {
 
   Future<void> _loadProducts() async {
     final data = await DatabaseHelper.instance.getAllProducts();
+    
+    // [FIX] Extract Unique Categories
+    final Set<String> uniqueCats = {'All'};
+    for (var p in data) {
+      if (p['category'] != null && p['category'].toString().isNotEmpty) {
+        uniqueCats.add(p['category']);
+      }
+    }
+
     setState(() {
       _products = data;
+      _categories = uniqueCats.toList(); // Update UI with real categories
       _filterProducts();
       _isLoading = false;
     });
@@ -66,9 +79,21 @@ class _PosScreenState extends State<PosScreen> {
             icon: const Icon(Icons.qr_code_scanner),
             tooltip: 'Scan Barcode',
             onPressed: () async {
-              // Open Scan Screen and handle result if needed
-               await Navigator.push(context, MaterialPageRoute(builder: (_) => const ScanScreen()));
+                 await Navigator.push(context, MaterialPageRoute(builder: (_) => const ScanScreen()));
                // Ideally, scan screen should return a code, and we add it to cart here
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.sync),
+            tooltip: 'Sync Transaksi',
+            onPressed: () async {
+               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sinkronisasi data...')));
+               try {
+                 await SyncService().syncTransactions();
+                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sinkronisasi Selesai'), backgroundColor: Colors.green));
+               } catch (e) {
+                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal Sync: $e'), backgroundColor: Colors.red));
+               }
             },
           ),
           Stack(
@@ -213,7 +238,9 @@ class _PosScreenState extends State<PosScreen> {
                child: Row(
                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                  children: [
-                   Text('Keranjang (${cart.itemCount})', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold)),
+                   Consumer<CartProvider>(
+                     builder: (context, cart, child) => Text('Keranjang (${cart.itemCount})', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold))
+                   ),
                    IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close))
                  ],
                ),
@@ -251,69 +278,92 @@ class _PosScreenState extends State<PosScreen> {
               ),
             ),
 
+            // [FIX] Wrap in Consumer to listen to updates inside Modal
             Expanded(
-              child: cart.itemCount == 0 
-              ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: const [Icon(Icons.shopping_cart_outlined, size: 64, color: Colors.grey), SizedBox(height: 16), Text('Keranjang kosong')]))
-              : ListView.separated(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: cart.items.length,
-                separatorBuilder: (_,__) => const Divider(height: 1),
-                itemBuilder: (ctx, i) {
-                  final item = cart.items.values.toList()[i];
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: 50, height: 50, 
-                          decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(8)),
-                          child: const Icon(Icons.image_not_supported, size: 24, color: Colors.grey),
+              child: Consumer<CartProvider>(
+                builder: (context, cart, child) {
+                  return cart.itemCount == 0 
+                  ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: const [Icon(Icons.shopping_cart_outlined, size: 64, color: Colors.grey), SizedBox(height: 16), Text('Keranjang kosong')]))
+                  : ListView.separated(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: cart.items.length,
+                    separatorBuilder: (_,__) => const Divider(height: 1),
+                    itemBuilder: (ctx, i) {
+                      final item = cart.items.values.toList()[i];
+                      return Dismissible(
+                        key: Key(item.productId),
+                        direction: DismissDirection.endToStart,
+                        background: Container(
+                          alignment: Alignment.centerRight,
+                          padding: const EdgeInsets.only(right: 20),
+                          color: Colors.red,
+                          child: const Icon(Icons.delete, color: Colors.white),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
+                        onDismissed: (direction) {
+                          cart.removeItem(item.productId);
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Item dihapus dari keranjang')));
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(item.name, style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 14)),
-                              Text(NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(item.price), style: const TextStyle(color: Colors.grey)),
+                              Container(
+                                width: 50, height: 50, 
+                                decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(8)),
+                                child: const Icon(Icons.image_not_supported, size: 24, color: Colors.grey),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(item.name, style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 14)),
+                                    Text(NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(item.price), style: const TextStyle(color: Colors.grey)),
+                                  ],
+                                ),
+                              ),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(onPressed: () => cart.removeSingleItem(item.productId), icon: const Icon(Icons.remove_circle, color: Colors.redAccent, size: 24)),
+                                  Text('${item.quantity}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                  IconButton(onPressed: () => cart.addItem(item.productId, item.name, item.price), icon: const Icon(Icons.add_circle, color: Colors.green, size: 24)),
+                                ],
+                              ),
                             ],
                           ),
                         ),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(onPressed: () => cart.removeSingleItem(item.productId), icon: const Icon(Icons.remove_circle, color: Colors.redAccent, size: 24)),
-                            Text('${item.quantity}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                            IconButton(onPressed: () => cart.addItem(item.productId, item.name, item.price), icon: const Icon(Icons.add_circle, color: Colors.green, size: 24)),
-                          ],
-                        ),
-                      ],
-                    ),
+                      );
+                    },
                   );
-                },
+                }
               ),
             ),
             
             // Re-use logic for button layout but nicer
             Padding(
               padding: const EdgeInsets.all(24),
-              child: Column(
-                children: [
-                   Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('Total'), Text(NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(cart.totalAmount), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))]),
-                   const SizedBox(height: 16),
-                   SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: cart.itemCount == 0 ? null : () {
-                         Navigator.pop(context);
-                         _processPayment(context, cart);
-                      },
-                      style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), backgroundColor: const Color(0xFF4F46E5)),
-                      child: const Text('LANJUT PEMBAYARAN', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    ),
-                  ),
-                ],
+              child: Consumer<CartProvider>(
+                builder: (context, cart, child) {
+                  return Column(
+                    children: [
+                       Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('Total'), Text(NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(cart.totalAmount), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))]),
+                       const SizedBox(height: 16),
+                       SizedBox(
+                        width: double.infinity,
+                        child: FilledButton(
+                          onPressed: cart.itemCount == 0 ? null : () {
+                             Navigator.pop(context);
+                             _processPayment(context, cart);
+                          },
+                          style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), backgroundColor: const Color(0xFF4F46E5)),
+                          child: const Text('LANJUT PEMBAYARAN', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                    ],
+                  );
+                }
               ),
             )
           ],
@@ -334,7 +384,12 @@ class _PosScreenState extends State<PosScreen> {
       )
     );
 
+
     if (success == true && context.mounted) {
+       // Backup notification
+       ScaffoldMessenger.of(context).showSnackBar(
+         const SnackBar(content: Text('Transaksi Berhasil!'), backgroundColor: Colors.green, duration: Duration(seconds: 2))
+       );
        SoundService.playSuccess();
        showDialog(context: context, builder: (_) => const TransactionSuccessDialog());
        cart.clear(); 

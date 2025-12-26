@@ -28,6 +28,16 @@ router.use('/announcements', require('./admin/announcements'));
 router.get('/merchants', adminController.getMerchants);
 router.post('/merchants', adminController.createMerchant);
 router.delete('/merchants/:id', adminController.deleteMerchant);
+router.put('/merchants/:tenantId/subscription', adminController.updateMerchantSubscription);
+router.get('/merchants/:id', adminController.getMerchantDetail); // [NEW]
+router.post('/merchants/:storeId/wallet/adjust', adminController.adjustMerchantWallet); // [NEW]
+router.post('/merchants/:tenantId/notify', adminController.sendNotification); // [NEW]
+
+// Merchant Menu Management
+router.get('/merchants/:storeId/products', adminController.getMerchantProducts);
+router.post('/merchants/:storeId/products', adminController.createMerchantProduct);
+router.put('/merchants/:storeId/products/:productId', adminController.updateMerchantProduct);
+router.delete('/merchants/:storeId/products/:productId', adminController.deleteMerchantProduct);
 
 // Subscription Requests
 router.get('/subscriptions', adminController.getSubscriptionRequests);
@@ -42,8 +52,37 @@ router.get('/withdrawals', adminController.getWithdrawals);
 router.put('/withdrawals/:id/approve', adminController.approveWithdrawal);
 router.put('/withdrawals/:id/reject', adminController.rejectWithdrawal);
 
+// Top-Up Management (Wallet)
+router.get('/topups', adminController.getTopUps);
+router.put('/topups/:id/approve', adminController.approveTopUp);
+router.put('/topups/:id/reject', adminController.rejectTopUp);
+
 // System Settings
 router.get('/settings', adminController.getSettings);
 router.post('/settings', adminController.updateSettings);
+
+// App Menu Management
+router.get('/app-menus', adminController.getAppMenus);
+router.post('/app-menus', adminController.createAppMenu);
+router.put('/app-menus/:id', adminController.updateAppMenu);
+router.delete('/app-menus/:id', adminController.deleteAppMenu);
+
+// User Management
+router.put('/users/:id/password', adminController.resetUserPassword);
+router.get('/admins', adminController.getAdminUsers); // [NEW]
+router.post('/admins', adminController.createAdminUser); // [NEW]
+router.delete('/admins/:id', adminController.deleteAdminUser); // [NEW]
+
+// Billing & Export
+router.get('/billing/subscription', adminController.getPlatformSubscription); // [NEW]
+router.get('/export/dashboard', adminController.exportDashboardData); // [NEW]
+
+// Enterprise Features
+router.get('/audit-logs', adminController.getAuditLogs); // [NEW]
+router.get('/search', adminController.globalSearch); // [NEW]
+
+// Transaction Management
+router.get('/transactions', adminController.getAllTransactions); // [NEW]
+router.get('/transactions/export', adminController.exportTransactions); // [NEW]
 
 module.exports = router;

@@ -34,10 +34,16 @@ dependencies:
   fl_chart: ^0.68.0 # For Reporting Charts
   url_launcher: ^6.1.11
   mobile_scanner: ^3.5.0 # [NEW] For QR Scanning
+  image_picker: ^1.0.4 # [NEW] For Wallet Proof
+  blue_thermal_printer: ^1.2.3 # [NEW] Thermal Printer
+  permission_handler: ^11.0.1 # [NEW] Bluetooth Permissions
+  screenshot: ^3.0.0 # [FIX] Upgrade for Flutter 3.19+
+  share_plus: ^7.1.0 # [NEW] Share File
+  path_provider: ^2.1.1 # [NEW] Temp Storage
 
   
   # Background Sync
-  workmanager: ^0.5.2
+  workmanager: ^0.7.0
   
   # UUID
   uuid: ^4.2.1

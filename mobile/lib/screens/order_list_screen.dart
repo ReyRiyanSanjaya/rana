@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:rana_merchant/screens/scan_screen.dart';
+import 'package:rana_merchant/services/order_service.dart';
 
 class OrderListScreen extends StatefulWidget {
   const OrderListScreen({super.key});
@@ -12,51 +13,35 @@ class OrderListScreen extends StatefulWidget {
 
 class _OrderListScreenState extends State<OrderListScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final OrderService _orderService = OrderService();
   
-  // Dummy Data
-  final List<Map<String, dynamic>> _orders = [
-    {
-      'id': 'ORD-20241222-001',
-      'customer': 'Budi Santoso',
-      'date': DateTime.now().subtract(const Duration(minutes: 5)),
-      'status': 'Baru', // Baru, Sedang Disiapkan, Sudah Disiapkan, Selesai
-      'total': 45000.0,
-      'items': [
-        {'name': 'Nasi Goreng Spesial', 'qty': 1, 'price': 25000},
-        {'name': 'Es Teh Manis', 'qty': 2, 'price': 5000},
-      ],
-      'payment': 'QRIS (Lunas)',
-    },
-    {
-      'id': 'ORD-20241222-002',
-      'customer': 'Siti Aminah',
-      'date': DateTime.now().subtract(const Duration(minutes: 30)),
-      'status': 'Sedang Disiapkan',
-      'total': 120000.0,
-      'items': [
-        {'name': 'Paket Keluarga A', 'qty': 1, 'price': 100000},
-        {'name': 'Jus Jeruk', 'qty': 4, 'price': 5000},
-      ],
-      'payment': 'Transfer BCA (Lunas)',
-    },
-    {
-      'id': 'ORD-20241221-098',
-      'customer': 'Riyan (Driver)',
-      'date': DateTime.now().subtract(const Duration(hours: 2)),
-      'status': 'Sudah Disiapkan',
-      'total': 35000.0,
-      'items': [
-        {'name': 'Ayam Geprek Level 5', 'qty': 1, 'price': 20000},
-        {'name': 'Air Mineral', 'qty': 2, 'price': 5000},
-      ],
-      'payment': 'Tunai (Belum Lunas)',
-    },
-  ];
+  List<dynamic> _orders = [];
+  bool _isLoading = true;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    _loadOrders();
+  }
+
+  Future<void> _loadOrders() async {
+    setState(() { _isLoading = true; _error = null; });
+    try {
+      final orders = await _orderService.getIncomingOrders();
+      setState(() {
+        _orders = orders;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _error = e.toString();
+        });
+      }
+    }
   }
 
   @override
@@ -65,28 +50,41 @@ class _OrderListScreenState extends State<OrderListScreen> with SingleTickerProv
     super.dispose();
   }
 
-  List<Map<String, dynamic>> _getOrdersByStatus(String tab) {
-    if (tab == 'Baru') return _orders.where((o) => o['status'] == 'Baru').toList();
-    if (tab == 'Disiapkan') return _orders.where((o) => o['status'] == 'Sedang Disiapkan').toList();
-    if (tab == 'Siap Ambil') return _orders.where((o) => o['status'] == 'Sudah Disiapkan').toList();
-    if (tab == 'Selesai') return _orders.where((o) => o['status'] == 'Selesai').toList();
+  List<dynamic> _getOrdersByStatus(String tab) {
+    if (tab == 'Baru') {
+      return _orders.where((o) => o['orderStatus'] == 'PENDING').toList();
+    }
+    if (tab == 'Disiapkan') {
+       // PROCESSED means being prepared
+       return _orders.where((o) => o['orderStatus'] == 'PROCESSED').toList();
+    }
+    if (tab == 'Siap Ambil') {
+      return _orders.where((o) => o['orderStatus'] == 'READY_TO_PICKUP').toList();
+    }
+    if (tab == 'Selesai') {
+      return _orders.where((o) => o['orderStatus'] == 'COMPLETED').toList();
+    }
     return [];
   }
 
-  Future<void> _handleScan(Map<String, dynamic> order) async {
+  Future<void> _handleUpdateStatus(String orderId, String newStatus) async {
+    try {
+      await _orderService.updateOrderStatus(orderId, newStatus);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Status diperbarui: $newStatus')));
+      _loadOrders(); // Refresh
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal update: $e'), backgroundColor: Colors.red));
+    }
+  }
+
+  Future<void> _handleScan() async {
     // Navigate to Scan Screen
     final result = await Navigator.push(context, MaterialPageRoute(builder: (_) => const ScanScreen()));
     
-    // Check if result matches order ID (Simulation)
-    if (result != null) {
-      if (result.toString().contains(order['id']) || result.toString() == 'VALID_QR') { // Mock Check
-         setState(() {
-           order['status'] = 'Selesai';
-         });
-         _showSuccessDialog();
-      } else {
-         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('QR Code Tidak Cocok!'), backgroundColor: Colors.red));
-      }
+    // Result is true if scan successful
+    if (result == true) {
+       _loadOrders(); // Refresh to move item to 'Selesai'
+       _showSuccessDialog();
     }
   }
 
@@ -108,6 +106,12 @@ class _OrderListScreenState extends State<OrderListScreen> with SingleTickerProv
       appBar: AppBar(
         title: Text('Daftar Pesanan (Pickup)', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadOrders,
+          )
+        ],
         bottom: TabBar(
           controller: _tabController,
           labelColor: Colors.blue.shade900,
@@ -123,15 +127,22 @@ class _OrderListScreenState extends State<OrderListScreen> with SingleTickerProv
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildOrderList('Baru'),
-          _buildOrderList('Disiapkan'),
-          _buildOrderList('Siap Ambil'),
-          _buildOrderList('Selesai'),
-        ],
-      ),
+      body: _isLoading 
+        ? const Center(child: CircularProgressIndicator()) 
+        : _error != null 
+          ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              Text(_error!, style: const TextStyle(color: Colors.red), textAlign: TextAlign.center),
+              TextButton(onPressed: _loadOrders, child: const Text('Coba Lagi'))
+            ]))
+          : TabBarView(
+            controller: _tabController,
+            children: [
+              _buildOrderList('Baru'),
+              _buildOrderList('Disiapkan'),
+              _buildOrderList('Siap Ambil'),
+              _buildOrderList('Selesai'),
+            ],
+          ),
     );
   }
 
@@ -139,30 +150,37 @@ class _OrderListScreenState extends State<OrderListScreen> with SingleTickerProv
     final filtered = _getOrdersByStatus(statusFilter);
 
     if (filtered.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.shopping_bag_outlined, size: 80, color: Colors.grey.shade300),
-            const SizedBox(height: 16),
-            Text('Tidak ada pesanan $statusFilter', style: GoogleFonts.poppins(color: Colors.grey)),
-          ],
+      return RefreshIndicator(
+        onRefresh: _loadOrders,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Container(
+            height: MediaQuery.of(context).size.height * 0.7,
+            alignment: Alignment.center,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.shopping_bag_outlined, size: 80, color: Colors.grey.shade300),
+                const SizedBox(height: 16),
+                Text('Tidak ada pesanan $statusFilter', style: GoogleFonts.poppins(color: Colors.grey)),
+              ],
+            ),
+          ),
         ),
       );
     }
 
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: filtered.length,
-      separatorBuilder: (_,__) => const SizedBox(height: 12),
-      itemBuilder: (context, index) => _OrderCard(
-        order: filtered[index], 
-        onUpdateStatus: (newStatus) {
-          setState(() {
-            filtered[index]['status'] = newStatus;
-          });
-        },
-        onScan: () => _handleScan(filtered[index]),
+    return RefreshIndicator(
+      onRefresh: _loadOrders,
+      child: ListView.separated(
+        padding: const EdgeInsets.all(16),
+        itemCount: filtered.length,
+        separatorBuilder: (_,__) => const SizedBox(height: 12),
+        itemBuilder: (context, index) => _OrderCard(
+          order: filtered[index], 
+          onUpdateStatus: (newStatus) => _handleUpdateStatus(filtered[index]['id'], newStatus),
+          onScan: _handleScan,
+        ),
       ),
     );
   }
@@ -178,12 +196,17 @@ class _OrderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fmtPrice = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
-    final status = order['status'];
+    final status = order['orderStatus'];
     Color statusColor = Colors.grey;
-    if (status == 'Baru') statusColor = Colors.blue;
-    if (status == 'Sedang Disiapkan') statusColor = Colors.orange;
-    if (status == 'Sudah Disiapkan') statusColor = Colors.green;
-    if (status == 'Selesai') statusColor = Colors.grey;
+    String displayStatus = status;
+
+    if (status == 'PENDING') { statusColor = Colors.blue; displayStatus = 'BARU'; }
+    if (status == 'PROCESSED') { statusColor = Colors.orange; displayStatus = 'DISIPAKAN'; }
+    if (status == 'READY_TO_PICKUP') { statusColor = Colors.green; displayStatus = 'SIAP AMBIL'; }
+    if (status == 'COMPLETED') { statusColor = Colors.grey; displayStatus = 'SELESAI'; }
+
+    // Safe access to items
+    final List items = order['transactionItems'] ?? [];
 
     return Card(
       elevation: 2,
@@ -197,11 +220,11 @@ class _OrderCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(order['id'], style: GoogleFonts.sourceCodePro(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey.shade700)),
+                Text((order['id'] as String).substring(0, 15), style: GoogleFonts.sourceCodePro(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey.shade700)),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
-                  child: Text((status as String).toUpperCase(), style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 10)),
+                  child: Text(displayStatus, style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 10)),
                 )
               ],
             ),
@@ -212,12 +235,16 @@ class _OrderCard extends StatelessWidget {
               children: [
                 const CircleAvatar(child: Icon(Icons.person, color: Colors.white), radius: 20, backgroundColor: Colors.blueGrey),
                 const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(order['customer'], style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16)),
-                    Text('Pembayaran: ${order['payment']}', style: GoogleFonts.poppins(color: Colors.grey, fontSize: 12)),
-                  ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(order['customerName'] ?? 'No Name', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16)),
+                      Text('${order['customerPhone'] ?? '-'}', style: GoogleFonts.poppins(color: Colors.grey, fontSize: 12)),
+                      if (order['pickupCode'] != null)
+                          Text('Kode: ${order['pickupCode']}', style: GoogleFonts.sourceCodePro(fontWeight: FontWeight.bold, color: Colors.indigo)),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -226,14 +253,15 @@ class _OrderCard extends StatelessWidget {
             // Items
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: (order['items'] as List).map<Widget>((item) {
+              children: items.map<Widget>((item) {
+                final product = item['product'] ?? {};
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 4),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text("${item['qty']}x ${item['name']}", style: const TextStyle(fontWeight: FontWeight.w500)),
-                      Text(fmtPrice.format(item['price'] * item['qty']), style: const TextStyle(color: Colors.grey)),
+                      Text("${item['quantity']}x ${product['name'] ?? 'Item'}", style: const TextStyle(fontWeight: FontWeight.w500)),
+                      Text(fmtPrice.format((item['price'] ?? 0) * (item['quantity'] ?? 1)), style: const TextStyle(color: Colors.grey)),
                     ],
                   ),
                 );
@@ -242,34 +270,34 @@ class _OrderCard extends StatelessWidget {
             const Divider(),
             Align(
               alignment: Alignment.centerRight,
-              child: Text("Total: ${fmtPrice.format(order['total'])}", style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.blue.shade900)),
+              child: Text("Total: ${fmtPrice.format(order['totalAmount'] ?? 0)}", style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.blue.shade900)),
             ),
             const SizedBox(height: 16),
 
             // Action Buttons
-            if (status == 'Baru')
+            if (status == 'PENDING')
                SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  onPressed: () => onUpdateStatus('Sedang Disiapkan'), 
+                  onPressed: () => onUpdateStatus('PROCESSED'), 
                   icon: const Icon(Icons.soup_kitchen),
                   label: const Text('Siapkan Pesanan'),
                   style: FilledButton.styleFrom(backgroundColor: Colors.blue.shade700)
                 ),
               ),
 
-            if (status == 'Sedang Disiapkan')
+            if (status == 'PROCESSED')
                SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  onPressed: () => onUpdateStatus('Sudah Disiapkan'), 
+                  onPressed: () => onUpdateStatus('READY_TO_PICKUP'), 
                   icon: const Icon(Icons.check_circle_outline),
                   label: const Text('Selesai Disiapkan'),
                   style: FilledButton.styleFrom(backgroundColor: Colors.orange.shade700)
                 ),
               ),
 
-            if (status == 'Sudah Disiapkan')
+            if (status == 'READY_TO_PICKUP')
                SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
@@ -280,13 +308,13 @@ class _OrderCard extends StatelessWidget {
                 ),
               ),
             
-            if (status == 'Sudah Disiapkan')
+            if (status == 'READY_TO_PICKUP')
                Padding(
                  padding: const EdgeInsets.only(top: 8),
                  child: Center(child: Text('Tunggu konsumen datang dan scan QR mereka.', style: TextStyle(color: Colors.grey.shade600, fontSize: 12, fontStyle: FontStyle.italic))),
                ),
 
-            if (status == 'Selesai')
+            if (status == 'COMPLETED')
                Center(
                  child: Row(
                    mainAxisAlignment: MainAxisAlignment.center,

@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:rana_merchant/data/local/database_helper.dart';
+import 'package:flutter/foundation.dart'; // [NEW] For kIsWeb check
 
 class ApiService {
   // Singleton Pattern
@@ -9,13 +10,24 @@ class ApiService {
     return _instance;
   }
 
-  ApiService._internal();
-
   final Dio _dio = Dio(BaseOptions(
-    baseUrl: 'http://localhost:4000/api', // Use localhost for Windows/Web. Use 10.0.2.2 for Android Emulator.
-    connectTimeout: const Duration(seconds: 5),
-    receiveTimeout: const Duration(seconds: 5),
+    baseUrl: kIsWeb ? 'http://localhost:4000/api' : 'http://10.0.2.2:4000/api', 
+    connectTimeout: const Duration(seconds: 30),
+    receiveTimeout: const Duration(seconds: 30),
   ));
+
+  ApiService._internal() {
+  // [NEW] Add Logger
+  _dio.interceptors.add(LogInterceptor(
+    request: true, 
+    requestHeader: true, 
+    responseHeader: true, 
+    responseBody: true,
+    error: true
+  ));
+  }
+
+  Dio get dio => _dio;
   
   String? _token;
 
@@ -69,6 +81,26 @@ class ApiService {
       rethrow; // Re-throw other DioErrors or network issues
     } catch (e) {
       throw Exception('Login failed: $e');
+    }
+  }
+
+  Future<void> updateStoreProfile({
+      required String businessName,
+      required String waNumber,
+      required String address,
+      String? latitude,
+      String? longitude
+  }) async {
+    try {
+      await _dio.put('/auth/store', data: {
+        'businessName': businessName,
+        'waNumber': waNumber,
+        'address': address,
+        'latitude': latitude,
+        'longitude': longitude
+      }, options: Options(headers: {'Authorization': 'Bearer ${_token}'}));
+    } catch (e) {
+      throw Exception('Failed to update profile: $e');
     }
   }
 
@@ -182,6 +214,73 @@ class ApiService {
     }
   }
 
+  Future<void> topUp({required double amount, required String proofPath}) async {
+    try {
+      // Convert image to Base64 to avoid Multipart overhead issues on some servers/configs, 
+      // matching our simple backend implementation.
+      // Actually backend accepts JSON with proofImage base64 string.
+      // We need dart:io and dart:convert
+      
+      // Wait, I cannot import dart:io here easily if not already imported. 
+      // But this is a data layer, so passed argument `proofPath` implies I need to read it.
+      // I will assume the caller passes Base64 string OR I handle file reading here.
+      // Let's pass the path and handle reading here.
+      // I need to add imports to the top of file.
+      
+      // Since replace_file_content is for contiguous blocks, I have to be careful about imports.
+      // I will implement this method assuming `proofPath` is passed, but I'll use a hack or just ensure imports are there.
+      // Actually `ApiService` uses `dio`. I can use `FormData` if I changed backend to `multer`.
+      // But I chose Base64 in backend. So I must send Base64 string.
+      
+      // I will implement a helper or just inline it if imports exist. 
+      // `d:/rana/mobile/lib/data/remote/api_service.dart` does NOT have `dart:convert` or `dart:io`.
+      // I will use `MultiReplace` to add imports AND methods.
+      // But I am using `ReplaceFileContent` here. I should cancel and use MultiReplace.
+      // Wait, I can just accept base64 string from Provider. That keeps ApiService clean of IO.
+      // Yes, `topUp({required double amount, required String proofBase64})`.
+      
+      await _dio.post('/wallet/topup', 
+        data: {
+          'amount': amount,
+          'proofImage': proofPath // Expecting Base64 string here
+        },
+        options: Options(headers: {'Authorization': 'Bearer ${_token}'})
+      );
+    } catch (e) {
+      throw Exception('Top Up Failed: $e');
+    }
+  }
+
+  Future<void> transfer({required String targetStoreId, required double amount, String? note}) async {
+    try {
+      await _dio.post('/wallet/transfer',
+        data: {
+          'targetStoreId': targetStoreId,
+          'amount': amount,
+          'note': note
+        },
+        options: Options(headers: {'Authorization': 'Bearer ${_token}'})
+      );
+    } catch (e) {
+       throw Exception('Transfer Failed: $e');
+    }
+  }
+
+  Future<void> payTransaction({required double amount, required String description, String category = 'PURCHASE'}) async {
+    try {
+      await _dio.post('/wallet/transaction',
+        data: {
+          'amount': amount,
+          'description': description,
+          'category': category
+        },
+        options: Options(headers: {'Authorization': 'Bearer ${_token}'})
+      );
+    } catch (e) {
+       throw Exception('Payment Failed: $e');
+    }
+  }
+
   // --- Inventory ---
   Future<void> adjustStock({required String productId, required int quantity, required String type, String? reason}) async {
     try {
@@ -210,6 +309,15 @@ class ApiService {
       if (response.data['success'] != true) throw Exception(response.data['message']);
     } catch (e) {
        throw Exception('Scan Order Failed: $e');
+    }
+  }
+
+  Future<void> uploadTransaction(Map<String, dynamic> payload) async {
+    try {
+      final response = await _dio.post('/transactions/sync', data: payload, options: Options(headers: {'Authorization': 'Bearer ${_token}'}));
+       if (response.data['success'] != true) throw Exception(response.data['message']);
+    } catch (e) {
+      throw Exception('Upload failed: $e');
     }
   }
 
@@ -266,7 +374,7 @@ class ApiService {
       // I need to add /api/tickets and /api/announcements for MERCHANTS.
       // I will add the client code here assuming I will fix the server next.
       
-      final res = await _dio.get('/announcements'); 
+      final res = await _dio.get('/system/announcements'); 
       return res.data['data'];
     } catch (e) {
       return [];
@@ -400,6 +508,38 @@ class ApiService {
       return response.data['data'] ?? [];
     } catch (e) {
       return []; // Return empty on error
+    }
+  }
+
+  // 5. App Menus (Dynamic)
+  Future<List<dynamic>> fetchAppMenus() async {
+    try {
+      final response = await _dio.get('/system/app-menus');
+      return response.data['data'] ?? [];
+    } catch (e) {
+      print('Failed to fetch app menus: $e');
+      return []; 
+    }
+  }
+
+  // 6. Notifications (Enterprise)
+  Future<List<dynamic>> fetchNotifications() async {
+    try {
+      final response = await _dio.get('/system/notifications');
+      return response.data['data'] ?? [];
+    } catch (e) {
+      print('Failed to fetch notifications: $e');
+      return [];
+    }
+  }
+  // 7. Blog System
+  Future<List<dynamic>> getBlogPosts() async {
+    try {
+      final response = await _dio.get('/blog'); // Public route
+      return response.data['data']['posts'];
+    } catch (e) {
+      print('Failed to fetch blog posts: $e');
+      return [];
     }
   }
 }

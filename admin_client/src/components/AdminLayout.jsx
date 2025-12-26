@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Store, Map, BarChart, ShoppingBag, LogOut, Search, Bell, Settings, Command, Wallet, CreditCard, Package, Megaphone, MessageSquare } from 'lucide-react';
+import { LayoutDashboard, Store, Map, BarChart, ShoppingBag, LogOut, Search, Bell, Settings, Command, Wallet, CreditCard, Package, Megaphone, MessageSquare, Smartphone, Shield, Layout, FileText } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Button } from './ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
@@ -31,8 +31,48 @@ const SidebarItem = ({ icon: Icon, label, to, isActive }) => {
     );
 };
 
+// [NEW] Search Result Helpers
+const SearchResultItem = ({ to, title, subtitle, icon: Icon, onClick }) => (
+    <Link to={to} onClick={onClick} className="flex items-center p-3 hover:bg-slate-50 transition border-b border-slate-100 last:border-0">
+        <div className="p-2 bg-indigo-50 text-indigo-600 rounded mr-3">
+            <Icon size={16} />
+        </div>
+        <div>
+            <p className="text-sm font-medium text-slate-900">{title}</p>
+            <p className="text-xs text-slate-500">{subtitle}</p>
+        </div>
+    </Link>
+);
+
 const AdminLayout = ({ children }) => {
     const location = useLocation();
+
+    // [NEW] Search State
+    const [searchQuery, setSearchQuery] = React.useState('');
+    const [searchResults, setSearchResults] = React.useState(null);
+    const [isSearching, setIsSearching] = React.useState(false);
+
+    // Debounced Search
+    React.useEffect(() => {
+        const timer = setTimeout(async () => {
+            if (searchQuery.length >= 3) {
+                setIsSearching(true);
+                try {
+                    // Import api internally to avoid circular dep issues if any, or just use global
+                    const api = require('../api').default;
+                    const res = await api.get(`/admin/search?q=${searchQuery}`);
+                    setSearchResults(res.data.data);
+                } catch (e) {
+                    console.error("Search error", e);
+                } finally {
+                    setIsSearching(false);
+                }
+            } else {
+                setSearchResults(null);
+            }
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
 
     const navItems = [
         { icon: LayoutDashboard, label: 'Dashboard', to: '/' },
@@ -40,18 +80,30 @@ const AdminLayout = ({ children }) => {
         { icon: Store, label: 'Merchants', to: '/merchants' },
         { icon: ShoppingBag, label: 'Kulakan (Wholesale)', to: '/kulakan' },
         { icon: BarChart, label: 'Reports', to: '/reports' },
+        { icon: FileText, label: 'Transactions', to: '/transactions' },
+
     ];
 
     const financeItems = [
         { icon: Wallet, label: 'Withdrawals', to: '/withdrawals' },
+        { icon: CreditCard, label: 'Top Ups', to: '/topups' }, // [NEW]
         { icon: CreditCard, label: 'Subscriptions', to: '/subscriptions' },
     ];
 
     const systemItems = [
         { icon: Package, label: 'Packages', to: '/packages' },
         { icon: Megaphone, label: 'Broadcasts', to: '/broadcasts' },
-        { icon: MessageSquare, label: 'Support', to: '/support' }, // [NEW]
+        { icon: Smartphone, label: 'App Menus', to: '/app-menus' },
+        { icon: Shield, label: 'Admins', to: '/admins' },
+        { icon: Shield, label: 'Audit Logs', to: '/audit-logs' }, // [NEW]
+        { icon: Layout, label: 'Content CMS', to: '/content-manager' }, // [NEW]
+        { icon: MessageSquare, label: 'Support', to: '/support' },
     ];
+
+    const clearSearch = () => {
+        setSearchQuery('');
+        setSearchResults(null);
+    };
 
     return (
         <div className="min-h-screen bg-slate-50/50 flex">
@@ -176,14 +228,67 @@ const AdminLayout = ({ children }) => {
                         <span className="font-medium text-slate-900 capitalize">{location.pathname === '/' ? 'Overview' : location.pathname.substring(1)}</span>
                     </div>
 
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 relative">
+                        {/* Search Bar */}
                         <div className="relative hidden sm:block">
                             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
                             <input
                                 type="text"
-                                placeholder="Search..."
-                                className="h-9 w-64 rounded-md border border-slate-200 bg-slate-50 pl-9 text-sm outline-none focus:ring-1 focus:ring-slate-900 transition-all"
+                                placeholder="Search merchants, users..."
+                                className="h-9 w-64 rounded-md border border-slate-200 bg-slate-50 pl-9 text-sm outline-none focus:ring-1 focus:ring-slate-900 transition-all focus:w-80"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
                             />
+                            {/* Search Dropdown */}
+                            {searchQuery.length >= 3 && (
+                                <div className="absolute top-10 right-0 w-80 bg-white rounded-lg shadow-xl border border-slate-200 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200">
+                                    {isSearching ? (
+                                        <div className="p-4 text-center text-xs text-slate-500">Searching...</div>
+                                    ) : searchResults ? (
+                                        <>
+                                            {searchResults.merchants.length === 0 && searchResults.users.length === 0 && searchResults.products.length === 0 && (
+                                                <div className="p-4 text-center text-xs text-slate-500">No results found.</div>
+                                            )}
+
+                                            {searchResults.merchants.length > 0 && (
+                                                <div>
+                                                    <div className="bg-slate-50 px-3 py-1 text-[10px] font-bold uppercase text-slate-400">Merchants</div>
+                                                    {searchResults.merchants.map(m => (
+                                                        <SearchResultItem
+                                                            key={m.id} to={`/merchants`} onClick={clearSearch}
+                                                            title={m.name} subtitle={m.plan} icon={Store}
+                                                        />
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            {searchResults.users.length > 0 && (
+                                                <div>
+                                                    <div className="bg-slate-50 px-3 py-1 text-[10px] font-bold uppercase text-slate-400">Users</div>
+                                                    {searchResults.users.map(u => (
+                                                        <SearchResultItem
+                                                            key={u.id} to={`/settings`} onClick={clearSearch}
+                                                            title={u.name} subtitle={u.role} icon={LayoutDashboard}
+                                                        />
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            {searchResults.products.length > 0 && (
+                                                <div>
+                                                    <div className="bg-slate-50 px-3 py-1 text-[10px] font-bold uppercase text-slate-400">Products</div>
+                                                    {searchResults.products.map(p => (
+                                                        <SearchResultItem
+                                                            key={p.id} to={`/merchants`} onClick={clearSearch}
+                                                            title={p.name} subtitle={`Rp ${p.sellingPrice}`} icon={Package}
+                                                        />
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </>
+                                    ) : null}
+                                </div>
+                            )}
                         </div>
                         <Button variant="ghost" size="icon" className="text-slate-500">
                             <Bell className="h-5 w-5" />

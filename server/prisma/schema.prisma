@@ -39,6 +39,18 @@ model Tenant {
   subscriptionRequests SubscriptionRequest[] // [FIX] Added relation
   wholesaleOrders      WholesaleOrder[]      // [FIX] Added relation
   tickets              SupportTicket[]       // [NEW]
+  notifications        Notification[]        // [NEW]
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  tenantId  String
+  title     String
+  body      String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
 }
 
 enum SubscriptionPlan {
@@ -144,6 +156,9 @@ model Store {
   debts       DebtRecord[]
   purchases   Purchase[]
   withdrawals Withdrawal[] // [NEW]
+  topUps      TopUpRequest[] // [NEW]
+  sentTransfers     WalletTransfer[] @relation("SentTransfers") // [NEW]
+  receivedTransfers WalletTransfer[] @relation("ReceivedTransfers") // [NEW]
 }
 
 // [NEW] Withdrawal Request
@@ -309,6 +324,11 @@ model Transaction {
   fulfillmentType FulfillmentType @default(DELIVERY)
   pickupCode    String?   @unique // For QR Scanning
   deliveryAddress String?
+  
+  // [NEW] O2O Fields
+  customerName    String?   // For Guest/Quick Buy without full account
+  customerPhone   String?   // For WhatsApp coordination
+  
   paymentProof    String?   // [NEW] URL/Path to proof
   paidAt          DateTime? 
 
@@ -420,6 +440,33 @@ enum CashflowCategory {
   RECEIVABLE_PAYMENT  // Terima Pelunasan Kasbon
   CAPITAL_IN          // Modal Masuk
   OTHER
+  TOPUP
+  TRANSFER
+  WITHDRAWAL
+}
+
+model TopUpRequest { // [NEW]
+  id            String   @id @default(uuid())
+  storeId       String
+  amount        Float
+  proofUrl      String   // Path to uploaded proof
+  status        RequestStatus @default(PENDING)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  store         Store    @relation(fields: [storeId], references: [id])
+}
+
+model WalletTransfer { // [NEW]
+  id              String   @id @default(uuid())
+  senderStoreId   String
+  receiverStoreId String
+  amount          Float
+  note            String?
+  createdAt       DateTime @default(now())
+  
+  sender          Store    @relation("SentTransfers", fields: [senderStoreId], references: [id])
+  receiver        Store    @relation("ReceivedTransfers", fields: [receiverStoreId], references: [id])
 }
 
 model DebtRecord { // [NEW] "Kasbon" Tracking
@@ -651,3 +698,38 @@ enum SenderType {
   SYSTEM
 }
 
+
+// ================================
+// MOBILE APP CONFIGURATION
+// ================================
+
+model AppMenu {
+  id        String   @id @default(uuid())
+  key       String   @unique // e.g. "POS", "STOCK", "REPORT"
+  label     String   // Display Name
+  icon      String   // Icon Name (Lucide/Material)
+  route     String   // App Route / Screen Name
+  isActive  Boolean  @default(true)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ================================
+// CONTENT MANAGEMENT SYSTEM (BLOG)
+// ================================
+
+model BlogPost {
+  id          String   @id @default(uuid())
+  title       String
+  slug        String   @unique
+  summary     String?  
+  content     String   // Text or HTML
+  imageUrl    String?
+  author      String?  // Name of author
+  tags        String[]
+  status      String   @default("DRAFT") // DRAFT, PUBLISHED
+  publishedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

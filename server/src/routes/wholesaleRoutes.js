@@ -20,13 +20,16 @@ router.put('/orders/:id/status', controller.updateOrderStatus);
 // Coupon Routes (Admin)
 router.get('/coupons', controller.getCoupons);
 router.post('/coupons', controller.createCoupon);
+router.put('/coupons/:id', controller.updateCoupon); // [NEW]
 router.patch('/coupons/:id', controller.toggleCoupon);
 router.delete('/coupons/:id', controller.deleteCoupon);
 router.post('/validate-coupon', controller.validateCoupon); // Public/Mobile
 
 // Banner Routes
-router.post('/wholesale/banners', controller.createBanner);
-router.get('/wholesale/banners', controller.getBanners);
-router.delete('/wholesale/banners/:id', controller.deleteBanner);
+router.post('/banners', controller.createBanner);
+router.put('/banners/:id', controller.updateBanner); // [NEW]
+router.get('/banners', controller.getBanners);
+router.delete('/banners/:id', controller.deleteBanner);
+
 
 module.exports = router;
