@@ -146,7 +146,13 @@ const getProfile = async (req, res) => {
                 name: true,
                 email: true,
                 role: true,
-                createdAt: true
+                createdAt: true,
+                tenant: {
+                    select: { id: true, name: true, plan: true, subscriptionStatus: true }
+                },
+                store: {
+                    select: { id: true, name: true, waNumber: true, location: true }
+                }
             }
         });
         if (!user) return errorResponse(res, "User not found", 404);

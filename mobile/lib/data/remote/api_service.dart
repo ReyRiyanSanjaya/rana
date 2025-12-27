@@ -10,8 +10,18 @@ class ApiService {
     return _instance;
   }
 
+  // CONFIGURATION
+  // static const String _prodUrl = 'https://api.yourdomain.com/api';
+  static const String _devUrl = 'http://10.0.2.2:4000/api';
+  static const String _webDevUrl = 'http://localhost:4000/api';
+  
+  // Set this to TRUE for production build
+  static const bool _isProduction = false; 
+
   final Dio _dio = Dio(BaseOptions(
-    baseUrl: kIsWeb ? 'http://localhost:4000/api' : 'http://10.0.2.2:4000/api', 
+    baseUrl: _isProduction 
+      ? 'https://api.rana-app.com/api' // Replace with real domain
+      : (kIsWeb ? _webDevUrl : _devUrl),
     connectTimeout: const Duration(seconds: 30),
     receiveTimeout: const Duration(seconds: 30),
   ));
@@ -81,6 +91,18 @@ class ApiService {
       rethrow; // Re-throw other DioErrors or network issues
     } catch (e) {
       throw Exception('Login failed: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> getProfile() async {
+    try {
+      final response = await _dio.get('/auth/me', options: Options(headers: {'Authorization': 'Bearer ${_token}'}));
+      if (response.data['success'] == true) {
+        return response.data['data'];
+      }
+      throw Exception(response.data['message']);
+    } catch (e) {
+      throw Exception('Failed to load profile: $e');
     }
   }
 
@@ -363,19 +385,8 @@ class ApiService {
   // 1. Announcements
   Future<List<dynamic>> getAnnouncements() async {
     try {
-      final response = await _dio.get('/announcements/active'); // Assuming public or merchant route
-      // If admin route '/admin/announcements' was used for all, we need a merchant-specific one or reuse.
-      // Let's assume we need to adjust server or use what we have. 
-      // Admin Controller `getAnnouncements` returns all. We might want a filtering one. 
-      // For now, let's use the one we built or a new one? 
-      // Wait, in previous turn I only made ADMIN routes. I need CLIENT routes for these!
-      // Checking server routes...
-      // I only added /admin/tickets and /admin/announcements. 
-      // I need to add /api/tickets and /api/announcements for MERCHANTS.
-      // I will add the client code here assuming I will fix the server next.
-      
-      final res = await _dio.get('/system/announcements'); 
-      return res.data['data'];
+      final response = await _dio.get('/system/announcements');
+      return response.data['data'];
     } catch (e) {
       return [];
     }
@@ -421,15 +432,28 @@ class ApiService {
   }
 
   // 3. System Settings (Bank Info)
+  // 3. System Settings (Bank Info & CMS)
   Future<Map<String, String>> getSystemSettings() async {
     try {
-      final response = await _dio.get('/settings/public'); // Need a public/merchant route
-      final List<dynamic> list = response.data['data'];
-      // Convert list to map
       final Map<String, String> settings = {};
-      for (var item in list) {
-        settings[item['key']] = item['value'];
-      }
+
+      // 1. Fetch CMS Content
+      try {
+        final cmsRes = await _dio.get('/system/cms-content'); 
+        final Map<String, dynamic> cmsData = cmsRes.data['data'];
+        cmsData.forEach((key, value) {
+          settings[key] = value.toString();
+        });
+      } catch (_) {}
+
+      // 2. Fetch Payment Info
+      try {
+        final payRes = await _dio.get('/system/payment-info');
+        final Map<String, dynamic> payData = payRes.data['data'];
+        settings['PLATFORM_QRIS_URL'] = payData['qrisUrl'] ?? '';
+        settings['PLATFORM_BANK_INFO'] = payData['bankInfo'] ?? '';
+      } catch (_) {}
+
       return settings;
     } catch (e) {
       return {};
@@ -532,7 +556,6 @@ class ApiService {
       return [];
     }
   }
-  // 7. Blog System
   Future<List<dynamic>> getBlogPosts() async {
     try {
       final response = await _dio.get('/blog'); // Public route
@@ -540,6 +563,71 @@ class ApiService {
     } catch (e) {
       print('Failed to fetch blog posts: $e');
       return [];
+    }
+  }
+
+  // 8. PPOB / Digital Products
+  Future<List<dynamic>> getDigitalProducts(String category) async {
+    try {
+      final response = await _dio.get('/ppob/products', queryParameters: {'category': category}, options: Options(headers: {'Authorization': 'Bearer ${_token}'}));
+      return response.data['data'] ?? [];
+    } catch (e) {
+       print('PPOB Fetch Failed: $e');
+       return [];
+    }
+  }
+
+  Future<Map<String, dynamic>> checkDigitalBill(String customerId, String type) async {
+    try {
+      final response = await _dio.post('/ppob/inquiry', data: {
+        'customerId': customerId,
+        'type': type
+      }, options: Options(headers: {'Authorization': 'Bearer ${_token}'}));
+      return response.data['data'];
+    } catch (e) {
+      throw Exception('Inquiry Failed');
+    }
+  }
+
+  Future<void> purchaseDigitalProduct({required String sku, required double amount, required String customerId}) async {
+    try {
+      final response = await _dio.post('/ppob/transaction', data: {
+        'productId': sku,
+        'amount': amount,
+        'customerId': customerId
+      }, options: Options(headers: {'Authorization': 'Bearer ${_token}'}));
+      
+      if (response.data['success'] != true) throw Exception(response.data['message']);
+    } catch (e) {
+      if (e is DioException && e.response?.statusCode == 402) {
+         throw Exception('Saldo tidak mencukupi');
+      }
+      throw Exception('Transaksi Gagal: ${e.toString()}');
+    }
+  }
+
+  // --- Reporting (Hybrid) ---
+  Future<Map<String, dynamic>> getDashboardStats({required String date, String? storeId}) async {
+     try {
+       final response = await _dio.get('/reports/dashboard', 
+         queryParameters: {'date': date, 'storeId': storeId},
+         options: Options(headers: {'Authorization': 'Bearer ${_token}'})
+       );
+       return response.data['data'];
+     } catch (e) {
+       throw Exception('Failed to fetch dashboard stats');
+     }
+  }
+
+  Future<Map<String, dynamic>> getProfitLoss({required String startDate, required String endDate}) async {
+    try {
+      final response = await _dio.get('/reports/profit-loss', 
+         queryParameters: {'startDate': startDate, 'endDate': endDate},
+         options: Options(headers: {'Authorization': 'Bearer ${_token}'})
+       );
+       return response.data['data'];
+    } catch (e) {
+      throw Exception('Failed to fetch P&L');
     }
   }
 }

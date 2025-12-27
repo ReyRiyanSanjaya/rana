@@ -104,7 +104,7 @@ export default function SubscriptionRequests() {
                                         <TableCell>
                                             <div className="flex flex-col">
                                                 <span className="font-medium text-slate-900">{req.tenant?.name || 'Unknown'}</span>
-                                                <span className="text-xs text-slate-500">{req.tenant?.email || 'No email'}</span>
+                                                <span className="text-xs text-slate-500">{req.tenant?.users?.[0]?.email || 'No email'}</span>
                                             </div>
                                         </TableCell>
                                         <TableCell>

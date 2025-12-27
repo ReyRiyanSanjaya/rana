@@ -77,13 +77,11 @@ const getActiveAnnouncements = async (req, res) => {
     }
 };
 
-// [NEW] Get Notifications (Public/System but requires Tenant Context via Header/Query?)
-// Actually mobile app probably sends tenantId in header or we infer from context.
-// For now let's assume query or header 'x-tenant-id'.
 const getNotifications = async (req, res) => {
     try {
-        const tenantId = req.headers['x-tenant-id'];
-        if (!tenantId) return successResponse(res, []); // Silent fail if no context
+        const { tenantId } = req.user; // Extracted from verifyToken middleware
+
+        if (!tenantId) return successResponse(res, []);
 
         const notifications = await prisma.notification.findMany({
             where: { tenantId },

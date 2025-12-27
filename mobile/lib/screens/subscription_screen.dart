@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart'; // [NEW]
 import 'package:provider/provider.dart';
 import 'package:rana_merchant/providers/subscription_provider.dart';
 
@@ -11,6 +13,13 @@ class SubscriptionScreen extends StatefulWidget {
 }
 
 class _SubscriptionScreenState extends State<SubscriptionScreen> {
+  File? _imageFile;
+  final _picker = ImagePicker();
+
+  Future<void> _pickImage() async {
+    final picked = await _picker.pickImage(source: ImageSource.gallery);
+    if (picked != null) setState(() => _imageFile = File(picked.path));
+  }
   
   @override
   void initState() {
@@ -140,41 +149,49 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           ),
         ),
         const SizedBox(height: 24),
+        const SizedBox(height: 24),
+        
+        // Image Picker UI
+        Text('Bukti Transfer', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        InkWell(
+          onTap: _pickImage,
+          child: Container(
+            height: 150,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(12),
+              color: Colors.grey.shade50
+            ),
+            child: _imageFile == null
+              ? Column(mainAxisAlignment: MainAxisAlignment.center, children: const [Icon(Icons.cloud_upload, color: Colors.grey, size: 40), Text('Tap untuk upload bukti', style: TextStyle(color: Colors.grey))])
+              : ClipRRect(borderRadius: BorderRadius.circular(11), child: Image.file(_imageFile!, fit: BoxFit.cover)),
+          ),
+        ),
+        const SizedBox(height: 24),
+
         FilledButton(
-          onPressed: () {
-            // Simulate Upload Logic
-            showDialog(
-              context: context,
-              builder: (ctx) => AlertDialog(
-                title: const Text('Simulasi Upload'),
-                content: const Text('Anggap user sudah upload bukti transfer. Lanjutkan?'),
-                actions: [
-                  TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
-                  FilledButton(
-                    onPressed: () async {
-                      Navigator.pop(ctx); 
-                      try {
-                        await sub.requestUpgrade('https://via.placeholder.com/150'); // Dummy proof for now
-                        if(mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bukti terkirim! Menunggu verifikasi.'), backgroundColor: Colors.green));
-                        }
-                      } catch (e) {
-                         if(mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal: $e'), backgroundColor: Colors.red));
-                         }
-                      }
-                    }, 
-                    child: const Text('Kirim Bukti')
-                  ),
-                ],
-              )
-            );
+          onPressed: _imageFile == null ? null : () async {
+              try {
+                await sub.requestUpgrade(_imageFile!);
+                if(mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bukti terkirim! Menunggu verifikasi.'), backgroundColor: Colors.green));
+                }
+              } catch (e) {
+                  if(mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal: $e'), backgroundColor: Colors.red));
+                  }
+              }
           },
           style: FilledButton.styleFrom(
             padding: const EdgeInsets.symmetric(vertical: 16),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            backgroundColor: _imageFile == null ? Colors.grey : Colors.blue
           ),
-          child: Text('Upload Bukti Transfer', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold)),
+          child: sub.isLoading 
+            ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) 
+            : Text('Kirim Bukti Transfer', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold)),
         ),
       ],
     );

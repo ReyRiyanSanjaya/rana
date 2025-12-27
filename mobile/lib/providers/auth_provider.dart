@@ -29,8 +29,17 @@ class AuthProvider extends ChangeNotifier {
          throw Exception(response['message'] ?? 'Login Failed');
       }
       
+      
       _isAuthenticated = true;
       notifyListeners();
+
+      // [NEW] Trigger Initial Data Sync
+      try {
+         await _api.syncAllData();
+         notifyListeners(); // Refresh UI with new data
+      } catch (e) {
+         debugPrint('Initial Sync Warning: $e');
+      }
     } catch (e) {
       rethrow;
     }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/services.dart'; // [NEW] Clipboard
 import 'package:provider/provider.dart';
 import 'package:rana_merchant/providers/subscription_provider.dart';
 import 'package:rana_merchant/data/remote/api_service.dart';
@@ -14,6 +15,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   Map<String, String> bankInfo = {};
+  Map<String, dynamic> userProfile = {}; // [NEW]
 
   @override
   void initState() {
@@ -23,7 +25,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _loadSettings() async {
     final data = await ApiService().getSystemSettings();
-    if (mounted) setState(() => bankInfo = data);
+    final profile = await ApiService().getProfile(); // [NEW]
+    if (mounted) {
+      setState(() {
+        bankInfo = data;
+        userProfile = profile;
+      });
+    }
   }
 
   @override
@@ -66,7 +74,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             actions: [
-               IconButton(onPressed: (){}, icon: const Icon(Icons.logout))
+                IconButton(
+                 onPressed: () {
+                   // Clear internal state
+                   Provider.of<AuthProvider>(context, listen: false).logout();
+                   // Clear any strict cache if needed, but wrapper handles nav
+                 }, 
+                 icon: const Icon(Icons.logout)
+               )
             ],
           ),
           SliverList(
@@ -118,15 +133,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 padding: EdgeInsets.all(16.0),
                 child: Text('Akun & Toko', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo)),
               ),
-              ListTile(
                 leading: const Icon(Icons.store),
                 title: const Text('Profil Toko'),
-                subtitle: const Text('Kopi Kenangan - Cabang 1'),
+                subtitle: Text(userProfile['tenant']?['name'] ?? userProfile['store']?['name'] ?? 'Memuat...'),
               ),
+              // [NEW] Display Merchant ID
+              if (userProfile.isNotEmpty)
+                ListTile(
+                  leading: const Icon(Icons.fingerprint, color: Color(0xFFBF092F)),
+                  title: const Text('ID Merchant (Store ID)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFBF092F))),
+                  subtitle: Text(userProfile['store']?['id'] ?? userProfile['tenant']?['id'] ?? 'Belum ada ID'),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.copy, size: 20),
+                    onPressed: () {
+                      final id = userProfile['store']?['id'] ?? userProfile['tenant']?['id'];
+                      if (id != null) {
+                        Clipboard.setData(ClipboardData(text: id));
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ID Merchant disalin')));
+                      }
+                    },
+                  ),
+                ),
+
                ListTile(
                 leading: const Icon(Icons.phone),
                 title: const Text('Nomor WA Owner (Laporan)'),
-                subtitle: const Text('081234567890'),
+                subtitle: Text(userProfile['store']?['waNumber'] ?? '-'),
               ),
               const Divider(),
                 ListTile(

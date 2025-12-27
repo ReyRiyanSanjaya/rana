@@ -50,6 +50,7 @@ app.use('/api/tickets', require('./routes/merchantTicketRoutes')); // [NEW] Merc
 
 const wholesaleRoutes = require('./routes/wholesaleRoutes');
 app.use('/api/wholesale', wholesaleRoutes); // [NEW]
+app.use('/api/ppob', require('./routes/ppobRoutes')); // [NEW] Digital Products
 app.use('/api/blog', require('./routes/blogRoutes')); // [NEW] Blog System
 
 // Error Handler

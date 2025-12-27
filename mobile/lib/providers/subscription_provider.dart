@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:rana_merchant/data/remote/api_service.dart';
 
@@ -65,12 +67,16 @@ class SubscriptionProvider with ChangeNotifier {
     }
   }
 
-  Future<void> requestUpgrade(String proofUrl) async {
+  Future<void> requestUpgrade(File proofImage) async {
     _isLoading = true;
     notifyListeners();
     try {
+      // Encode Image to Base64
+      final bytes = await proofImage.readAsBytes();
+      final base64String = "data:image/jpeg;base64,${base64Encode(bytes)}";
+
       // API now takes tenantId from token
-      await ApiService().requestSubscription(proofUrl);
+      await ApiService().requestSubscription(base64String);
       _status = SubscriptionStatus.pending;
     } catch (e) {
        print('Error requesting upgrade: $e');

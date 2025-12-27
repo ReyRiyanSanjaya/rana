@@ -789,7 +789,15 @@ const getSubscriptionRequests = async (req, res) => {
             where: { status: 'PENDING' },
             include: {
                 tenant: {
-                    select: { name: true, plan: true }
+                    select: {
+                        name: true,
+                        plan: true,
+                        users: {
+                            where: { role: 'OWNER' },
+                            select: { email: true },
+                            take: 1
+                        }
+                    }
                 }
             },
             orderBy: { createdAt: 'desc' }

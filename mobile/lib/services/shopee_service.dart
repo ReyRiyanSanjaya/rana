@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:rana_merchant/data/remote/api_service.dart';
 
 class ShopeeService {
   // Singleton pattern
@@ -6,53 +7,27 @@ class ShopeeService {
   factory ShopeeService() => _instance;
   ShopeeService._internal();
 
-  /// Mock: Get Product List based on Service Type
-  /// Returns a list of products with 'id', 'name', 'price', and 'discount' status
+  final ApiService _api = ApiService();
+
+  /// Get Product List based on Service Type from Server
   Future<List<Map<String, dynamic>>> getProducts(String category) async {
-    // Simulate Network Latency
-    await Future.delayed(const Duration(milliseconds: 800)); 
-
-    category = category.toLowerCase();
-
-    if (category.contains('pulsa') || category.contains('data')) {
-      return [
-        {'id': 'P5', 'name': 'Telkomsel 5.000', 'price': 5250, 'promo': false},
-        {'id': 'P10', 'name': 'Telkomsel 10.000', 'price': 10200, 'promo': false},
-        {'id': 'P25', 'name': 'Telkomsel 25.000', 'price': 24900, 'promo': true}, // Promo
-        {'id': 'P50', 'name': 'Telkomsel 50.000', 'price': 49500, 'promo': true}, // Murah
-        {'id': 'P100', 'name': 'Telkomsel 100.000', 'price': 98500, 'promo': false},
-        {'id': 'I5', 'name': 'Indosat 5.000', 'price': 5800, 'promo': false},
-        {'id': 'I10', 'name': 'Indosat 10.000', 'price': 10800, 'promo': false},
-      ];
-    } else if (category.contains('listrik') || category.contains('pln')) {
-       return [
-        {'id': 'PLN20', 'name': 'Token PLN 20.000', 'price': 20500, 'promo': false},
-        {'id': 'PLN50', 'name': 'Token PLN 50.000', 'price': 50500, 'promo': false},
-        {'id': 'PLN100', 'name': 'Token PLN 100.000', 'price': 100500, 'promo': false},
-        {'id': 'PLN200', 'name': 'Token PLN 200.000', 'price': 200500, 'promo': false},
-      ];
-    } else if (category.contains('game')) {
-       return [
-        {'id': 'FF70', 'name': 'Free Fire 70 Diamonds', 'price': 9500, 'promo': true},
-        {'id': 'FF140', 'name': 'Free Fire 140 Diamonds', 'price': 19000, 'promo': false},
-        {'id': 'ML86', 'name': 'Mobile Legends 86 Diamonds', 'price': 22000, 'promo': false},
-      ];
-    } else {
-      // Generic / Bill Payment (Inquiry based)
+    try {
+      final List<dynamic> result = await _api.getDigitalProducts(category);
+      return result.map((e) => Map<String, dynamic>.from(e)).toList();
+    } catch (e) {
       return [];
     }
   }
 
-  /// Mock: Inquiry Bill (Check Tagihan)
+  /// Inquiry Bill (Check Tagihan) from Server
   Future<Map<String, dynamic>> checkBill(String customerId, String type) async {
-    await Future.delayed(const Duration(seconds: 1));
-    // Always return success for verified ID
-    return {
-      'customer_name': 'RANA MERCHANT TEST',
-      'bill_amount': 150000,
-      'admin_fee': 2500,
-      'total': 152500,
-      'status': 'UNPAID'
-    };
+    try {
+      return await _api.checkDigitalBill(customerId, type);
+    } catch (e) {
+      return {
+        'status': 'FAILED',
+        'message': e.toString()
+      };
+    }
   }
 }

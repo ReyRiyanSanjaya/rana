@@ -38,7 +38,63 @@ class _ReportScreenState extends State<ReportScreen> {
     setState(() => _isLoading = true);
     
     try {
-      // Align dates to start/end of day
+      // Hybrid Aproach: Try Server First
+      final startStr = _startDate.toIso8601String().split('T')[0];
+      final endStr = _endDate.toIso8601String().split('T')[0];
+
+      // 1. Fetch High Level P&L from Server
+      final pnlData = await ApiService().getProfitLoss(startDate: startStr, endDate: endStr);
+      final pnl = pnlData['pnl'] ?? {};
+      
+      // 2. We still need trend/charts which might not be fully in PnL, 
+      // but let's assume we use Local for granular lists (Top Products, Categories) 
+      // UNTIL we make endpoints for those.
+      // Actually, let's use Local for charts for now to ensure speed, 
+      // BUT overwrite the "Executive Summary" numbers with Server Truth if available.
+      
+      // Fetch Local Detailed Data (Charts etc)
+      final start = DateTime(_startDate.year, _startDate.month, _startDate.day, 0, 0, 0);
+      final end = DateTime(_endDate.year, _endDate.month, _endDate.day, 23, 59, 59);
+
+      final localSummary = await DatabaseHelper.instance.getSalesReport(start: start, end: end);
+      final top = await DatabaseHelper.instance.getTopSellingProducts(limit: 5);
+      final categories = await DatabaseHelper.instance.getSalesByCategory(start: start, end: end);
+      final payments = await DatabaseHelper.instance.getSalesByPaymentMethod(start: start, end: end);
+      final lowStock = await DatabaseHelper.instance.getLowStockProducts(threshold: 5);
+      final expenses = await DatabaseHelper.instance.getExpenses(start: start, end: end);
+
+      if (mounted) {
+        setState(() {
+          // Merge: Use Server numbers for Money, Local for Lists (for now)
+          // Ideally we fetch everything from server, but to be safe and complete:
+          _summary = {
+            'grossSales': (pnl['revenue'] as num?)?.toDouble() ?? localSummary['grossSales'],
+            'netProfit': (pnl['netProfit'] as num?)?.toDouble() ?? localSummary['netProfit'],
+            'totalExpenses': (pnl['totalExpenses'] as num?)?.toDouble() ?? localSummary['totalExpenses'],
+            // Server doesn't send avg order value yet, stick to local or calc
+            'totalTransactions': localSummary['totalTransactions'], 
+            'averageOrderValue': localSummary['averageOrderValue'],
+            'trend': localSummary['trend'] // Keep local trend for chart responsiveness
+          };
+
+          _topProducts = List<Map<String, dynamic>>.from(top);
+          _categorySales = List<Map<String, dynamic>>.from(categories);
+          _paymentMethods = List<Map<String, dynamic>>.from(payments);
+          _lowStock = List<Map<String, dynamic>>.from(lowStock);
+          _expenses = List<Map<String, dynamic>>.from(expenses);
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Server Fetch Failed, Falling back to Local: $e');
+      // FALLBACK TO PURE LOCAL
+      if (mounted) {
+         await _fetchLocalOnly();
+      }
+    }
+  }
+
+  Future<void> _fetchLocalOnly() async {
       final start = DateTime(_startDate.year, _startDate.month, _startDate.day, 0, 0, 0);
       final end = DateTime(_endDate.year, _endDate.month, _endDate.day, 23, 59, 59);
 
@@ -47,45 +103,22 @@ class _ReportScreenState extends State<ReportScreen> {
       final categories = await DatabaseHelper.instance.getSalesByCategory(start: start, end: end);
       final payments = await DatabaseHelper.instance.getSalesByPaymentMethod(start: start, end: end);
       final lowStock = await DatabaseHelper.instance.getLowStockProducts(threshold: 5);
-      final expenses = await DatabaseHelper.instance.getExpenses(start: start, end: end); // [NEW]
+      final expenses = await DatabaseHelper.instance.getExpenses(start: start, end: end);
 
       if (mounted) {
         setState(() {
           _summary = Map<String, dynamic>.from(summary);
-          // Ensure trend is strictly typed
-          if (_summary['trend'] is List) {
+           if (_summary['trend'] is List) {
              _summary['trend'] = List<Map<String, dynamic>>.from(_summary['trend']);
           }
-
           _topProducts = List<Map<String, dynamic>>.from(top);
           _categorySales = List<Map<String, dynamic>>.from(categories);
           _paymentMethods = List<Map<String, dynamic>>.from(payments);
           _lowStock = List<Map<String, dynamic>>.from(lowStock);
-          _expenses = List<Map<String, dynamic>>.from(expenses); // [NEW]
+          _expenses = List<Map<String, dynamic>>.from(expenses);
           _isLoading = false;
         });
       }
-    } catch (e) {
-      debugPrint('Error fetching report: $e');
-      if (mounted) {
-         setState(() {
-           _isLoading = false;
-           // Provide fallback empty data to prevent UI crash
-           _summary = {
-             'totalTransactions': 0, 
-             'grossSales': 0.0, 
-             'netProfit': 0.0, 
-             'totalExpenses': 0.0, // [FIX] Add fallback
-             'averageOrderValue': 0.0, 
-             'trend': <Map<String, dynamic>>[] // [FIX] Strictly typed empty list
-           };
-           _topProducts = [];
-           _categorySales = [];
-           _paymentMethods = [];
-           _lowStock = [];
-         });
-      }
-    }
   }
 
   Future<void> _pickDateRange() async {

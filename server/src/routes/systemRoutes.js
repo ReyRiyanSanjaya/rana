@@ -6,10 +6,12 @@ const systemController = require('../controllers/systemController');
 router.get('/payment-info', systemController.getPaymentInfo);
 router.get('/announcements', systemController.getActiveAnnouncements);
 router.get('/app-menus', systemController.getAppMenus);
-router.get('/notifications', systemController.getNotifications); // [NEW] // [NEW] Mobile App Menu
 
-// Public Announcements
-router.get('/announcements', systemController.getActiveAnnouncements);
-router.get('/cms-content', systemController.getPublicSettings); // [NEW]
+// Protected System Info
+const verifyToken = require('../middleware/auth');
+router.get('/notifications', verifyToken, systemController.getNotifications); 
+
+// Public Settings for CMP/Content
+router.get('/cms-content', systemController.getPublicSettings);
 
 module.exports = router;

@@ -264,6 +264,57 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     var cart = Provider.of<CartProvider>(context);
+    final sub = Provider.of<SubscriptionProvider>(context);
+
+    // [SECURITY] Hard Lock if Expired
+    if (sub.isLocked) {
+       return Scaffold(
+         body: Container(
+           width: double.infinity,
+           padding: const EdgeInsets.all(32),
+           decoration: const BoxDecoration(
+             gradient: LinearGradient(colors: [Color(0xFF991B1B), Color(0xFFEF4444)], begin: Alignment.topLeft, end: Alignment.bottomRight)
+           ),
+           child: Column(
+             mainAxisAlignment: MainAxisAlignment.center,
+             children: [
+               Container(
+                 padding: const EdgeInsets.all(24),
+                 decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                 child: const Icon(Icons.lock_person, size: 64, color: Color(0xFF991B1B)),
+               ),
+               const SizedBox(height: 32),
+               Text('Akses Terkunci', style: GoogleFonts.poppins(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
+               const SizedBox(height: 16),
+               Text(
+                 'Masa uji coba atau paket berlangganan Anda telah habis. Silakan perbarui langganan untuk melanjutkan operasional toko.', 
+                 textAlign: TextAlign.center,
+                 style: GoogleFonts.poppins(fontSize: 16, color: Colors.white.withOpacity(0.9))
+               ),
+               const SizedBox(height: 48),
+               SizedBox(
+                 width: double.infinity,
+                 height: 56,
+                 child: ElevatedButton(
+                   onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SubscriptionScreen())),
+                   style: ElevatedButton.styleFrom(
+                     backgroundColor: Colors.white,
+                     foregroundColor: const Color(0xFF991B1B),
+                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))
+                   ),
+                   child: Text('Perpanjang Sekarang', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold)),
+                 ),
+               ),
+               const SizedBox(height: 24),
+               TextButton(
+                  onPressed: () => sub.codeCheckSubscription(), // Retry
+                  child: const Text('Refresh Status', style: TextStyle(color: Colors.white70))
+               )
+             ],
+           ),
+         ),
+       );
+    }
 
     return Scaffold(
       key: _scaffoldKey, // [FIX] Assigned Key

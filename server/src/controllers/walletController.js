@@ -267,6 +267,16 @@ const payTransaction = async (req, res) => {
                 data: { balance: { decrement: numericAmount } }
             });
 
+            // Map generic/client categories to Prisma Enum
+            let dbCategory = 'OTHER';
+            const catUpper = (category || 'PURCHASE').toUpperCase();
+
+            if (catUpper === 'PPOB' || catUpper === 'PURCHASE') {
+                dbCategory = 'EXPENSE_PURCHASE';
+            } else if (['SALES', 'EXPENSE_OPERATIONAL', 'EXPENSE_PETTY', 'DEBT_PAYMENT', 'RECEIVABLE_PAYMENT', 'CAPITAL_IN', 'TOPUP', 'TRANSFER', 'WITHDRAWAL'].includes(catUpper)) {
+                dbCategory = catUpper;
+            }
+
             // Log
             await tx.cashflowLog.create({
                 data: {
@@ -274,7 +284,7 @@ const payTransaction = async (req, res) => {
                     storeId,
                     amount: numericAmount,
                     type: 'CASH_OUT',
-                    category: category || 'PURCHASE', // Default to PURCHASE (PPOB/Bill)
+                    category: dbCategory,
                     description: description || 'Payment',
                     occurredAt: new Date()
                 }

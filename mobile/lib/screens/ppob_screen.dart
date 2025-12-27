@@ -208,15 +208,57 @@ class _PpobScreenState extends State<PpobScreen> with SingleTickerProviderStateM
   }
 
   Widget _buildHistoryTab() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.history_edu, size: 64, color: Colors.grey[300]),
-          const SizedBox(height: 16),
-          Text('Belum ada transaksi PPOB', style: GoogleFonts.poppins(color: Colors.grey)),
-        ],
-      ),
+    return Consumer<WalletProvider>(
+      builder: (context, wallet, _) {
+        final ppobHistory = wallet.history.where((txn) {
+          // Filter history for PPOB relates entries
+          // Server category: EXPENSE_PURCHASE for PPOB
+          // Or description contains "Beli"
+          final cat = txn['category'] ?? '';
+          final desc = txn['description'] ?? '';
+          return cat == 'EXPENSE_PURCHASE' || desc.contains('Beli');
+        }).toList();
+
+        if (ppobHistory.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.history_edu, size: 64, color: Colors.grey[300]),
+                const SizedBox(height: 16),
+                Text('Belum ada transaksi PPOB', style: GoogleFonts.poppins(color: Colors.grey)),
+              ],
+            ),
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: ppobHistory.length,
+          itemBuilder: (context, index) {
+            final txn = ppobHistory[index];
+            final date = DateTime.tryParse(txn['occurredAt'] ?? '') ?? DateTime.now();
+            final fmtDate = DateFormat('dd MMM HH:mm').format(date);
+            final amount = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(txn['amount']);
+
+            return Card(
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
+              margin: const EdgeInsets.only(bottom: 12),
+              child: ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: Colors.blue.shade50, shape: BoxShape.circle),
+                  child: Icon(Icons.receipt_long, color: Colors.blue.shade700),
+                ),
+                title: Text(txn['description'] ?? 'Transaksi PPOB', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                subtitle: Text(fmtDate, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                trailing: Text(amount, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
+              ),
+            );
+          },
+        );
+      }
     );
   }
 
@@ -322,26 +364,30 @@ class _TransactionSheetState extends State<_TransactionSheet> {
 
           const SizedBox(height: 24),
           SizedBox(
-            width: double.infinity,
-            height: 50,
             child: Consumer<WalletProvider>(
               builder: (context, wallet, _) {
                 return ElevatedButton(
                   onPressed: wallet.isLoading ? null : () async {
                      final amountInput = _products != null && _selectedSku != null 
                         ? _products!.firstWhere((p) => p['id'] == _selectedSku)['price']
-                        : 0; // Handle manual input if needed but for now PPOB is product based
+                        : 0.0;
                      
                      if (amountInput == 0) return;
 
                      try {
-                        await wallet.payTransaction(
-                          (amountInput as num).toDouble(), 
-                          "Beli ${widget.serviceName} - ${_selectedSku ?? ''}"
+                        // 1. Call API
+                        await ApiService().purchaseDigitalProduct(
+                          sku: _selectedSku!, 
+                          amount: (amountInput as num).toDouble(),
+                          customerId: '08123456789' 
                         );
+
+                        // 2. Reload Wallet
+                        await wallet.loadData();
+
                         if (context.mounted) {
                           Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pembayaran Berhasil!'), backgroundColor: Colors.green));
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pembayaran Sukses!'), backgroundColor: Colors.green));
                         }
                      } catch (e) {
                         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal: ${e.toString()}'), backgroundColor: Colors.red));
