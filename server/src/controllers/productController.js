@@ -155,13 +155,89 @@ const updateProduct = async (req, res) => {
 const deleteProduct = async (req, res) => {
     try {
         const { id } = req.params;
-        await prisma.product.update({
+
+        const product = await prisma.product.update({
             where: { id },
-            data: { isActive: false }
+            data: {
+                isActive: false,
+                deletedAt: new Date()
+            }
         });
+
         return successResponse(res, null, "Product deleted successfully");
     } catch (error) {
         return errorResponse(res, "Failed to delete product", 500, error);
+    }
+};
+
+// [NEW] Marketing: Apply Discount/Flash Sale
+const applyDiscount = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { discountPercentage, newPrice, promoType, label } = req.body;
+
+        const product = await prisma.product.findUnique({ where: { id } });
+        if (!product) return errorResponse(res, "Product not found", 404);
+
+        // Store original price if not already set
+        let basePrice = product.originalPrice ? product.originalPrice : product.sellingPrice;
+
+        let finalSellingPrice;
+
+        // Support both old (discountPercentage) and new (newPrice) format
+        if (newPrice !== undefined && newPrice !== null) {
+            // New format: direct price
+            finalSellingPrice = parseFloat(newPrice);
+        } else if (discountPercentage !== undefined && discountPercentage !== null) {
+            // Old format: calculate from percentage
+            const discountAmount = (basePrice * discountPercentage) / 100;
+            finalSellingPrice = basePrice - discountAmount;
+        } else {
+            return errorResponse(res, "Please provide newPrice or discountPercentage", 400);
+        }
+
+        // Generate promo label based on type
+        const promoLabel = label || (promoType === 'flashsale' ? '⚡ Flash Sale' : '🔥 Promo Special');
+
+        const updated = await prisma.product.update({
+            where: { id },
+            data: {
+                originalPrice: basePrice, // Ensure base is saved
+                sellingPrice: finalSellingPrice,
+                discountLabel: promoLabel
+            }
+        });
+
+        return successResponse(res, updated, `${promoType === 'flashsale' ? 'Flash Sale' : 'Discount'} applied. New price: ${finalSellingPrice}`);
+
+    } catch (error) {
+        return errorResponse(res, "Failed to apply discount", 500, error);
+    }
+};
+
+// [NEW] Marketing: Revert Price
+const revertPrice = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const product = await prisma.product.findUnique({ where: { id } });
+
+        if (!product || !product.originalPrice) {
+            return errorResponse(res, "No discount to revert or product not found", 400);
+        }
+
+        const updated = await prisma.product.update({
+            where: { id },
+            data: {
+                sellingPrice: product.originalPrice,
+                originalPrice: null, // Clear it
+                discountLabel: null
+            }
+        });
+
+        return successResponse(res, updated, "Price reverted to normal");
+
+    } catch (error) {
+        return errorResponse(res, "Failed to revert price", 500, error);
     }
 };
 
@@ -169,5 +245,7 @@ module.exports = {
     getProducts,
     createProduct,
     updateProduct,
-    deleteProduct
+    deleteProduct,
+    applyDiscount,
+    revertPrice
 };

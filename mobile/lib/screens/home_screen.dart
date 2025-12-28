@@ -146,7 +146,7 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     // [NEW] Auto-Sync Loop
-    Timer.periodic(const Duration(seconds: 30), (timer) async {
+    Timer.periodic(const Duration(seconds: 1), (timer) async {
        final isOnline = await ConnectivityService().hasInternetConnection();
        if (isOnline) {
          await SyncService().syncTransactions();

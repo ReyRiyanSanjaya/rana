@@ -421,7 +421,8 @@ const getMerchants = async (req, res) => {
                         name: true,
                         plan: true,
                         subscriptionStatus: true,
-                        trialEndsAt: true
+                        trialEndsAt: true,
+                        subscriptionEndsAt: true // [NEW] Include subscription expiry
                     }
                 }
             },
@@ -661,25 +662,30 @@ const sendNotification = async (req, res) => {
     }
 };
 
-// [NEW] Update Merchant Subscription
+// [UPDATED] Update Merchant Subscription - plan is now optional (using packages instead)
 const updateMerchantSubscription = async (req, res) => {
     try {
         const { tenantId } = req.params;
-        const { plan, subscriptionStatus } = req.body;
+        const { subscriptionStatus, subscriptionEndsAt } = req.body;
 
-        // Validate plan and status if needed, or rely on Prisma Enum check
+        // Build update data
+        const updateData = {
+            subscriptionStatus
+        };
+
+        // Set subscription end date if provided
+        if (subscriptionEndsAt) {
+            updateData.subscriptionEndsAt = new Date(subscriptionEndsAt);
+        }
 
         const tenant = await prisma.tenant.update({
             where: { id: tenantId },
-            data: {
-                plan,
-                subscriptionStatus
-            }
+            data: updateData
         });
 
         successResponse(res, tenant, "Subscription updated");
     } catch (error) {
-        // console.error(error); 
+        console.error(error);
         errorResponse(res, "Failed to update subscription", 500);
     }
 };

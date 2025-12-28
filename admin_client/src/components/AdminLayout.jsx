@@ -97,6 +97,7 @@ const AdminLayout = ({ children }) => {
         { icon: Shield, label: 'Admins', to: '/admins' },
         { icon: Shield, label: 'Audit Logs', to: '/audit-logs' }, // [NEW]
         { icon: Layout, label: 'Content CMS', to: '/content-manager' }, // [NEW]
+        { icon: FileText, label: 'Blog Manager', to: '/blog' }, // [NEW]
         { icon: MessageSquare, label: 'Support', to: '/support' },
         { icon: Bell, label: 'Info Terkini', to: '/announcements' }, // [NEW]
     ];

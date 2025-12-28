@@ -13,11 +13,14 @@ enum SubscriptionStatus {
 
 class SubscriptionProvider with ChangeNotifier {
   SubscriptionStatus _status = SubscriptionStatus.trial;
-  DateTime _expiryDate = DateTime.now().add(const Duration(days: 7));
+  DateTime? _expiryDate;
+  int? _daysRemaining;
   
   SubscriptionStatus get status => _status;
   bool get isPremium => _status == SubscriptionStatus.active;
   bool get isLocked => _status == SubscriptionStatus.expired;
+  DateTime? get expiryDate => _expiryDate;
+  int? get daysRemaining => _daysRemaining;
   
   // Use this to check specific feature access
   bool canAccessFeature(String featureId) {
@@ -30,6 +33,15 @@ class SubscriptionProvider with ChangeNotifier {
 
   List<dynamic> _packages = [];
   List<dynamic> get packages => _packages;
+  
+  // [NEW] Track selected package
+  Map<String, dynamic>? _selectedPackage;
+  Map<String, dynamic>? get selectedPackage => _selectedPackage;
+  
+  void selectPackage(Map<String, dynamic> package) {
+    _selectedPackage = package;
+    notifyListeners();
+  }
   
   bool _isLoading = false;
   bool get isLoading => _isLoading;
@@ -52,14 +64,22 @@ class SubscriptionProvider with ChangeNotifier {
       print('DEBUG: Checking subscription status...');
       final data = await ApiService().getSubscriptionStatus();
       print('DEBUG: Server Response: $data');
-      // data: { subscriptionStatus, plan, trialEndsAt }
+      // data: { subscriptionStatus, plan, trialEndsAt, subscriptionEndsAt, daysRemaining }
       
       final statusStr = data['subscriptionStatus'];
       if (statusStr == 'ACTIVE') _status = SubscriptionStatus.active;
       else if (statusStr == 'TRIAL') _status = SubscriptionStatus.trial;
       else if (statusStr == 'EXPIRED') _status = SubscriptionStatus.expired;
       
-      print('DEBUG: Updated Status to $_status');
+      // [NEW] Parse days remaining and expiry date
+      _daysRemaining = data['daysRemaining'];
+      if (data['subscriptionEndsAt'] != null) {
+        _expiryDate = DateTime.parse(data['subscriptionEndsAt']);
+      } else if (data['trialEndsAt'] != null) {
+        _expiryDate = DateTime.parse(data['trialEndsAt']);
+      }
+      
+      print('DEBUG: Updated Status to $_status, Days Remaining: $_daysRemaining');
       notifyListeners();
     } catch (e) {
       print('Check Sub Failed: $e');
@@ -67,6 +87,7 @@ class SubscriptionProvider with ChangeNotifier {
     }
   }
 
+  // [UPDATED] Include packageId in request
   Future<void> requestUpgrade(dynamic proofImage) async {
     _isLoading = true;
     notifyListeners();
@@ -75,8 +96,11 @@ class SubscriptionProvider with ChangeNotifier {
       final bytes = await proofImage.readAsBytes();
       final base64String = "data:image/jpeg;base64,${base64Encode(bytes)}";
 
-      // API now takes tenantId from token
-      await ApiService().requestSubscription(base64String);
+      // API now takes tenantId from token and includes packageId
+      await ApiService().requestSubscription(
+        base64String, 
+        packageId: _selectedPackage?['id'] // [NEW] Pass selected package ID
+      );
       _status = SubscriptionStatus.pending;
     } catch (e) {
        print('Error requesting upgrade: $e');

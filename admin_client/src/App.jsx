@@ -152,6 +152,10 @@ function App() {
         <Route path="/announcements" element={
           <ProtectedRoute><Announcements /></ProtectedRoute>
         } />
+
+        <Route path="/blog" element={
+          <ProtectedRoute><BlogManager /></ProtectedRoute>
+        } />
       </Routes>
     </Router>
   );

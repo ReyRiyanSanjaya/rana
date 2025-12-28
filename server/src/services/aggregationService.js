@@ -91,6 +91,7 @@ const AggregationService = {
 
         // 3. Upsert into DailySalesSummary
         // We use upsert to create or overwrite the record for this day
+        // [FIX] Only use fields that exist in the schema: totalSales, totalTrans
         await prisma.dailySalesSummary.upsert({
             where: {
                 storeId_date: {
@@ -99,29 +100,15 @@ const AggregationService = {
                 }
             },
             update: {
-                grossSales: grossSales || 0,
-                netSales: netSales || 0,
-                totalSales: grossSales || 0,
-                totalTrans: transactions.length,
-                totalTax: totalTax || 0,
-                totalDiscount: totalDiscount || 0,
-                cogs: totalCOGS || 0,
-                grossProfit: grossProfit || 0,
-                transactionCount: transactions.length
+                totalSales: netSales || 0,
+                totalTrans: transactions.length
             },
             create: {
                 tenantId,
                 storeId,
                 date: startOfDay,
-                grossSales: grossSales || 0,
-                netSales: netSales || 0,
-                totalSales: grossSales || 0,
-                totalTrans: transactions.length,
-                totalTax: totalTax || 0,
-                totalDiscount: totalDiscount || 0,
-                cogs: totalCOGS || 0,
-                grossProfit: grossProfit || 0,
-                transactionCount: transactions.length
+                totalSales: netSales || 0,
+                totalTrans: transactions.length
             }
         });
 

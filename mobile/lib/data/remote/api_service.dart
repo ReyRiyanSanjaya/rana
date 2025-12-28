@@ -204,11 +204,12 @@ class ApiService {
       }
   }
 
-  Future<void> requestSubscription(String proofUrl) async {
+  Future<void> requestSubscription(String proofUrl, {String? packageId}) async {
       try {
         await _dio.post('/subscriptions/request', data: {
-          'proofUrl': proofUrl
-        }, options: Options(headers: {'Authorization': 'Bearer ${_token}'})); // Ensure token is sent
+          'proofUrl': proofUrl,
+          'packageId': packageId // [NEW] Include selected package
+        }, options: Options(headers: {'Authorization': 'Bearer ${_token}'}));
       } catch (e) {
         throw Exception('Failed to request subscription: $e');
       }

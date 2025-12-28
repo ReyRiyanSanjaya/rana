@@ -108,9 +108,20 @@ export default function SubscriptionRequests() {
                                             </div>
                                         </TableCell>
                                         <TableCell>
-                                            <Badge variant="brand" className="capitalize">
-                                                Premium
-                                            </Badge>
+                                            {req.package ? (
+                                                <div className="flex flex-col">
+                                                    <Badge variant="brand" className="capitalize w-fit">
+                                                        {req.package.name}
+                                                    </Badge>
+                                                    <span className="text-xs text-slate-500 mt-1">
+                                                        Rp {req.package.price?.toLocaleString('id-ID')} / {req.package.durationDays} hari
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <Badge variant="brand" className="capitalize">
+                                                    Premium
+                                                </Badge>
+                                            )}
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center text-slate-500 text-sm">

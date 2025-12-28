@@ -1,26 +1,30 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
+// Create subscription request with selected package
 exports.createRequest = async (req, res) => {
     try {
-        const { proofUrl } = req.body;
-        // const { tenantId } = req.body; 
-        // Use authenticated user's tenantId
+        const { proofUrl, packageId } = req.body; // [UPDATED] Include packageId
         const tenantId = req.user.tenantId;
 
-        // Create Request
+        // Validate package exists if provided
+        if (packageId) {
+            const pkg = await prisma.subscriptionPackage.findUnique({ where: { id: packageId } });
+            if (!pkg || !pkg.isActive) {
+                return res.status(400).json({ success: false, error: 'Invalid package selected' });
+            }
+        }
+
+        // Create Request with package reference
         const request = await prisma.subscriptionRequest.create({
             data: {
                 tenantId,
+                packageId, // [NEW] Link to selected package
                 proofUrl,
                 status: 'PENDING'
-            }
+            },
+            include: { package: true } // Include package info in response
         });
-
-        // Update Tenant to PENDING if not already
-        // actually, let's keep tenant status as TRIAL or EXPIRED until approved.
-        // Or maybe we add a 'PENDING_VERIFICATION' status to enum?
-        // For simplicity, we just rely on the Request being pending.
 
         res.status(201).json({ success: true, data: request });
     } catch (error) {
@@ -31,7 +35,10 @@ exports.createRequest = async (req, res) => {
 exports.getAllRequests = async (req, res) => {
     try {
         const requests = await prisma.subscriptionRequest.findMany({
-            include: { tenant: true },
+            include: {
+                tenant: true,
+                package: true // [NEW] Include package info
+            },
             orderBy: { createdAt: 'desc' }
         });
         res.json({ success: true, data: requests });
@@ -40,65 +47,114 @@ exports.getAllRequests = async (req, res) => {
     }
 };
 
+// Approve request and set subscription duration based on package
 exports.approveRequest = async (req, res) => {
     try {
         const { id } = req.params;
 
-        // 1. Update Request
+        // 1. Update Request and include package info
         const request = await prisma.subscriptionRequest.update({
             where: { id },
             data: { status: 'APPROVED' },
-            include: { tenant: true }
+            include: {
+                tenant: true,
+                package: true // [NEW] Include package for duration
+            }
         });
 
-        // 2. Update Tenant
+        // 2. Calculate subscription end date based on package duration
+        const durationDays = request.package?.durationDays || 30; // Default 30 days
+        const subscriptionEndsAt = new Date();
+        subscriptionEndsAt.setDate(subscriptionEndsAt.getDate() + durationDays);
+
+        // 3. Update Tenant with subscription expiry
         await prisma.tenant.update({
             where: { id: request.tenantId },
             data: {
                 subscriptionStatus: 'ACTIVE',
                 plan: 'PREMIUM',
-                // Extend trialEndsAt or set expiry?
+                subscriptionEndsAt // [NEW] Set expiry based on package
             }
         });
 
-        res.json({ success: true, message: 'Subscription Approved' });
+        // 4. Create Platform Revenue log for the subscription
+        if (request.package) {
+            await prisma.platformRevenue.create({
+                data: {
+                    amount: request.package.price,
+                    source: 'SUBSCRIPTION',
+                    description: `Subscription: ${request.package.name} - ${request.tenant.name}`,
+                    referenceId: request.id
+                }
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'Subscription Approved',
+            data: {
+                packageName: request.package?.name,
+                durationDays,
+                subscriptionEndsAt
+            }
+        });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
 };
-exports.getPackages = (req, res) => {
-    // Hardcoded packages for now, or fetch from DB if we had a table
-    const packages = [
-        {
-            id: 'premium_monthly',
-            name: 'Rana Premium',
-            price: 99000,
-            interval: 'month',
-            benefits: [
-                'Unlimited Produk',
-                'Rana AI Smart Insight',
-                'Laporan Bisnis Lengkap',
-                'Multi-User Access',
-                'Prioritas Support (24/7)'
-            ],
-            color: 'blue'
-        },
-        // We can add more plans like Yearly in future
-    ];
-    res.json({ success: true, data: packages });
+
+// [UPDATED] Get packages from database instead of hardcoded data
+exports.getPackages = async (req, res) => {
+    try {
+        const packages = await prisma.subscriptionPackage.findMany({
+            where: { isActive: true },
+            orderBy: { price: 'asc' }
+        });
+
+        // Transform to include benefits array from description
+        const transformedPackages = packages.map(pkg => ({
+            ...pkg,
+            benefits: pkg.description ? pkg.description.split('\n').filter(b => b.trim()) : [],
+            interval: pkg.durationDays <= 31 ? 'month' : (pkg.durationDays <= 366 ? 'year' : 'custom')
+        }));
+
+        res.json({ success: true, data: transformedPackages });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
 };
 
+// Get subscription status including expiry date
 exports.getStatus = async (req, res) => {
     try {
         const { tenantId } = req.user;
         const tenant = await prisma.tenant.findUnique({
             where: { id: tenantId },
-            select: { subscriptionStatus: true, plan: true, trialEndsAt: true }
+            select: {
+                subscriptionStatus: true,
+                plan: true,
+                trialEndsAt: true,
+                subscriptionEndsAt: true // [NEW] Include subscription expiry
+            }
         });
 
         if (!tenant) return res.status(404).json({ success: false, message: 'Tenant not found' });
 
-        res.json({ success: true, data: tenant });
+        // Calculate days remaining
+        let daysRemaining = null;
+        if (tenant.subscriptionStatus === 'ACTIVE' && tenant.subscriptionEndsAt) {
+            daysRemaining = Math.ceil((new Date(tenant.subscriptionEndsAt) - new Date()) / (1000 * 60 * 60 * 24));
+        } else if (tenant.subscriptionStatus === 'TRIAL' && tenant.trialEndsAt) {
+            daysRemaining = Math.ceil((new Date(tenant.trialEndsAt) - new Date()) / (1000 * 60 * 60 * 24));
+        }
+
+        res.json({
+            success: true,
+            data: {
+                ...tenant,
+                daysRemaining
+            }
+        });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }

@@ -19,7 +19,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 6, // [FIX] Increment version for migration
+      version: 7, // [FIX] Increment version for migration - add originalPrice
       onCreate: _createDB,
       onUpgrade: _onUpgrade, 
     );
@@ -51,6 +51,22 @@ class DatabaseHelper {
        try {
         await db.execute('ALTER TABLE transaction_items ADD COLUMN costPrice REAL DEFAULT 0');
        } catch (e) {}
+    }
+    
+    // [NEW] Migration for version 7 - Add promo fields to products
+    if (oldVersion < 7) {
+       final productColumnsToAdd = [
+         'originalPrice REAL',       // Store price before discount
+         'promoEndsAt TEXT',          // When promo expires (ISO8601)
+       ];
+       
+       for (var col in productColumnsToAdd) {
+         try {
+           await db.execute('ALTER TABLE products ADD COLUMN $col');
+         } catch (e) {
+           // Column likely exists
+         }
+       }
     }
   }
 

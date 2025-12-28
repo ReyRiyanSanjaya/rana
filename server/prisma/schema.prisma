@@ -18,7 +18,8 @@ model Tenant {
   id            String   @id @default(uuid())
   name          String
   plan          SubscriptionPlan @default(FREE)
-  trialEndsAt   DateTime? // [NEW] Date when trial expires
+  trialEndsAt   DateTime? // Date when trial expires
+  subscriptionEndsAt DateTime? // [NEW] Subscription expiry date based on package
   subscriptionStatus SubscriptionStatus @default(TRIAL)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -76,17 +77,21 @@ model SubscriptionPackage {
   description   String?
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
+  
+  subscriptionRequests SubscriptionRequest[] // [NEW] Reverse relation
 }
 
 model SubscriptionRequest {
   id            String   @id @default(uuid())
   tenantId      String
+  packageId     String?  // [NEW] Selected package
   proofUrl      String?
   status        RequestStatus @default(PENDING)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   
   tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  package       SubscriptionPackage? @relation(fields: [packageId], references: [id]) // [NEW]
 }
 
 enum RequestStatus {
@@ -250,8 +255,12 @@ model Product {
   category      Category? @relation(fields: [categoryId], references: [id])
   stocks        Stock[]
   sales         TransactionItem[]
-  inventoryLogs InventoryLog[] // [NEW]
-  minStock      Int            @default(5) // [NEW]
+  inventoryLogs InventoryLog[]
+  minStock      Int            @default(5)
+  
+  // [NEW] Discount features
+  originalPrice Float?         // For storing price before discount
+  discountLabel String?        // e.g. "Flash Sale"
 }
 
 enum InventoryType {

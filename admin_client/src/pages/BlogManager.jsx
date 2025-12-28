@@ -5,7 +5,31 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import { Table, Thead, Tbody, Th, Td, Tr } from '../components/ui/Table';
-import { Edit, Trash2, Plus, X } from 'lucide-react';
+import { Edit, Trash2, Plus, X, Eye } from 'lucide-react';
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
+
+// Quill Editor Modules Configuration
+const quillModules = {
+    toolbar: [
+        [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+        [{ 'font': [] }],
+        ['bold', 'italic', 'underline', 'strike'],
+        [{ 'color': [] }, { 'background': [] }],
+        [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+        [{ 'indent': '-1' }, { 'indent': '+1' }],
+        [{ 'align': [] }],
+        ['blockquote', 'code-block'],
+        ['link', 'image', 'video'],
+        ['clean']
+    ],
+};
+
+const quillFormats = [
+    'header', 'font', 'bold', 'italic', 'underline', 'strike',
+    'color', 'background', 'list', 'indent', 'align',
+    'blockquote', 'code-block', 'link', 'image', 'video'
+];
 
 const BlogManager = () => {
     const [posts, setPosts] = useState([]);
@@ -191,7 +215,13 @@ const BlogManager = () => {
             {/* Modal / Dialog */}
             {open && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[95vh] overflow-y-auto">
+                        <style>{`
+                            .ql-container { min-height: 250px; font-size: 14px; }
+                            .ql-editor { min-height: 250px; }
+                            .ql-toolbar { border-top-left-radius: 6px; border-top-right-radius: 6px; }
+                            .ql-container { border-bottom-left-radius: 6px; border-bottom-right-radius: 6px; }
+                        `}</style>
                         <div className="flex items-center justify-between p-4 border-b border-slate-100">
                             <h2 className="text-lg font-semibold text-slate-900">
                                 {editingPost ? 'Edit Post' : 'New Post'}
@@ -274,15 +304,18 @@ const BlogManager = () => {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Content (Markdown/HTML)</label>
-                                <textarea
-                                    name="content"
-                                    value={formData.content}
-                                    onChange={handleChange}
-                                    required
-                                    rows="10"
-                                    className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-                                ></textarea>
+                                <label className="block text-sm font-medium text-slate-700 mb-2">Content</label>
+                                <div className="border border-slate-300 rounded-md overflow-hidden">
+                                    <ReactQuill
+                                        theme="snow"
+                                        value={formData.content}
+                                        onChange={(value) => setFormData({ ...formData, content: value })}
+                                        modules={quillModules}
+                                        formats={quillFormats}
+                                        placeholder="Write your blog content here..."
+                                        style={{ minHeight: '300px' }}
+                                    />
+                                </div>
                             </div>
 
                             <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-4">
