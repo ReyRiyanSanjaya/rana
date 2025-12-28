@@ -4,6 +4,7 @@ import 'package:flutter/services.dart'; // [NEW] Clipboard
 import 'package:provider/provider.dart';
 import 'package:rana_merchant/providers/subscription_provider.dart';
 import 'package:rana_merchant/data/remote/api_service.dart';
+import 'package:rana_merchant/providers/auth_provider.dart'; // [FIX] Added missing import
 import 'package:rana_merchant/screens/printer_settings_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -24,36 +25,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _loadSettings() async {
-    final data = await ApiService().getSystemSettings();
-    final profile = await ApiService().getProfile(); // [NEW]
-    if (mounted) {
-      setState(() {
-        bankInfo = data;
-        userProfile = profile;
-      });
+    try {
+      final data = await ApiService().getSystemSettings();
+      final profile = await ApiService().getProfile(); 
+      if (mounted) {
+        setState(() {
+          bankInfo = data;
+          userProfile = profile;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error loading settings: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal memuat profil: $e'), backgroundColor: Colors.red));
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: 4, // Akun is index 4
-        onDestinationSelected: (idx) {
-           if (idx == 0) {
-              Navigator.of(context).popUntil((route) => route.isFirst);
-           }
-        },
-        backgroundColor: Colors.white,
-        indicatorColor: Colors.red.shade100,
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home_filled), label: 'Beranda'),
-          NavigationDestination(icon: Icon(Icons.history_outlined), selectedIcon: Icon(Icons.history), label: 'Transaksi'),
-          NavigationDestination(icon: Icon(Icons.qr_code_scanner_rounded), label: 'Scan'),
-          NavigationDestination(icon: Icon(Icons.bar_chart_outlined), selectedIcon: Icon(Icons.bar_chart), label: 'Laporan'),
-          NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Akun'),
-        ],
-      ),
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
@@ -129,10 +120,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 
               const Divider(),
     
+              // [NEW] Akun & Toko Section
               const Padding(
                 padding: EdgeInsets.all(16.0),
                 child: Text('Akun & Toko', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo)),
               ),
+              ListTile(
                 leading: const Icon(Icons.store),
                 title: const Text('Profil Toko'),
                 subtitle: Text(userProfile['tenant']?['name'] ?? userProfile['store']?['name'] ?? 'Memuat...'),

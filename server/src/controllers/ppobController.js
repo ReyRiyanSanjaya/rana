@@ -1,5 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+const { successResponse, errorResponse } = require('../utils/response');
 
 const purchaseProduct = async (req, res) => {
     try {
@@ -68,8 +69,6 @@ const purchaseProduct = async (req, res) => {
     }
 };
 
-module.exports = { getProducts, checkBill, purchaseProduct };
-
 // Mock Data on Server (Simulating a connection to Shopee/Aggregator)
 const MOCK_PULSA = [
     { id: 'P5', name: 'Telkomsel 5.000', price: 5250, promo: false, category: 'pulsa' },
@@ -134,4 +133,4 @@ const checkBill = async (req, res) => {
     }
 };
 
-module.exports = { getProducts, checkBill };
+module.exports = { getProducts, checkBill, purchaseProduct };

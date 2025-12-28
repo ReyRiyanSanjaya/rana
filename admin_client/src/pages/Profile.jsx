@@ -4,7 +4,7 @@ import AdminLayout from '../components/AdminLayout';
 import Card from '../components/ui/Card';
 import { User, Mail, Shield, Key } from 'lucide-react';
 import Input from '../components/ui/Input';
-import Button from '../components/ui/button';
+import Button from '../components/ui/Button';
 
 const Profile = () => {
     // In a real app, fetch this from API or Context

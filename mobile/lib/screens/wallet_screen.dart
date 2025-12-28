@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -460,13 +461,13 @@ class _TopUpSheet extends StatefulWidget {
 
 class __TopUpSheetState extends State<_TopUpSheet> {
   final _amountCtrl = TextEditingController();
-  File? _imageFile;
+  XFile? _imageFile;
   final _picker = ImagePicker();
   bool _isSubmitting = false;
 
   Future<void> _pickImage() async {
     final picked = await _picker.pickImage(source: ImageSource.gallery);
-    if (picked != null) setState(() => _imageFile = File(picked.path));
+    if (picked != null) setState(() => _imageFile = picked);
   }
 
   Future<void> _submit() async {
@@ -525,7 +526,12 @@ class __TopUpSheetState extends State<_TopUpSheet> {
               alignment: Alignment.center,
               child: _imageFile == null
                 ? Column(children: [const SizedBox(height: 50), Icon(Icons.cloud_upload_outlined, size: 40, color: Colors.grey[400]), Text('Tap untuk upload', style: GoogleFonts.outfit(color: Colors.grey[600]))])
-                : ClipRRect(borderRadius: BorderRadius.circular(14), child: Image.file(_imageFile!, fit: BoxFit.cover, width: double.infinity)),
+                : ClipRRect(
+                    borderRadius: BorderRadius.circular(14), 
+                    child: kIsWeb 
+                      ? Image.network(_imageFile!.path, fit: BoxFit.cover, width: double.infinity)
+                      : Image.file(File(_imageFile!.path), fit: BoxFit.cover, width: double.infinity)
+                  ),
             ),
           ),
           const SizedBox(height: 24),
@@ -554,9 +560,33 @@ class __TransferSheetState extends State<_TransferSheet> {
       setState(() => _isSubmitting = true);
       try {
         await Provider.of<WalletProvider>(context, listen: false).transfer(_storeIdCtrl.text, double.parse(_amountCtrl.text), _noteCtrl.text);
-        Navigator.pop(context);
+        Navigator.pop(context); // Close sheet on success
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal: $e')));
+        // Show Modal Error as requested
+        showDialog(
+          context: context, 
+          builder: (ctx) => AlertDialog(
+            backgroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Color(0xFFBF092F)),
+                const SizedBox(width: 10),
+                Text('Transer Gagal', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 18))
+              ],
+            ),
+            content: Text(
+              e.toString().replaceAll('Exception: ', ''),
+              style: GoogleFonts.outfit(color: const Color(0xFF334155))
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx), 
+                child: Text('OK', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: const Color(0xFFBF092F)))
+              )
+            ],
+          )
+        );
       } finally {
         if(mounted) setState(() => _isSubmitting = false);
       }

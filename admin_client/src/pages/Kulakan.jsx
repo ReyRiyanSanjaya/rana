@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import AdminLayout from '../components/AdminLayout';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
-import { Button } from '../components/ui/button';
+import { Button } from '../components/ui/Button';
 import { Search, Filter, Plus, MoreHorizontal, Package, Edit, Trash2, X, List, ShoppingCart, Truck, CheckCircle } from 'lucide-react';
 import api from '../api';
 import {

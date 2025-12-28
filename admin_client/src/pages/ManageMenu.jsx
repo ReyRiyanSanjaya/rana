@@ -4,7 +4,7 @@ import api from '../api';
 import AdminLayout from '../components/AdminLayout';
 import { Table, Thead, Tbody, Th, Td, Tr } from '../components/ui/Table';
 import Card from '../components/ui/Card';
-import Button from '../components/ui/button';
+import Button from '../components/ui/Button';
 
 const ManageMenu = () => {
     const { storeId } = useParams();

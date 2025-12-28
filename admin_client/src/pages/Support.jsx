@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import api from '../api';
+import { io } from 'socket.io-client'; // [NEW]
 import AdminLayout from '../components/AdminLayout';
 import { MessageSquare, Check, X, Send } from 'lucide-react';
 import Card from '../components/ui/Card';
@@ -12,6 +13,74 @@ const Support = () => {
     const [loading, setLoading] = useState(true);
     const [selectedTicket, setSelectedTicket] = useState(null);
     const [replyMessage, setReplyMessage] = useState('');
+    const [typingUser, setTypingUser] = useState(null); // [NEW]
+    const socketRef = useRef(null);
+
+    // Initialize Socket
+    useEffect(() => {
+        // Connect
+        const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+        console.log("Connecting to Socket:", socketUrl);
+
+        socketRef.current = io(socketUrl, {
+            auth: { token: localStorage.getItem('token') },
+            transports: ['websocket', 'polling'] // Force try both
+        });
+
+        socketRef.current.on('connect', () => {
+            console.log("Socket Connected!", socketRef.current.id);
+        });
+
+        socketRef.current.on('connect_error', (err) => {
+            console.log("Socket Connection Error:", err.message);
+        });
+
+        socketRef.current.on('new_message', (msg) => {
+            setSelectedTicket(prev => {
+                if (prev && prev.id === msg.ticketId) {
+                    return { ...prev, messages: [...prev.messages, msg] };
+                }
+                return prev;
+            });
+        });
+
+        socketRef.current.on('typing', ({ userId, ticketId, isTyping, role }) => {
+            // Only show if we are looking at this ticket and user is NOT me (Admin)
+            if (role === 'ADMIN') return;
+
+            setSelectedTicket(prev => {
+                if (prev && prev.id === ticketId) {
+                    setTypingUser(isTyping ? "Merchant is typing..." : null);
+                    return prev;
+                }
+                return prev;
+            });
+        });
+
+        return () => {
+            socketRef.current?.disconnect();
+        };
+    }, []);
+
+    // Join Room when ticket selected
+    useEffect(() => {
+        if (selectedTicket) {
+            socketRef.current.emit('join_ticket', selectedTicket.id);
+            setTypingUser(null);
+        }
+    }, [selectedTicket]); // Triggers when selectedTicket changes (ID or content)
+
+    // Handle Typing Emit
+    useEffect(() => {
+        if (!selectedTicket) return;
+        const timeoutId = setTimeout(() => {
+            socketRef.current.emit('typing', { ticketId: selectedTicket.id, isTyping: false });
+        }, 2000);
+
+        socketRef.current.emit('typing', { ticketId: selectedTicket.id, isTyping: true });
+
+        return () => clearTimeout(timeoutId);
+    }, [replyMessage]); // On key press
 
     const fetchTickets = async () => {
         try {
@@ -134,8 +203,8 @@ const Support = () => {
                                 ) : selectedTicket.messages?.map(msg => (
                                     <div key={msg.id} className={`flex ${msg.isAdmin || msg.senderType === 'ADMIN' ? 'justify-end' : 'justify-start'}`}>
                                         <div className={`max-w-[70%] rounded-lg p-3 text-sm shadow-sm ${msg.isAdmin || msg.senderType === 'ADMIN'
-                                                ? 'bg-indigo-600 text-white rounded-br-none'
-                                                : 'bg-white border border-slate-200 text-slate-800 rounded-bl-none'
+                                            ? 'bg-indigo-600 text-white rounded-br-none'
+                                            : 'bg-white border border-slate-200 text-slate-800 rounded-bl-none'
                                             }`}>
                                             <p>{msg.message}</p>
                                             <div className={`text-[10px] mt-1 ${msg.isAdmin ? 'text-indigo-200' : 'text-slate-400'}`}>
@@ -145,6 +214,13 @@ const Support = () => {
                                     </div>
                                 ))}
                             </div>
+
+                            {/* Typing Indicator */}
+                            {typingUser && (
+                                <div className="px-4 py-2 text-xs text-slate-400 italic bg-white border-t border-slate-50">
+                                    {typingUser}
+                                </div>
+                            )}
 
                             {/* Reply Box */}
                             <div className="p-4 border-t border-slate-100 bg-white">

@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart'; // [NEW]
 import 'package:rana_merchant/providers/wallet_provider.dart'; // [NEW]
+import 'package:rana_merchant/data/remote/api_service.dart'; // [FIX] Added import
 import 'package:rana_merchant/services/shopee_service.dart';
 import 'package:rana_merchant/screens/wallet_screen.dart'; // [NEW] Import WalletScreen
 import 'package:intl/intl.dart'; 

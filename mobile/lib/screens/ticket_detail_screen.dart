@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:rana_merchant/data/remote/api_service.dart';
+import 'package:socket_io_client/socket_io_client.dart' as IO; // [NEW]
 
 class TicketDetailScreen extends StatefulWidget {
   final String ticketId;
@@ -13,11 +14,59 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
   Map<String, dynamic>? ticket;
   bool isLoading = true;
   final TextEditingController _msgController = TextEditingController();
+  IO.Socket? socket; // [NEW]
+  String? typingUser; // [NEW]
 
   @override
   void initState() {
     super.initState();
     _fetch();
+    _connectSocket(); // [NEW]
+  }
+
+  void _connectSocket() {
+    // 10.0.2.2 for Android Emulator -> Localhost
+    socket = IO.io('http://10.0.2.2:4000', IO.OptionBuilder()
+       .setTransports(['websocket'])
+       .setAuth({'token': ApiService().token}) // Access token from ApiService (Need getter)
+       .build()
+    );
+
+    socket!.onConnect((_) {
+       print('Connected to Socket');
+       if (widget.ticketId.isNotEmpty) {
+         socket!.emit('join_ticket', widget.ticketId);
+       }
+    });
+
+    socket!.on('new_message', (data) {
+       if (mounted) {
+         setState(() {
+           if (ticket != null) {
+              List msgs = ticket!['messages'];
+              msgs.add(data);
+              ticket!['messages'] = msgs;
+           }
+         });
+       }
+    });
+
+    socket!.on('typing', (data) {
+       // data = { userId, role, isTyping }
+       if (data['role'] == 'MERCHANT') return; // Ignore self
+       if (mounted) {
+         setState(() {
+            typingUser = data['isTyping'] ? "Admin is typing..." : null;
+         });
+       }
+    });
+  }
+
+  @override
+  void dispose() {
+    socket?.disconnect(); // [NEW]
+    _msgController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetch() async {
@@ -91,10 +140,29 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
           ),
           Padding(
             padding: const EdgeInsets.all(8.0),
-            child: Row(
+            child: Column(
               children: [
-                Expanded(child: TextField(controller: _msgController, decoration: const InputDecoration(hintText: 'Type reply...', border: OutlineInputBorder()))),
-                IconButton(onPressed: _reply, icon: const Icon(Icons.send, color: Colors.indigo))
+                if (typingUser != null)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      child: Text(typingUser!, style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: Colors.grey)),
+                    ),
+                  ),
+                Row(
+                  children: [
+                    Expanded(child: TextField(
+                      controller: _msgController, 
+                      decoration: const InputDecoration(hintText: 'Type reply...', border: OutlineInputBorder()),
+                      onChanged: (val) {
+                          // Allow user to emit typing event
+                          socket?.emit('typing', {'ticketId': widget.ticketId, 'isTyping': val.isNotEmpty});
+                      },
+                    )),
+                    IconButton(onPressed: _reply, icon: const Icon(Icons.send, color: Colors.indigo))
+                  ],
+                ),
               ],
             ),
           )

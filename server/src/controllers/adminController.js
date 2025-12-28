@@ -111,7 +111,10 @@ const approveTopUp = async (req, res) => {
         const { id } = req.params;
 
         return await prisma.$transaction(async (tx) => {
-            const topup = await tx.topUpRequest.findUnique({ where: { id } });
+            const topup = await tx.topUpRequest.findUnique({
+                where: { id },
+                include: { store: true } // [FIX] Include store to access tenantId
+            });
             if (!topup) throw new Error("TopUp request not found");
             if (topup.status !== 'PENDING') throw new Error("TopUp already processed");
 
@@ -135,11 +138,11 @@ const approveTopUp = async (req, res) => {
             // 3. Create Cashflow Log
             await tx.cashflowLog.create({
                 data: {
-                    tenantId: topup.tenantId, // Assuming model has tenantId or fetching from store. Model has it.
+                    tenantId: topup.store.tenantId, // [FIX] Get from store relation
                     storeId: topup.storeId,
                     amount: topup.amount,
                     type: 'CASH_IN',
-                    category: 'TOP_UP',
+                    category: 'TOPUP', // [FIX] Enum matches schema (TOPUP)
                     description: `Top Up Approved #${topup.id.substring(0, 8)}`,
                     occurredAt: new Date()
                 }

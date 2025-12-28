@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
 const helmet = require('helmet');
+const path = require('path'); // [FIX] Added path module
 
 const compression = require('compression');
 const reportRoutes = require('./routes/reportRoutes');
@@ -21,8 +22,12 @@ app.use(helmet({
     crossOriginResourcePolicy: false, // [FIX] Allow resources to be loaded cross-origin
 }));
 app.use(compression()); // Gzip Compression
-app.use(express.json()); // For parsing application/json
+app.use(express.json({ limit: '50mb' })); // [FIX] Increase limit for Base64 uploads
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(morgan('dev'));
+
+// Static Files
+app.use('/uploads', express.static(path.join(__dirname, '../uploads'))); // [FIX] Serve server/uploads
 
 // Routes
 app.get('/', (req, res) => {
@@ -59,7 +64,13 @@ app.use((err, req, res, next) => {
     res.status(500).json({ error: 'Internal Server Error' });
 });
 
-app.listen(PORT, () => {
+const http = require('http');
+const { initSocket } = require('./socket');
+
+const server = http.createServer(app);
+initSocket(server);
+
+server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`Environment: ${process.env.NODE_ENV}`);
 });

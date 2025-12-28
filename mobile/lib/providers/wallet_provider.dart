@@ -35,7 +35,7 @@ class WalletProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> topUp(double amount, File proofImage) async {
+  Future<void> topUp(double amount, dynamic proofImage) async { // Changed to dynamic to accept XFile or File, or strictly XFile
     _isLoading = true;
     notifyListeners();
     try {

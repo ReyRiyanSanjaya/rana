@@ -87,12 +87,8 @@ const getProfitLoss = async (req, res) => {
                 }
             },
             _sum: {
-                grossSales: true,
-                netSales: true,
-                cogs: true,
-                grossProfit: true,
-                totalTax: true,
-                totalDiscount: true
+                totalSales: true,
+                totalTrans: true
             }
         });
 
@@ -127,19 +123,20 @@ const getProfitLoss = async (req, res) => {
             totalExpenses += amt;
         });
 
-        const revenue = totals.netSales || 0;
-        const grossProfit = totals.grossProfit || 0;
+        const revenue = totals.totalSales || 0;
+        const cogs = 0; // Not available in DailySalesSummary
+        const grossProfit = revenue - cogs;
         const netProfit = grossProfit - totalExpenses;
 
         return successResponse(res, {
             period: { start, end },
             pnl: {
                 revenue,
-                cogs: totals.cogs || 0,
+                cogs,
                 grossProfit,
                 margin: revenue > 0 ? ((grossProfit / revenue) * 100).toFixed(2) : 0,
-                taxCollected: totals.totalTax || 0,
-                discountsGiven: totals.totalDiscount || 0,
+                taxCollected: 0,
+                discountsGiven: 0,
                 totalExpenses,
                 netProfit,
                 expenseBreakdown: expenseMap

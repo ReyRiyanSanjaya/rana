@@ -138,9 +138,9 @@ const updateStoreProfile = async (req, res) => {
 
 const getProfile = async (req, res) => {
     try {
-        const { id } = req.user;
+        const { userId } = req.user; // [FIX] Use userId from token
         const user = await prisma.user.findUnique({
-            where: { id },
+            where: { id: userId },
             select: {
                 id: true,
                 name: true,

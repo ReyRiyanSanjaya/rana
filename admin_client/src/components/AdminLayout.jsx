@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Store, Map, BarChart, ShoppingBag, LogOut, Search, Bell, Settings, Command, Wallet, CreditCard, Package, Megaphone, MessageSquare, Smartphone, Shield, Layout, FileText } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { Button } from './ui/button';
+import { Button } from './ui/Button';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Separator } from './ui/separator';
 import {
@@ -98,6 +98,7 @@ const AdminLayout = ({ children }) => {
         { icon: Shield, label: 'Audit Logs', to: '/audit-logs' }, // [NEW]
         { icon: Layout, label: 'Content CMS', to: '/content-manager' }, // [NEW]
         { icon: MessageSquare, label: 'Support', to: '/support' },
+        { icon: Bell, label: 'Info Terkini', to: '/announcements' }, // [NEW]
     ];
 
     const clearSearch = () => {

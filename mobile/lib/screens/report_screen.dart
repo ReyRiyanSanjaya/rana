@@ -3,6 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:rana_merchant/data/local/database_helper.dart';
+import 'package:rana_merchant/data/remote/api_service.dart'; // [FIX] Added import
 import 'package:rana_merchant/screens/expense_screen.dart';
 
 class ReportScreen extends StatefulWidget {

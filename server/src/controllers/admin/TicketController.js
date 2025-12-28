@@ -1,5 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+const { getIo } = require('../../socket');
 
 const getTickets = async (req, res) => {
     try {
@@ -12,7 +13,7 @@ const getTickets = async (req, res) => {
             where,
             include: {
                 tenant: {
-                    select: { name: true, email: true } // Assuming Tenant has email or reachable via User
+                    select: { name: true } // Tenant has no email directly
                 },
                 _count: { select: { messages: true } }
             },
@@ -71,6 +72,13 @@ const replyTicket = async (req, res) => {
             where: { id },
             data: { status: 'IN_PROGRESS', updatedAt: new Date() }
         });
+
+        // Emit Socket Event
+        try {
+            getIo().to(id).emit('new_message', newMessage);
+        } catch (e) {
+            console.error("Socket emit failed", e);
+        }
 
         res.json({ success: true, data: newMessage });
     } catch (error) {

@@ -1,6 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const { successResponse, errorResponse } = require('../utils/response');
+const { getIo } = require('../socket');
 
 const getMyTickets = async (req, res) => {
     try {
@@ -28,6 +29,7 @@ const createTicket = async (req, res) => {
                 status: 'OPEN',
                 messages: {
                     create: {
+                        senderId: req.user.userId,
                         message,
                         senderType: 'MERCHANT',
                         isAdmin: false
@@ -69,6 +71,7 @@ const replyTicket = async (req, res) => {
             data: {
                 ticketId: id,
                 message,
+                senderId: req.user.userId,
                 senderType: 'MERCHANT',
                 isAdmin: false
             }
@@ -78,6 +81,13 @@ const replyTicket = async (req, res) => {
         // But invalidating 'RESOLVED' status might be good if merchant replies.
         if (ticket.status === 'RESOLVED') {
             await prisma.supportTicket.update({ where: { id }, data: { status: 'OPEN' } });
+        }
+
+        // Emit Socket Event
+        try {
+            getIo().to(id).emit('new_message', newMessage);
+        } catch (e) {
+            console.error("Socket emit failed", e);
         }
 
         successResponse(res, newMessage);

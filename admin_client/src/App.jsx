@@ -32,6 +32,7 @@ const ProtectedRoute = ({ children }) => {
 
 import Dashboard from './pages/Dashboard';
 import BlogManager from './pages/BlogManager'; // [NEW]
+import Announcements from './pages/Announcements'; // [NEW]
 
 function App() {
   return (
@@ -66,6 +67,7 @@ function App() {
           <Route path="support" element={<Support />} />
           <Route path="settings" element={<Settings />} />
           <Route path="app-menus" element={<AppMenus />} />
+          <Route path="announcements" element={<Announcements />} />
         </Route>
 
         {/* Old routes, potentially to be removed or moved under /admin */}
@@ -141,6 +143,14 @@ function App() {
 
         <Route path="/transactions" element={
           <ProtectedRoute><Transactions /></ProtectedRoute>
+        } />
+
+        <Route path="/topups" element={
+          <ProtectedRoute><TopUps /></ProtectedRoute>
+        } />
+
+        <Route path="/announcements" element={
+          <ProtectedRoute><Announcements /></ProtectedRoute>
         } />
       </Routes>
     </Router>

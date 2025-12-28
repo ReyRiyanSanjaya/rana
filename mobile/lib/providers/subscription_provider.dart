@@ -67,7 +67,7 @@ class SubscriptionProvider with ChangeNotifier {
     }
   }
 
-  Future<void> requestUpgrade(File proofImage) async {
+  Future<void> requestUpgrade(dynamic proofImage) async {
     _isLoading = true;
     notifyListeners();
     try {

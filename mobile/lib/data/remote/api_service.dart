@@ -40,6 +40,7 @@ class ApiService {
   Dio get dio => _dio;
   
   String? _token;
+  String? get token => _token; // [NEW] Getter
 
   void setToken(String token) {
     _token = token;
@@ -69,7 +70,7 @@ class ApiService {
         'address': address
       });
       
-      if (response.data['success'] != true) {
+      if (response.data['status'] != 'success') {
          throw Exception(response.data['message']);
       }
     } catch (e) {
@@ -97,7 +98,7 @@ class ApiService {
   Future<Map<String, dynamic>> getProfile() async {
     try {
       final response = await _dio.get('/auth/me', options: Options(headers: {'Authorization': 'Bearer ${_token}'}));
-      if (response.data['success'] == true) {
+      if (response.data['status'] == 'success') {
         return response.data['data'];
       }
       throw Exception(response.data['message']);
@@ -218,7 +219,7 @@ class ApiService {
   Future<Map<String, dynamic>> getWalletData() async {
     try {
       final response = await _dio.get('/wallet', options: Options(headers: {'Authorization': 'Bearer ${_token}'}));
-      if (response.data['success'] == true) return response.data['data'];
+      if (response.data['status'] == 'success') return response.data['data'];
       throw Exception(response.data['message']);
     } catch (e) {
       throw Exception('Get Wallet Failed: $e');
@@ -230,7 +231,7 @@ class ApiService {
       final response = await _dio.post('/wallet/withdraw',
           data: {'amount': amount, 'bankName': bankName, 'accountNumber': accountNumber},
           options: Options(headers: {'Authorization': 'Bearer ${_token}'}));
-      if (response.data['success'] != true) throw Exception(response.data['message']);
+      if (response.data['status'] != 'success') throw Exception(response.data['message']);
     } catch (e) {
        throw Exception('Withdraw Request Failed: $e');
     }
@@ -284,7 +285,12 @@ class ApiService {
         options: Options(headers: {'Authorization': 'Bearer ${_token}'})
       );
     } catch (e) {
-       throw Exception('Transfer Failed: $e');
+      if (e is DioException && e.response != null && e.response?.data != null) {
+         // Extract message from server response if available
+         final msg = e.response!.data['message'] ?? e.message;
+         throw Exception(msg); 
+      }
+      throw Exception('Transfer Failed: $e');
     }
   }
 
@@ -328,7 +334,7 @@ class ApiService {
       final response = await _dio.post('/orders/scan',
           data: {'pickupCode': code},
           options: Options(headers: {'Authorization': 'Bearer ${_token}'}));
-      if (response.data['success'] != true) throw Exception(response.data['message']);
+      if (response.data['status'] != 'success') throw Exception(response.data['message']);
     } catch (e) {
        throw Exception('Scan Order Failed: $e');
     }
@@ -337,7 +343,7 @@ class ApiService {
   Future<void> uploadTransaction(Map<String, dynamic> payload) async {
     try {
       final response = await _dio.post('/transactions/sync', data: payload, options: Options(headers: {'Authorization': 'Bearer ${_token}'}));
-       if (response.data['success'] != true) throw Exception(response.data['message']);
+       if (response.data['status'] != 'success') throw Exception(response.data['message']);
     } catch (e) {
       throw Exception('Upload failed: $e');
     }
@@ -410,7 +416,10 @@ class ApiService {
         'priority': priority
       });
     } catch (e) {
-      throw Exception('Failed to create ticket');
+      if (e is DioException && e.response != null) {
+         throw Exception(e.response!.data['message'] ?? 'Failed to create ticket');
+      }
+      throw Exception('Failed to create ticket: $e');
     }
   }
 
@@ -427,7 +436,10 @@ class ApiService {
     try {
       await _dio.post('/tickets/$id/reply', data: { 'message': message });
     } catch (e) {
-      throw Exception('Failed to send reply');
+      if (e is DioException && e.response != null) {
+         throw Exception(e.response!.data['message'] ?? 'Failed to send reply');
+      }
+      throw Exception('Failed to send reply: $e');
     }
   }
 
@@ -597,7 +609,7 @@ class ApiService {
         'customerId': customerId
       }, options: Options(headers: {'Authorization': 'Bearer ${_token}'}));
       
-      if (response.data['success'] != true) throw Exception(response.data['message']);
+      if (response.data['status'] != 'success') throw Exception(response.data['message']);
     } catch (e) {
       if (e is DioException && e.response?.statusCode == 402) {
          throw Exception('Saldo tidak mencukupi');

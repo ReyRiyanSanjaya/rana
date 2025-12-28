@@ -109,4 +109,66 @@ const getPublicSettings = async (req, res) => {
     }
 };
 
-module.exports = { getPaymentInfo, updatePaymentInfo, getActiveAnnouncements, getAppMenus, getNotifications, getPublicSettings };
+const getAllAnnouncements = async (req, res) => {
+    try {
+        const announcements = await prisma.announcement.findMany({
+            orderBy: { createdAt: 'desc' }
+        });
+        successResponse(res, announcements);
+    } catch (error) {
+        errorResponse(res, "Failed to fetch all announcements", 500);
+    }
+};
+
+const createAnnouncement = async (req, res) => {
+    try {
+        const { title, content, isActive } = req.body;
+        const announcement = await prisma.announcement.create({
+            data: {
+                title,
+                content,
+                isActive: isActive ?? true
+            }
+        });
+        successResponse(res, announcement, "Announcement Created");
+    } catch (error) {
+        errorResponse(res, "Failed to create announcement", 500, error);
+    }
+};
+
+const updateAnnouncement = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { title, content, isActive } = req.body;
+        const announcement = await prisma.announcement.update({
+            where: { id },
+            data: { title, content, isActive }
+        });
+        successResponse(res, announcement, "Announcement Updated");
+    } catch (error) {
+        errorResponse(res, "Failed to update announcement", 500, error);
+    }
+};
+
+const deleteAnnouncement = async (req, res) => {
+    try {
+        const { id } = req.params;
+        await prisma.announcement.delete({ where: { id } });
+        successResponse(res, null, "Announcement Deleted");
+    } catch (error) {
+        errorResponse(res, "Failed to delete announcement", 500, error);
+    }
+};
+
+module.exports = {
+    getPaymentInfo,
+    updatePaymentInfo,
+    getActiveAnnouncements,
+    getAllAnnouncements, // Admin
+    createAnnouncement, // Admin
+    updateAnnouncement, // Admin
+    deleteAnnouncement, // Admin
+    getAppMenus,
+    getNotifications,
+    getPublicSettings
+};

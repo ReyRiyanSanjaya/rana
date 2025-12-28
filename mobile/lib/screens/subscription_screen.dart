@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart'; // [NEW]
@@ -13,12 +14,12 @@ class SubscriptionScreen extends StatefulWidget {
 }
 
 class _SubscriptionScreenState extends State<SubscriptionScreen> {
-  File? _imageFile;
+  XFile? _imageFile;
   final _picker = ImagePicker();
 
   Future<void> _pickImage() async {
     final picked = await _picker.pickImage(source: ImageSource.gallery);
-    if (picked != null) setState(() => _imageFile = File(picked.path));
+    if (picked != null) setState(() => _imageFile = picked);
   }
   
   @override
@@ -166,7 +167,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             ),
             child: _imageFile == null
               ? Column(mainAxisAlignment: MainAxisAlignment.center, children: const [Icon(Icons.cloud_upload, color: Colors.grey, size: 40), Text('Tap untuk upload bukti', style: TextStyle(color: Colors.grey))])
-              : ClipRRect(borderRadius: BorderRadius.circular(11), child: Image.file(_imageFile!, fit: BoxFit.cover)),
+              : ClipRRect(
+                  borderRadius: BorderRadius.circular(11), 
+                  child: kIsWeb 
+                    ? Image.network(_imageFile!.path, fit: BoxFit.cover)
+                    : Image.file(File(_imageFile!.path), fit: BoxFit.cover)
+                ),
           ),
         ),
         const SizedBox(height: 24),

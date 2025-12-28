@@ -12,14 +12,18 @@ const TopUps = () => {
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('PENDING'); // PENDING, APPROVED, REJECTED
     const [selectedProof, setSelectedProof] = useState(null);
+    const [error, setError] = useState(null);
 
     const fetchTopUps = async () => {
         setLoading(true);
+        setError(null);
         try {
             const res = await api.get('/admin/topups', { params: { status: filter } });
-            setTopups(res.data.data);
+            // Ensure data is array, handle potential structure mismatch
+            setTopups(Array.isArray(res.data?.data) ? res.data.data : []);
         } catch (error) {
             console.error(error);
+            setError("Failed to load top-up requests.");
         } finally {
             setLoading(false);
         }
@@ -50,7 +54,7 @@ const TopUps = () => {
         }
     };
 
-    const formatCurrency = (val) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(val);
+    const formatCurrency = (val) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(val || 0);
 
     return (
         <AdminLayout>
@@ -74,6 +78,12 @@ const TopUps = () => {
                     ))}
                 </div>
             </div>
+
+            {error && (
+                <div className="p-4 mb-4 bg-red-50 text-red-600 rounded-lg border border-red-200">
+                    {error} <button onClick={fetchTopUps} className="underline ml-2 font-semibold">Retry</button>
+                </div>
+            )}
 
             <Card className="overflow-hidden border border-slate-200 shadow-sm">
                 <Table>
@@ -100,21 +110,32 @@ const TopUps = () => {
                             <Tr key={t.id}>
                                 <Td>
                                     <div className="flex flex-col">
-                                        <span className="font-medium text-slate-900">{new Date(t.createdAt).toLocaleDateString()}</span>
-                                        <span className="text-xs text-slate-500">{new Date(t.createdAt).toLocaleTimeString()}</span>
+                                        <span className="font-medium text-slate-900">{t.createdAt ? new Date(t.createdAt).toLocaleDateString() : '-'}</span>
+                                        <span className="text-xs text-slate-500">{t.createdAt ? new Date(t.createdAt).toLocaleTimeString() : ''}</span>
                                     </div>
                                 </Td>
                                 <Td>
                                     <div className="flex flex-col">
-                                        <span className="font-medium text-slate-900">{t.store.name}</span>
-                                        <span className="text-xs text-slate-500 text-truncate max-w-[150px]">{t.store.tenant.name}</span>
+                                        <span className="font-medium text-slate-900">{t.store?.name || 'Unknown Store'}</span>
+                                        <span className="text-xs text-slate-500 text-truncate max-w-[150px]">{t.store?.tenant?.name || '-'}</span>
                                     </div>
                                 </Td>
                                 <Td>
                                     <span className="font-mono font-medium text-slate-700">{formatCurrency(t.amount)}</span>
                                 </Td>
                                 <Td>
-                                    <Button size="xs" variant="secondary" icon={Eye} onClick={() => setSelectedProof(t.proofPath)}>
+                                    <Button
+                                        size="xs"
+                                        variant="secondary"
+                                        icon={Eye}
+                                        onClick={() => {
+                                            console.log("View Proof Clicked", t.proofUrl);
+                                            if (t.proofUrl) setSelectedProof(t.proofUrl);
+                                            else alert("No proof image available for this request.");
+                                        }}
+                                        disabled={!t.proofUrl}
+                                        title={!t.proofUrl ? "No proof available" : "View Proof"}
+                                    >
                                         View Proof
                                     </Button>
                                 </Td>
@@ -160,7 +181,13 @@ const TopUps = () => {
                             <button onClick={() => setSelectedProof(null)} className="p-1 hover:bg-gray-200 rounded-full"><X size={20} /></button>
                         </div>
                         <div className="p-4 bg-gray-100 flex justify-center">
-                            <img src={selectedProof} alt="Proof" className="max-h-[70vh] object-contain rounded-lg border" />
+                            {/* [FIX] Prepend Server URL */}
+                            <img
+                                src={selectedProof.startsWith('http') || selectedProof.startsWith('data:') ? selectedProof : `http://localhost:4000${selectedProof}`}
+                                alt="Proof"
+                                className="max-h-[70vh] object-contain rounded-lg border"
+                                onError={(e) => { e.target.src = 'https://placehold.co/400?text=Error+Loading+Image'; }}
+                            />
                         </div>
                     </div>
                 </div>

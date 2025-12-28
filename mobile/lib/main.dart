@@ -14,6 +14,7 @@ import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 
 import 'package:rana_merchant/providers/wholesale_cart_provider.dart'; // [NEW]
 import 'package:rana_merchant/providers/wallet_provider.dart'; // [NEW]
+import 'package:rana_merchant/providers/subscription_provider.dart'; // [FIX] Added missing import
 
 void main() {
   if (kIsWeb) {
@@ -45,6 +46,7 @@ class RanaApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => CartProvider()),
         ChangeNotifierProvider(create: (_) => WholesaleCartProvider()), // [NEW]
         ChangeNotifierProvider(create: (_) => WalletProvider()), // [NEW]
+        ChangeNotifierProvider(create: (_) => SubscriptionProvider()), // [FIX] Added missing provider
       ],
       child: MaterialApp(
         title: 'Rana Merchant',
