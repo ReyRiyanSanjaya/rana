@@ -9,6 +9,8 @@ const compression = require('compression');
 const reportRoutes = require('./routes/reportRoutes');
 const transactionRoutes = require('./routes/transactionRoutes');
 const authRoutes = require('./routes/authRoutes');
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -70,7 +72,51 @@ const { initSocket } = require('./socket');
 const server = http.createServer(app);
 initSocket(server);
 
+async function ensureBlogSeed() {
+    const count = await prisma.blogPost.count();
+    if (count === 0) {
+        await prisma.blogPost.createMany({
+            data: [
+                {
+                    title: 'Memperkenalkan Rana POS: Kecerdasan Keuangan untuk UMKM',
+                    slug: 'memperkenalkan-rana-pos',
+                    summary: 'Platform POS modern dengan laporan keuangan otomatis dan manajemen stok real-time.',
+                    content: '<h2>Kenapa Rana POS?</h2><p>Rana POS membantu UMKM mengambil keputusan berdasarkan data dengan laporan otomatis, manajemen stok, dan integrasi pembayaran.</p><p>Kami fokus pada kemudahan penggunaan dan performa.</p>',
+                    imageUrl: 'https://images.unsplash.com/photo-1556742041-4b8b5cc5253f?q=80&w=1200&auto=format&fit=crop',
+                    author: 'Tim Rana',
+                    tags: ['product', 'umkm', 'pos'],
+                    status: 'PUBLISHED',
+                    publishedAt: new Date()
+                },
+                {
+                    title: 'Tips Mengelola Stok Agar Tidak Kehabisan',
+                    slug: 'tips-mengelola-stok',
+                    summary: 'Strategi praktis untuk menjaga ketersediaan stok dan mengurangi dead stock.',
+                    content: '<h2>Strategi Stok</h2><ul><li>Tetapkan min stock</li><li>Pantau pergerakan stok</li><li>Gunakan laporan harian</li></ul><p>Dengan Rana, semua insight tersedia secara otomatis.</p>',
+                    imageUrl: 'https://images.unsplash.com/photo-1556767576-cfba2f8e7df5?q=80&w=1200&auto=format&fit=crop',
+                    author: 'Operasional Rana',
+                    tags: ['inventory', 'tips'],
+                    status: 'PUBLISHED',
+                    publishedAt: new Date()
+                },
+                {
+                    title: 'Laporan Laba Rugi: Cara Membacanya untuk Aksi',
+                    slug: 'laporan-laba-rugi',
+                    summary: 'Memahami profit & loss agar bisa mengambil keputusan bisnis yang tepat.',
+                    content: '<h2>Laba Rugi</h2><p>Ketahui pendapatan, biaya, dan margin. Rana menyediakan grafik dan ringkasan otomatis yang mudah dipahami.</p>',
+                    imageUrl: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?q=80&w=1200&auto=format&fit=crop',
+                    author: 'Finance Rana',
+                    tags: ['finance', 'reports'],
+                    status: 'PUBLISHED',
+                    publishedAt: new Date()
+                }
+            ]
+        });
+    }
+}
+
 server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`Environment: ${process.env.NODE_ENV}`);
+    ensureBlogSeed().catch((e) => console.error(e));
 });

@@ -28,18 +28,18 @@ const Login = () => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-[#e0e5ec] p-4 font-sans text-slate-800">
-            <div className="bg-[#e0e5ec] p-8 md:p-12 rounded-[3rem] shadow-[20px_20px_60px_#bebebe,-20px_-20px_60px_#ffffff] max-w-md w-full">
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#0a0b0f] via-[#0b1020] to-[#0a0b0f] p-4 font-sans text-slate-200">
+            <div className="bg-white/5 border border-white/10 p-8 md:p-12 rounded-[2rem] max-w-md w-full backdrop-blur-md">
 
                 <div className="text-center mb-10">
-                    <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center text-white font-bold text-3xl mx-auto mb-6 shadow-[5px_5px_10px_#bebebe,-5px_-5px_10px_#ffffff]">R</div>
-                    <h1 className="text-3xl font-bold text-[#303346] mb-2">Welcome Back</h1>
-                    <p className="text-gray-500">Enter your credentials to access your account.</p>
+                    <div className="w-16 h-16 bg-gradient-to-br from-indigo-600 to-violet-600 rounded-2xl flex items-center justify-center text-white font-bold text-3xl mx-auto mb-6">R</div>
+                    <h1 className="text-3xl font-bold text-white mb-2">Selamat Datang Kembali</h1>
+                    <p className="text-slate-400">Masukkan kredensial Anda untuk mengakses akun.</p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     {error && (
-                        <div className="p-4 bg-red-100 text-red-700 rounded-xl text-sm border-l-4 border-red-500 text-center">
+                        <div className="p-4 bg-red-500/10 text-red-300 rounded-xl text-sm border border-red-500/30 text-center">
                             {error}
                         </div>
                     )}
@@ -47,7 +47,7 @@ const Login = () => {
                     <InputGroup
                         icon={<Mail size={20} />}
                         type="email"
-                        placeholder="Email Address"
+                        placeholder="Alamat Email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                     />
@@ -55,26 +55,26 @@ const Login = () => {
                     <InputGroup
                         icon={<Lock size={20} />}
                         type="password"
-                        placeholder="Password"
+                        placeholder="Kata Sandi"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                     />
 
                     <div className="flex justify-end">
-                        <a href="#" className="text-sm text-primary font-bold hover:underline">Forgot Password?</a>
+                        <a href="#" className="text-sm text-indigo-300 font-bold hover:underline">Lupa Kata Sandi?</a>
                     </div>
 
                     <button
                         type="submit"
                         disabled={loading}
-                        className="w-full py-4 bg-primary text-white font-bold rounded-2xl shadow-[5px_5px_10px_#bebebe,-5px_-5px_10px_#ffffff] hover:shadow-[inset_5px_5px_10px_#bebebe,inset_-5px_-5px_10px_#ffffff] transition-all duration-300 flex items-center justify-center gap-2 group disabled:opacity-70"
+                        className="w-full py-4 bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold rounded-2xl shadow-[0_10px_30px_rgba(79,70,229,0.35)] hover:shadow-[0_15px_40px_rgba(124,58,237,0.45)] transition-all duration-300 flex items-center justify-center gap-2 group disabled:opacity-70"
                     >
-                        {loading ? 'Logging In...' : 'Log In'}
+                        {loading ? 'Masuk...' : 'Masuk'}
                         {!loading && <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />}
                     </button>
 
-                    <p className="text-center text-gray-500 text-sm">
-                        Don't have an account? <Link to="/register" className="text-primary font-bold hover:underline">Sign Up</Link>
+                    <p className="text-center text-slate-400 text-sm">
+                        Belum punya akun? <Link to="/register" className="text-indigo-300 font-bold hover:underline">Daftar</Link>
                     </p>
                 </form>
             </div>
@@ -84,12 +84,12 @@ const Login = () => {
 
 const InputGroup = ({ icon, ...props }) => (
     <div className="relative">
-        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
             {icon}
         </div>
         <input
             {...props}
-            className="w-full bg-[#e0e5ec] border-none rounded-xl py-4 pl-12 pr-4 text-slate-700 placeholder-gray-400 shadow-[inset_5px_5px_10px_#bebebe,inset_-5px_-5px_10px_#ffffff] focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all font-medium"
+            className="w-full bg-white/10 border border-white/10 rounded-xl py-4 pl-12 pr-4 text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 transition-all font-medium"
             required
         />
     </div>

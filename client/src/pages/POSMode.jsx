@@ -103,6 +103,19 @@ const POSMode = () => {
         }));
     };
 
+    const setQtyManual = (id, value) => {
+        const num = parseInt(value, 10);
+        const safe = isNaN(num) ? 1 : Math.max(1, num);
+        playBeep(800, 0.05);
+        setCart(prev => prev.map(item => {
+            if (item.id === id) {
+                const capped = item.stock ? Math.min(safe, item.stock) : safe;
+                return { ...item, qty: capped };
+            }
+            return item;
+        }));
+    };
+
     const removeFromCart = (id) => {
         setCart(prev => prev.filter(item => item.id !== id));
     };
@@ -284,7 +297,14 @@ const POSMode = () => {
                                     >
                                         <Minus size={14} />
                                     </button>
-                                    <span className="text-sm font-bold w-4 text-center">{item.qty}</span>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        value={item.qty}
+                                        onChange={(e) => setQtyManual(item.id, e.target.value)}
+                                        onBlur={(e) => setQtyManual(item.id, e.target.value)}
+                                        className="w-14 text-sm font-bold text-center bg-white dark:bg-slate-600 rounded shadow-sm outline-none border border-transparent focus:border-primary"
+                                    />
                                     <button
                                         onClick={() => updateQty(item.id, 1)}
                                         className="w-7 h-7 flex items-center justify-center bg-white dark:bg-slate-600 rounded shadow-sm hover:text-green-500 transition"

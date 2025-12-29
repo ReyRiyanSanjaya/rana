@@ -34,31 +34,31 @@ const Register = () => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-[#e0e5ec] p-4 font-sans text-slate-800">
-            <div className="bg-[#e0e5ec] p-8 md:p-12 rounded-[3rem] shadow-[20px_20px_60px_#bebebe,-20px_-20px_60px_#ffffff] max-w-4xl w-full flex flex-col md:flex-row gap-12 items-center">
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#0a0b0f] via-[#0b1020] to-[#0a0b0f] p-4 font-sans text-slate-200">
+            <div className="bg-white/5 border border-white/10 p-8 md:p-12 rounded-[2rem] max-w-4xl w-full flex flex-col md:flex-row gap-12 items-center backdrop-blur-md">
 
                 {/* Left Side: Hero/Info */}
                 <div className="w-full md:w-1/2 space-y-8">
                     <div>
-                        <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center text-white font-bold text-2xl mb-6 shadow-[5px_5px_10px_#bebebe,-5px_-5px_10px_#ffffff]">R</div>
-                        <h1 className="text-4xl font-bold mb-4 text-[#303346]">Join the Revolution</h1>
-                        <p className="text-gray-500 text-lg leading-relaxed">
-                            Start managing your business with the power of modern technology. Sign up today and transform your operations.
+                        <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-violet-600 rounded-2xl flex items-center justify-center text-white font-bold text-2xl mb-6">R</div>
+                        <h1 className="text-4xl font-bold mb-4 text-white">Gabung Sekarang</h1>
+                        <p className="text-slate-400 text-lg leading-relaxed">
+                            Kelola bisnis Anda dengan teknologi modern. Daftar hari ini dan transformasikan operasional Anda.
                         </p>
                     </div>
 
                     <div className="space-y-4">
                         <div className="flex items-center gap-4">
-                            <CheckCircle className="text-primary" size={24} />
-                            <span className="text-gray-600 font-medium">Free 14-day trial</span>
+                            <CheckCircle className="text-indigo-300" size={24} />
+                            <span className="text-slate-300 font-medium">Gratis 14 hari</span>
                         </div>
                         <div className="flex items-center gap-4">
-                            <CheckCircle className="text-primary" size={24} />
-                            <span className="text-gray-600 font-medium">No credit card required</span>
+                            <CheckCircle className="text-indigo-300" size={24} />
+                            <span className="text-slate-300 font-medium">Tanpa kartu kredit</span>
                         </div>
                         <div className="flex items-center gap-4">
-                            <CheckCircle className="text-primary" size={24} />
-                            <span className="text-gray-600 font-medium">Instant setup</span>
+                            <CheckCircle className="text-indigo-300" size={24} />
+                            <span className="text-slate-300 font-medium">Setup instan</span>
                         </div>
                     </div>
                 </div>
@@ -67,30 +67,30 @@ const Register = () => {
                 <div className="w-full md:w-1/2">
                     <form onSubmit={handleSubmit} className="space-y-6">
                         {error && (
-                            <div className="p-4 bg-red-100 text-red-700 rounded-xl text-sm border-l-4 border-red-500">
+                            <div className="p-4 bg-red-500/10 text-red-300 rounded-xl text-sm border border-red-500/30">
                                 {error}
                             </div>
                         )}
 
                         <div className="space-y-4">
-                            <InputGroup icon={<Building2 size={20} />} name="businessName" placeholder="Business Name" value={formData.businessName} onChange={handleChange} />
-                            <InputGroup icon={<Mail size={20} />} name="email" type="email" placeholder="Email Address" value={formData.email} onChange={handleChange} />
-                            <InputGroup icon={<Lock size={20} />} name="password" type="password" placeholder="Password" value={formData.password} onChange={handleChange} />
-                            <InputGroup icon={<Phone size={20} />} name="waNumber" placeholder="WhatsApp Number" value={formData.waNumber} onChange={handleChange} />
-                            <InputGroup icon={<MapPin size={20} />} name="address" placeholder="Business Address" value={formData.address} onChange={handleChange} />
+                            <InputGroup icon={<Building2 size={20} />} name="businessName" placeholder="Nama Bisnis" value={formData.businessName} onChange={handleChange} />
+                            <InputGroup icon={<Mail size={20} />} name="email" type="email" placeholder="Alamat Email" value={formData.email} onChange={handleChange} />
+                            <InputGroup icon={<Lock size={20} />} name="password" type="password" placeholder="Kata Sandi" value={formData.password} onChange={handleChange} />
+                            <InputGroup icon={<Phone size={20} />} name="waNumber" placeholder="Nomor WhatsApp" value={formData.waNumber} onChange={handleChange} />
+                            <InputGroup icon={<MapPin size={20} />} name="address" placeholder="Alamat Bisnis" value={formData.address} onChange={handleChange} />
                         </div>
 
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full py-4 bg-primary text-white font-bold rounded-2xl shadow-[5px_5px_10px_#bebebe,-5px_-5px_10px_#ffffff] hover:shadow-[inset_5px_5px_10px_#bebebe,inset_-5px_-5px_10px_#ffffff] transition-all duration-300 flex items-center justify-center gap-2 group disabled:opacity-70"
+                            className="w-full py-4 bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold rounded-2xl shadow-[0_10px_30px_rgba(79,70,229,0.35)] hover:shadow-[0_15px_40px_rgba(124,58,237,0.45)] transition-all duration-300 flex items-center justify-center gap-2 group disabled:opacity-70"
                         >
-                            {loading ? 'Creating Account...' : 'Create Account'}
+                            {loading ? 'Membuat Akun...' : 'Buat Akun'}
                             {!loading && <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />}
                         </button>
 
-                        <p className="text-center text-gray-500 text-sm">
-                            Already have an account? <Link to="/login" className="text-primary font-bold hover:underline">Log In</Link>
+                        <p className="text-center text-slate-400 text-sm">
+                            Sudah punya akun? <Link to="/login" className="text-indigo-300 font-bold hover:underline">Masuk</Link>
                         </p>
                     </form>
                 </div>
@@ -102,12 +102,12 @@ const Register = () => {
 
 const InputGroup = ({ icon, ...props }) => (
     <div className="relative">
-        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
             {icon}
         </div>
         <input
             {...props}
-            className="w-full bg-[#e0e5ec] border-none rounded-xl py-4 pl-12 pr-4 text-slate-700 placeholder-gray-400 shadow-[inset_5px_5px_10px_#bebebe,inset_-5px_-5px_10px_#ffffff] focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all font-medium"
+            className="w-full bg-white/10 border border-white/10 rounded-xl py-4 pl-12 pr-4 text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 transition-all font-medium"
             required
         />
     </div>

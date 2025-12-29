@@ -101,6 +101,26 @@ class CartProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setItemQuantity(String productId, int quantity) {
+    if (quantity <= 0) {
+      removeItem(productId);
+      return;
+    }
+    if (_items.containsKey(productId)) {
+      final existing = _items[productId]!;
+      _items.update(
+        productId,
+        (_) => CartItem(
+          productId: existing.productId,
+          name: existing.name,
+          price: existing.price,
+          quantity: quantity,
+        ),
+      );
+      notifyListeners();
+    }
+  }
+
   Future<void> checkout(
       String tenantId, 
       String storeId, 

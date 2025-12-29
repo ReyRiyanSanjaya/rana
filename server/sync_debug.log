@@ -34,3 +34,7 @@
 [2025-12-29T06:21:06.646Z] Already Synced: 7ec43f06-dc0b-484b-ae0c-ff3e4f87f657
 [2025-12-29T06:21:21.749Z] Receiving Sync: {"offlineId":"c72d40c3-8e36-4320-90c3-11a7eae5fea3","storeId":"82d0053b-c138-43c3-a16a-2b227963efbf","cashierId":"130c8195-3e65-46b3-a393-4f3632c0f424","totalAmount":1592,"paymentMethod":"CASH","occurredAt":"2025-12-29T13:21:18.262","items":[{"productId":"9f2c3996-20ba-4c6e-8354-f3bc5f81fb50","quantity":8,"price":199}]}
 [2025-12-29T06:21:21.767Z] Success: d43f89c5-01ed-469e-91a9-294b1cce4f97
+[2025-12-29T09:48:15.266Z] Receiving Sync: {"offlineId":"a4136d17-244e-4880-b174-971b6662cb2b","storeId":"e14cfc41-c1f5-47cc-bffe-8bd7a17b5559","cashierId":"d928b821-0e13-421d-afac-a080d494ef72","totalAmount":76923,"paymentMethod":"CASH","occurredAt":"2025-12-29T16:48:12.127","items":[{"productId":"779a0c16-3873-4912-ae0b-dc5ee432d465","quantity":77,"price":999}]}
+[2025-12-29T09:48:15.447Z] Success: 06230577-f53b-47f3-9ed0-d9ebd8e4b4d6
+[2025-12-29T09:51:10.914Z] Receiving Sync: {"offlineId":"a4136d17-244e-4880-b174-971b6662cb2b","storeId":"e14cfc41-c1f5-47cc-bffe-8bd7a17b5559","cashierId":"d928b821-0e13-421d-afac-a080d494ef72","totalAmount":76923,"paymentMethod":"CASH","occurredAt":"2025-12-29T16:48:12.127","items":[{"productId":"779a0c16-3873-4912-ae0b-dc5ee432d465","quantity":77,"price":999}]}
+[2025-12-29T09:51:10.916Z] Already Synced: 06230577-f53b-47f3-9ed0-d9ebd8e4b4d6

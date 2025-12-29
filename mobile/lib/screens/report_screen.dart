@@ -162,6 +162,20 @@ class _ReportScreenState extends State<ReportScreen> {
                         onPressed: _pickDateRange,
                         tooltip: 'Pilih Tanggal',
                       ),
+                      IconButton(
+                        icon: const Icon(Icons.sync),
+                        tooltip: 'Sinkronisasi Produk',
+                        onPressed: () async {
+                          try {
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sinkronisasi produk...')));
+                            await ApiService().fetchAndSaveProducts();
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Produk tersinkron. Laporan diperbarui.')));
+                            await _fetchData();
+                          } catch (e) {
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal sinkronisasi: $e'), backgroundColor: Colors.red));
+                          }
+                        },
+                      ),
                       Center(
                         child: Padding(
                           padding: const EdgeInsets.only(right: 16.0, left: 8.0),
@@ -188,16 +202,7 @@ class _ReportScreenState extends State<ReportScreen> {
                     padding: const EdgeInsets.all(20),
                     sliver: SliverList(
                       delegate: SliverChildListDelegate([
-                   // 1. Executive Summary Cards
-                   Row(
-                     children: [
-                       Expanded(child: _buildGradientCard('Omzet', _summary['grossSales'], const [Color(0xFF4F46E5), Color(0xFF818CF8)], Icons.attach_money)),
-                       const SizedBox(width: 12),
-                       Expanded(child: _buildGradientCard('Biaya', _summary['totalExpenses'] ?? 0.0, const [Color(0xFFEF4444), Color(0xFFF87171)], Icons.money_off)),
-                       const SizedBox(width: 12),
-                       Expanded(child: _buildGradientCard('Laba Bersih', _summary['netProfit'], const [Color(0xFF059669), Color(0xFF34D399)], Icons.trending_up)),
-                     ],
-                   ).animate().fadeIn(duration: 600.ms).slideY(begin: 0.2, end: 0),
+                   _buildSummaryCards().animate().fadeIn(duration: 600.ms).slideY(begin: 0.2, end: 0),
                    
                    const SizedBox(height: 16),
                    
@@ -536,6 +541,88 @@ class _ReportScreenState extends State<ReportScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildSummaryCards() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isNarrow = constraints.maxWidth < 600;
+        final itemWidth = isNarrow ? constraints.maxWidth : (constraints.maxWidth - 24) / 3;
+        return Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            SizedBox(width: itemWidth, child: _buildGradientCard('Omzet', _summary['grossSales'], const [Color(0xFF4F46E5), Color(0xFF818CF8)], Icons.attach_money)),
+            SizedBox(width: itemWidth, child: _buildGradientCard('Biaya', _summary['totalExpenses'] ?? 0.0, const [Color(0xFFEF4444), Color(0xFFF87171)], Icons.money_off)),
+            SizedBox(width: itemWidth, child: _buildProfitCard()),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildProfitCard() {
+    final omzet = (_summary['grossSales'] as num?)?.toDouble() ?? 0.0;
+    final pengeluaran = (_summary['totalExpenses'] as num?)?.toDouble() ?? 0.0;
+    final labaBersih = (_summary['netProfit'] as num?)?.toDouble() ?? 0.0;
+    final hpp = (omzet - (labaBersih + pengeluaran)).clamp(0, double.infinity);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isNarrow = constraints.maxWidth < 360;
+        final valueStyle = TextStyle(color: Colors.white, fontSize: isNarrow ? 11 : 12, fontWeight: FontWeight.w600);
+        final labelStyle = TextStyle(color: Colors.white70, fontSize: isNarrow ? 11 : 12);
+        final totalStyle = TextStyle(color: Colors.white, fontSize: isNarrow ? 20 : 24, fontWeight: FontWeight.bold);
+
+        Widget valueText(String s) => Flexible(
+          child: Text(s, style: valueStyle, textAlign: TextAlign.right, overflow: TextOverflow.ellipsis, softWrap: false),
+        );
+
+        return Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(colors: [Color(0xFF059669), Color(0xFF34D399)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [BoxShadow(color: const Color(0xFF059669).withOpacity(0.4), blurRadius: 12, offset: const Offset(0, 6))],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Laba Bersih', style: const TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w500)),
+                  const Icon(Icons.trending_up, color: Colors.white54),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(currency.format(labaBersih), style: totalStyle),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(child: Text('Omzet', style: labelStyle)),
+                  valueText(currency.format(omzet)),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Expanded(child: Text('HPP', style: labelStyle)),
+                  valueText(currency.format(hpp)),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Expanded(child: Text('Pengeluaran', style: labelStyle)),
+                  valueText(currency.format(pengeluaran)),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

@@ -41,6 +41,7 @@ import 'package:rana_merchant/screens/blog_detail_screen.dart'; // [NEW]
 import 'package:rana_merchant/screens/blog_list_screen.dart'; // [NEW]
 import 'package:rana_merchant/screens/subscription_pending_screen.dart'; // [NEW] Lock Screen
 import 'dart:async'; // For Timer
+import 'package:flutter/services.dart';
 
 
 
@@ -1282,7 +1283,37 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Column(
                           children: [
                             InkWell(onTap: () => cart.addItem(item.productId, item.name, item.price), child: const Padding(padding: EdgeInsets.all(4), child: Icon(Icons.keyboard_arrow_up, size: 16))),
-                            Text('${item.quantity}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                            InkWell(
+                              onTap: () async {
+                                final ctrl = TextEditingController(text: item.quantity.toString());
+                                final result = await showDialog<int>(
+                                  context: context,
+                                  builder: (_) => AlertDialog(
+                                    title: const Text('Set Jumlah'),
+                                    content: TextField(
+                                      controller: ctrl,
+                                      keyboardType: TextInputType.number,
+                                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                                      decoration: const InputDecoration(hintText: 'Masukkan qty'),
+                                    ),
+                                    actions: [
+                                      TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
+                                      FilledButton(
+                                        onPressed: () {
+                                          final val = int.tryParse(ctrl.text);
+                                          Navigator.pop(context, val);
+                                        },
+                                        child: const Text('Simpan'),
+                                      )
+                                    ],
+                                  ),
+                                );
+                                if (result != null) {
+                                  cart.setItemQuantity(item.productId, result);
+                                }
+                              },
+                              child: Text('${item.quantity}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                            ),
                             InkWell(onTap: () => cart.removeSingleItem(item.productId), child: const Padding(padding: EdgeInsets.all(4), child: Icon(Icons.keyboard_arrow_down, size: 16))),
                           ],
                         ),

@@ -11,6 +11,7 @@ import 'package:rana_merchant/screens/scan_screen.dart';
 import 'package:rana_merchant/screens/payment_screen.dart'; // [NEW] Refactored
 import 'package:rana_merchant/providers/auth_provider.dart'; // [NEW] Import AuthProvider
 import 'package:rana_merchant/services/sync_service.dart'; // [NEW] For manual sync
+import 'package:flutter/services.dart';
 
 
 class PosScreen extends StatefulWidget {
@@ -327,7 +328,77 @@ class _PosScreenState extends State<PosScreen> {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   IconButton(onPressed: () => cart.removeSingleItem(item.productId), icon: const Icon(Icons.remove_circle, color: Colors.redAccent, size: 24)),
-                                  Text('${item.quantity}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                  InkWell(
+                                    onTap: () async {
+                                      final ctrl = TextEditingController(text: item.quantity.toString());
+                                      final result = await showDialog<int>(
+                                        context: context,
+                                        builder: (_) => AlertDialog(
+                                          title: const Text('Set Jumlah'),
+                                          content: TextField(
+                                            controller: ctrl,
+                                            keyboardType: TextInputType.number,
+                                            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                                            decoration: const InputDecoration(hintText: 'Masukkan qty'),
+                                            onSubmitted: (valStr){
+                                              final val = int.tryParse(valStr);
+                                              Navigator.pop(context, val);
+                                            },
+                                          ),
+                                          actions: [
+                                            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
+                                            FilledButton(
+                                              onPressed: () {
+                                                final val = int.tryParse(ctrl.text);
+                                                Navigator.pop(context, val);
+                                              },
+                                              child: const Text('Simpan'),
+                                            )
+                                          ],
+                                        ),
+                                      );
+                                      if (result != null) {
+                                        cart.setItemQuantity(item.productId, result);
+                                      }
+                                    },
+                                    child: Text('${item.quantity}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                  ),
+                                  IconButton(
+                                    tooltip: 'Set Qty',
+                                    icon: const Icon(Icons.edit, color: Colors.grey, size: 20),
+                                    onPressed: () async {
+                                      final ctrl = TextEditingController(text: item.quantity.toString());
+                                      final result = await showDialog<int>(
+                                        context: context,
+                                        builder: (_) => AlertDialog(
+                                          title: const Text('Set Jumlah'),
+                                          content: TextField(
+                                            controller: ctrl,
+                                            keyboardType: TextInputType.number,
+                                            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                                            decoration: const InputDecoration(hintText: 'Masukkan qty'),
+                                            onSubmitted: (valStr){
+                                              final val = int.tryParse(valStr);
+                                              Navigator.pop(context, val);
+                                            },
+                                          ),
+                                          actions: [
+                                            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
+                                            FilledButton(
+                                              onPressed: () {
+                                                final val = int.tryParse(ctrl.text);
+                                                Navigator.pop(context, val);
+                                              },
+                                              child: const Text('Simpan'),
+                                            )
+                                          ],
+                                        ),
+                                      );
+                                      if (result != null) {
+                                        cart.setItemQuantity(item.productId, result);
+                                      }
+                                    },
+                                  ),
                                   IconButton(onPressed: () => cart.addItem(item.productId, item.name, item.price), icon: const Icon(Icons.add_circle, color: Colors.green, size: 24)),
                                 ],
                               ),

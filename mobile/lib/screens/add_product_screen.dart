@@ -65,7 +65,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
           'name': _nameCtrl.text,
           'sku': _skuCtrl.text,
           'sellingPrice': sell,
-          'basePrice': cost, 
+          'costPrice': cost, 
           'stock': 0, 
           'minStock': 5, 
           'trackStock': true,
@@ -77,7 +77,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
           'tenantId': newProduct['tenantId'],
           'sku': newProduct['sku'],
           'name': newProduct['name'],
-          'costPrice': newProduct['basePrice'] ?? 0, 
+          'costPrice': newProduct['costPrice'] ?? 0, 
           'sellingPrice': newProduct['sellingPrice'],
           'trackStock': 1,
           'stock': 0,
@@ -93,7 +93,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
           'name': _nameCtrl.text,
           'sku': _skuCtrl.text,
           'sellingPrice': sell,
-          'basePrice': cost,
+          'costPrice': cost,
           'category': _selectedCategory
         };
         
