@@ -31,8 +31,8 @@ class SyncService {
         
         final payload = {
            'offlineId': offlineId,
-           'storeId': txn['storeId'] ?? 'store-1',
-           'cashierId': txn['cashierId'] ?? 'cashier-1',
+           'storeId': txn['storeId'],
+           'cashierId': txn['cashierId'],
            'totalAmount': txn['totalAmount'],
            'paymentMethod': txn['paymentMethod'] ?? 'CASH',
            'occurredAt': txn['occurredAt'],

@@ -2,6 +2,7 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const { successResponse, errorResponse } = require('../utils/response');
 const AggregationService = require('../services/aggregationService');
+const { emitToTenant } = require('../socket');
 
 /**
  * Handle incoming sync batches from offline clients
@@ -27,6 +28,13 @@ const syncTransaction = async (req, res) => {
             logSync('Invalid Data');
             return errorResponse(res, "Invalid transaction data", 400);
         }
+
+        let storeId = transactionData.storeId || req.user.storeId;
+        if (!storeId) {
+            const store = await prisma.store.findFirst({ where: { tenantId }, select: { id: true } });
+            storeId = store?.id;
+        }
+        if (!storeId) return errorResponse(res, "No store found for tenant", 404);
 
         // 1. Idempotency Check
         const existing = await prisma.transaction.findUnique({
@@ -75,30 +83,87 @@ const syncTransaction = async (req, res) => {
             };
         });
 
-        const newTxn = await prisma.transaction.create({
-            data: {
-                tenantId,
-                storeId: transactionData.storeId,
-                cashierId: req.user.userId || transactionData.cashierId,
-                offlineId: transactionData.offlineId,
-                occurredAt: new Date(transactionData.occurredAt),
-                orderStatus: 'COMPLETED',
-                paymentStatus: 'PAID',
-                paymentMethod: transactionData.paymentMethod || 'CASH',
-                totalAmount: Number(transactionData.totalAmount),
-                amountPaid: Number(transactionData.totalAmount),
-                change: 0,
-                transactionItems: {
-                    create: prismaItems
+        const qtyByProductId = new Map();
+        for (const item of prismaItems) {
+            const qty = Number(item.quantity || 0);
+            if (!qtyByProductId.has(item.productId)) qtyByProductId.set(item.productId, 0);
+            qtyByProductId.set(item.productId, qtyByProductId.get(item.productId) + qty);
+        }
+
+        const stockChanges = [];
+        const newTxn = await prisma.$transaction(async (tx) => {
+            const createdTxn = await tx.transaction.create({
+                data: {
+                    tenantId,
+                    storeId,
+                    cashierId: req.user.userId || transactionData.cashierId,
+                    offlineId: transactionData.offlineId,
+                    occurredAt: new Date(transactionData.occurredAt),
+                    orderStatus: 'COMPLETED',
+                    paymentStatus: 'PAID',
+                    paymentMethod: transactionData.paymentMethod || 'CASH',
+                    totalAmount: Number(transactionData.totalAmount),
+                    amountPaid: Number(transactionData.totalAmount),
+                    change: 0,
+                    transactionItems: {
+                        create: prismaItems
+                    }
                 }
+            });
+
+            for (const [productId, qty] of qtyByProductId.entries()) {
+                if (!qty) continue;
+
+                const product = await tx.product.findFirst({
+                    where: { id: productId, tenantId },
+                    select: { id: true, stock: true }
+                });
+                if (!product) continue;
+
+                const nextProductStock = Math.max(0, Number(product.stock || 0) - qty);
+                await tx.product.update({
+                    where: { id: product.id },
+                    data: { stock: nextProductStock }
+                });
+
+                const existingStock = await tx.stock.findUnique({
+                    where: { storeId_productId: { storeId, productId } },
+                    select: { quantity: true }
+                });
+                const currentStoreQty = Number(existingStock?.quantity ?? product.stock ?? 0);
+                const nextStoreQty = Math.max(0, currentStoreQty - qty);
+
+                await tx.stock.upsert({
+                    where: { storeId_productId: { storeId, productId } },
+                    update: { quantity: nextStoreQty },
+                    create: { storeId, productId, quantity: nextStoreQty }
+                });
+
+                await tx.inventoryLog.create({
+                    data: {
+                        productId,
+                        storeId,
+                        type: 'OUT',
+                        quantity: -qty,
+                        reason: 'Sale',
+                        createdAt: new Date()
+                    }
+                });
+
+                stockChanges.push({ productId, stock: nextProductStock, storeStock: nextStoreQty });
             }
+
+            return createdTxn;
         });
 
         logSync(`Success: ${newTxn.id}`);
 
         // Async aggregation
         const dateStr = transactionData.occurredAt.split('T')[0];
-        AggregationService.processDailyAggregates(tenantId, transactionData.storeId, dateStr);
+        AggregationService.processDailyAggregates(tenantId, storeId, dateStr);
+
+        emitToTenant(tenantId, 'transactions:created', { id: newTxn.id, storeId, occurredAt: transactionData.occurredAt });
+        if (stockChanges.length) emitToTenant(tenantId, 'inventory:changed', { storeId, changes: stockChanges });
 
         return successResponse(res, { id: newTxn.id, status: 'SYNCED' }, "Sync successful");
 

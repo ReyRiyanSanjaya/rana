@@ -6,7 +6,7 @@ import 'package:rana_merchant/providers/wallet_provider.dart'; // [NEW]
 import 'package:rana_merchant/data/remote/api_service.dart'; // [FIX] Added import
 import 'package:rana_merchant/services/shopee_service.dart';
 import 'package:rana_merchant/screens/wallet_screen.dart'; // [NEW] Import WalletScreen
-import 'package:intl/intl.dart'; 
+import 'package:intl/intl.dart';
 
 class PpobScreen extends StatefulWidget {
   const PpobScreen({super.key});
@@ -15,19 +15,40 @@ class PpobScreen extends StatefulWidget {
   State<PpobScreen> createState() => _PpobScreenState();
 }
 
-class _PpobScreenState extends State<PpobScreen> with SingleTickerProviderStateMixin {
+class _PpobScreenState extends State<PpobScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  
+
   // Mock Data
   final List<Map<String, dynamic>> _services = [
     {'icon': Icons.phone_android, 'label': 'Pulsa', 'color': Colors.redAccent},
     {'icon': Icons.wifi, 'label': 'Paket Data', 'color': Colors.blueAccent},
-    {'icon': Icons.lightbulb_outline, 'label': 'Listrik PLN', 'color': Colors.orange},
-    {'icon': Icons.water_drop_outlined, 'label': 'Air PDAM', 'color': Colors.blue},
-    {'icon': Icons.health_and_safety_outlined, 'label': 'BPJS', 'color': Colors.green},
+    {
+      'icon': Icons.lightbulb_outline,
+      'label': 'Listrik PLN',
+      'color': Colors.orange
+    },
+    {
+      'icon': Icons.water_drop_outlined,
+      'label': 'Air PDAM',
+      'color': Colors.blue
+    },
+    {
+      'icon': Icons.health_and_safety_outlined,
+      'label': 'BPJS',
+      'color': Colors.green
+    },
     {'icon': Icons.tv, 'label': 'TV Kabel', 'color': Colors.purple},
-    {'icon': Icons.account_balance_wallet_outlined, 'label': 'E-Wallet', 'color': Colors.indigo},
-    {'icon': Icons.sports_esports, 'label': 'Voucher Game', 'color': Colors.deepOrange},
+    {
+      'icon': Icons.account_balance_wallet_outlined,
+      'label': 'E-Wallet',
+      'color': Colors.indigo
+    },
+    {
+      'icon': Icons.sports_esports,
+      'label': 'Voucher Game',
+      'color': Colors.deepOrange
+    },
   ];
 
   @override
@@ -49,23 +70,34 @@ class _PpobScreenState extends State<PpobScreen> with SingleTickerProviderStateM
         ),
         title: Column(
           children: [
-            Text('PPOB & Tagihan', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 18)),
-            Text('Powered by Shopee Partner', style: GoogleFonts.poppins(fontWeight: FontWeight.w400, color: Colors.white.withOpacity(0.8), fontSize: 10)),
+            Text('PPOB & Tagihan',
+                style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    fontSize: 18)),
+            Text('Powered by Digiflazz',
+                style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.w400,
+                    color: Colors.white.withOpacity(0.8),
+                    fontSize: 10)),
           ],
         ),
-        iconTheme: const IconThemeData(color: Colors.white), // [FIX] Ensure Back Arrow is White
+        iconTheme: const IconThemeData(
+            color: Colors.white), // [FIX] Ensure Back Arrow is White
         elevation: 0,
         centerTitle: true,
         bottom: TabBar(
             controller: _tabController,
             indicatorColor: Colors.white, // [FIX] Indicator to White
-            labelStyle: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: Colors.white), // [FIX] Label White
-            unselectedLabelColor: Colors.white.withOpacity(0.6), // [FIX] Unselected Light White
+            labelStyle: GoogleFonts.poppins(
+                fontWeight: FontWeight.bold,
+                color: Colors.white), // [FIX] Label White
+            unselectedLabelColor:
+                Colors.white.withOpacity(0.6), // [FIX] Unselected Light White
             tabs: const [
-               Tab(text: "Layanan"),
-               Tab(text: "Riwayat Transaksi"),
-            ]
-        ),
+              Tab(text: "Layanan"),
+              Tab(text: "Riwayat Transaksi"),
+            ]),
       ),
       body: TabBarView(
         controller: _tabController,
@@ -87,73 +119,101 @@ class _PpobScreenState extends State<PpobScreen> with SingleTickerProviderStateM
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Theme.of(context).primaryColor, // [FIX] Use Theme Primary Color
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [BoxShadow(color: Theme.of(context).primaryColor.withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8))]
-            ),
-            child: Consumer<WalletProvider>( // [NEW] Consume Wallet
-              builder: (context, wallet, _) {
-                final balanceFormat = NumberFormat.currency(locale: 'id', symbol: 'Rp ', decimalDigits: 0);
-                return Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                     Column(
-                       crossAxisAlignment: CrossAxisAlignment.start,
-                       children: [
-                         Text('Saldo Aktif', style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12)),
-                         const SizedBox(height: 4),
-                         // Show Real Balance
-                         Text(balanceFormat.format(wallet.balance), style: GoogleFonts.poppins(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
-                       ],
-                     ),
-                     ElevatedButton(
-                       onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WalletScreen())), // [FIX] Navigate to Wallet
-                       style: ElevatedButton.styleFrom(
-                         backgroundColor: Colors.white, 
-                         foregroundColor: Theme.of(context).primaryColor, // [FIX] Text color matches theme
-                         shape: const StadiumBorder()
-                       ),
-                       child: const Text('Top Up'),
-                     )
-                  ],
-                );
-              }
-            ),
+                color: Theme.of(context)
+                    .primaryColor, // [FIX] Use Theme Primary Color
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                      color: Theme.of(context).primaryColor.withOpacity(0.3),
+                      blurRadius: 15,
+                      offset: const Offset(0, 8))
+                ]),
+            child: Consumer<WalletProvider>(// [NEW] Consume Wallet
+                builder: (context, wallet, _) {
+              final balanceFormat = NumberFormat.currency(
+                  locale: 'id', symbol: 'Rp ', decimalDigits: 0);
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Saldo Aktif',
+                          style: GoogleFonts.poppins(
+                              color: Colors.white70, fontSize: 12)),
+                      const SizedBox(height: 4),
+                      // Show Real Balance
+                      Text(balanceFormat.format(wallet.balance),
+                          style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                  ElevatedButton(
+                    onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) =>
+                                const WalletScreen())), // [FIX] Navigate to Wallet
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: Theme.of(context)
+                            .primaryColor, // [FIX] Text color matches theme
+                        shape: const StadiumBorder()),
+                    child: const Text('Top Up'),
+                  )
+                ],
+              );
+            }),
           ).animate().slideY(begin: 0.2, end: 0, duration: 400.ms),
 
           const SizedBox(height: 24),
 
           // 2. Services Grid
-          Text('Produk Digital', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
+          Text('Produk Digital',
+              style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF1E293B))),
           const SizedBox(height: 16),
           GridView.builder(
             physics: const NeverScrollableScrollPhysics(),
             shrinkWrap: true,
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 4, 
-              childAspectRatio: 0.8,
-              mainAxisSpacing: 16,
-              crossAxisSpacing: 16
-            ),
+                crossAxisCount: 4,
+                childAspectRatio: 0.8,
+                mainAxisSpacing: 16,
+                crossAxisSpacing: 16),
             itemCount: _services.length,
             itemBuilder: (context, index) {
               final s = _services[index];
               return InkWell(
-                onTap: () => _showTransactionModal(context, s['label'], s['color']),
+                onTap: () =>
+                    _showTransactionModal(context, s['label'], s['color']),
                 borderRadius: BorderRadius.circular(16),
                 child: Column(
                   children: [
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 5, spreadRadius: 1)]
-                      ),
-                      child: Icon(s['icon'] as IconData, color: s['color'] as Color, size: 28),
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                                color: Colors.grey.withOpacity(0.1),
+                                blurRadius: 5,
+                                spreadRadius: 1)
+                          ]),
+                      child: Icon(s['icon'] as IconData,
+                          color: s['color'] as Color, size: 28),
                     ),
                     const SizedBox(height: 8),
-                    Text(s['label'] as String, style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w500), textAlign: TextAlign.center, maxLines: 2)
+                    Text(s['label'] as String,
+                        style: GoogleFonts.poppins(
+                            fontSize: 11, fontWeight: FontWeight.w500),
+                        textAlign: TextAlign.center,
+                        maxLines: 2)
                   ],
                 ),
               );
@@ -163,16 +223,23 @@ class _PpobScreenState extends State<PpobScreen> with SingleTickerProviderStateM
           const SizedBox(height: 24),
 
           // 3. Promo Banner Carousel (Static for now)
-          Text('Promo Spesial', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
+          Text('Promo Spesial',
+              style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF1E293B))),
           const SizedBox(height: 16),
           SizedBox(
             height: 140,
             child: ListView(
               scrollDirection: Axis.horizontal,
               children: [
-                _buildPromoCard(Colors.blue, 'Diskon Pulsa', 'Potongan 5rb all operator'),
-                _buildPromoCard(Colors.orange, 'Token PLN', 'Cashback 2% Token Listrik'),
-                _buildPromoCard(Colors.green, 'Bayar BPJS', 'Bebas admin bulan ini'),
+                _buildPromoCard(
+                    Colors.blue, 'Diskon Pulsa', 'Potongan 5rb all operator'),
+                _buildPromoCard(
+                    Colors.orange, 'Token PLN', 'Cashback 2% Token Listrik'),
+                _buildPromoCard(
+                    Colors.green, 'Bayar BPJS', 'Bebas admin bulan ini'),
               ],
             ),
           ),
@@ -187,88 +254,113 @@ class _PpobScreenState extends State<PpobScreen> with SingleTickerProviderStateM
       margin: const EdgeInsets.only(right: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.3))
-      ),
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withOpacity(0.3))),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(8)),
-            child: Text('PROMO', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+            decoration: BoxDecoration(
+                color: color, borderRadius: BorderRadius.circular(8)),
+            child: Text('PROMO',
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold)),
           ),
           const SizedBox(height: 8),
-          Text(title, style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold, color: color.withOpacity(0.8))),
-          Text(subtitle, style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[600])),
+          Text(title,
+              style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: color.withOpacity(0.8))),
+          Text(subtitle,
+              style:
+                  GoogleFonts.poppins(fontSize: 12, color: Colors.grey[600])),
         ],
       ),
     );
   }
 
   Widget _buildHistoryTab() {
-    return Consumer<WalletProvider>(
-      builder: (context, wallet, _) {
-        final ppobHistory = wallet.history.where((txn) {
-          // Filter history for PPOB relates entries
-          // Server category: EXPENSE_PURCHASE for PPOB
-          // Or description contains "Beli"
-          final cat = txn['category'] ?? '';
-          final desc = txn['description'] ?? '';
-          return cat == 'EXPENSE_PURCHASE' || desc.contains('Beli');
-        }).toList();
+    return Consumer<WalletProvider>(builder: (context, wallet, _) {
+      final ppobHistory = wallet.history.where((txn) {
+        // Filter history for PPOB relates entries
+        // Server category: EXPENSE_PURCHASE for PPOB
+        // Or description contains "Beli"
+        final cat = txn['category'] ?? '';
+        final desc = txn['description'] ?? '';
+        return cat == 'EXPENSE_PURCHASE' ||
+            desc.contains('Beli') ||
+            desc.contains('PPOB');
+      }).toList();
 
-        if (ppobHistory.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.history_edu, size: 64, color: Colors.grey[300]),
-                const SizedBox(height: 16),
-                Text('Belum ada transaksi PPOB', style: GoogleFonts.poppins(color: Colors.grey)),
-              ],
-            ),
-          );
-        }
-
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: ppobHistory.length,
-          itemBuilder: (context, index) {
-            final txn = ppobHistory[index];
-            final date = DateTime.tryParse(txn['occurredAt'] ?? '') ?? DateTime.now();
-            final fmtDate = DateFormat('dd MMM HH:mm').format(date);
-            final amount = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(txn['amount']);
-
-            return Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
-              margin: const EdgeInsets.only(bottom: 12),
-              child: ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: Colors.blue.shade50, shape: BoxShape.circle),
-                  child: Icon(Icons.receipt_long, color: Colors.blue.shade700),
-                ),
-                title: Text(txn['description'] ?? 'Transaksi PPOB', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                subtitle: Text(fmtDate, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                trailing: Text(amount, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
-              ),
-            );
-          },
+      if (ppobHistory.isEmpty) {
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.history_edu, size: 64, color: Colors.grey[300]),
+              const SizedBox(height: 16),
+              Text('Belum ada transaksi PPOB',
+                  style: GoogleFonts.poppins(color: Colors.grey)),
+            ],
+          ),
         );
       }
-    );
+
+      return ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: ppobHistory.length,
+        itemBuilder: (context, index) {
+          final txn = ppobHistory[index];
+          final date =
+              DateTime.tryParse(txn['occurredAt'] ?? '') ?? DateTime.now();
+          final fmtDate = DateFormat('dd MMM HH:mm').format(date);
+          final amount = NumberFormat.currency(
+                  locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0)
+              .format(txn['amount']);
+
+          return Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(color: Colors.grey.shade200)),
+            margin: const EdgeInsets.only(bottom: 12),
+            child: ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                    color: Colors.blue.shade50, shape: BoxShape.circle),
+                child: Icon(Icons.receipt_long, color: Colors.blue.shade700),
+              ),
+              title: Text(txn['description'] ?? 'Transaksi PPOB',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 14)),
+              subtitle: Text(fmtDate,
+                  style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              trailing: Text(amount,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, color: Colors.red)),
+            ),
+          );
+        },
+      );
+    });
   }
 
-  void _showTransactionModal(BuildContext context, String serviceName, Color color) {
+  void _showTransactionModal(
+      BuildContext context, String serviceName, Color color) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (context) => _TransactionSheet(serviceName: serviceName, color: color),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) =>
+          _TransactionSheet(serviceName: serviceName, color: color),
     );
   }
 }
@@ -287,6 +379,10 @@ class _TransactionSheetState extends State<_TransactionSheet> {
   List<Map<String, dynamic>>? _products;
   bool _isLoading = true;
   String? _selectedSku;
+  final TextEditingController _customerController = TextEditingController();
+  bool _isPostpaid = false;
+  bool _isInquiryLoading = false;
+  Map<String, dynamic>? _inquiry;
 
   @override
   void initState() {
@@ -294,113 +390,268 @@ class _TransactionSheetState extends State<_TransactionSheet> {
     _loadProducts();
   }
 
+  @override
+  void dispose() {
+    _customerController.dispose();
+    super.dispose();
+  }
+
   void _loadProducts() async {
     final prods = await ShopeeService().getProducts(widget.serviceName);
-    if (mounted) setState(() { _products = prods; _isLoading = false; });
+    if (mounted) {
+      setState(() {
+        _products = prods;
+        _isLoading = false;
+        _isPostpaid = prods.any((p) => p['isPostpaid'] == true);
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 24),
+      padding: EdgeInsets.fromLTRB(
+          24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: widget.color.withOpacity(0.1), shape: BoxShape.circle), child: Icon(Icons.payment, color: widget.color)),
+            Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                    color: widget.color.withOpacity(0.1),
+                    shape: BoxShape.circle),
+                child: Icon(Icons.payment, color: widget.color)),
             const SizedBox(width: 12),
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-               Text(widget.serviceName, style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold)),
-               const Text("Powered by Shopee", style: TextStyle(fontSize: 10, color: Colors.orange))
+              Text(widget.serviceName,
+                  style: GoogleFonts.poppins(
+                      fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text("Powered by Digiflazz",
+                  style: TextStyle(fontSize: 10, color: Colors.orange))
             ])
           ]),
           const SizedBox(height: 24),
           TextField(
             keyboardType: TextInputType.number,
+            controller: _customerController,
             decoration: InputDecoration(
-              labelText: 'Nomor Pelanggan / ID',
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              filled: true,
-              fillColor: Colors.grey[50],
-              suffixIcon: const Icon(Icons.contact_phone_outlined)
-            ),
-          ),
-          const SizedBox(height: 16),
-          
-          if (_isLoading)
-             const Center(child: CircularProgressIndicator())
-          else if (_products != null && _products!.isNotEmpty)
-             Container(
-               height: 200, // Limit height
-               decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade200), borderRadius: BorderRadius.circular(12)),
-               child: ListView.separated(
-                 itemCount: _products!.length,
-                 separatorBuilder: (_,__) => const Divider(height: 1),
-                 itemBuilder: (ctx, i) {
-                   final p = _products![i];
-                   final isSelected = _selectedSku == p['id'];
-                   return ListTile(
-                     selected: isSelected,
-                     selectedTileColor: widget.color.withOpacity(0.1),
-                     title: Text(p['name']),
-                     subtitle: p['promo'] == true ? const Text('Promo Hemat!', style: TextStyle(color: Colors.green, fontSize: 10, fontWeight: FontWeight.bold)) : null,
-                     trailing: Text('Rp ${p['price']}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                     onTap: () => setState(() => _selectedSku = p['id']),
-                   );
-                 },
-               ),
-             )
-          else
-             TextField(
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: 'Nominal (Rp)',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                labelText: 'Nomor Pelanggan / ID',
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 filled: true,
                 fillColor: Colors.grey[50],
-                prefixText: 'Rp '
+                suffixIcon: const Icon(Icons.contact_phone_outlined)),
+          ),
+          const SizedBox(height: 16),
+          if (_isLoading)
+            const Center(child: CircularProgressIndicator())
+          else if (_products != null && _products!.isNotEmpty)
+            Container(
+              height: 200, // Limit height
+              decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade200),
+                  borderRadius: BorderRadius.circular(12)),
+              child: ListView.separated(
+                itemCount: _products!.length,
+                separatorBuilder: (_, __) => const Divider(height: 1),
+                itemBuilder: (ctx, i) {
+                  final p = _products![i];
+                  final isSelected = _selectedSku == p['id'];
+                  final price = p['price'];
+                  final admin = p['admin'];
+                  final trailingLabel = price != null
+                      ? 'Rp $price'
+                      : (admin != null ? 'Admin Rp $admin' : '');
+                  return ListTile(
+                    selected: isSelected,
+                    selectedTileColor: widget.color.withOpacity(0.1),
+                    title: Text(p['name']),
+                    subtitle: p['promo'] == true
+                        ? const Text('Promo Hemat!',
+                            style: TextStyle(
+                                color: Colors.green,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold))
+                        : null,
+                    trailing: Text(trailingLabel,
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                    onTap: () => setState(() {
+                      _selectedSku = p['id'];
+                      _inquiry = null;
+                    }),
+                  );
+                },
+              ),
+            )
+          else
+            TextField(
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                  labelText: 'Nominal (Rp)',
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  filled: true,
+                  fillColor: Colors.grey[50],
+                  prefixText: 'Rp '),
+            ),
+          if (_isPostpaid) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _isInquiryLoading
+                    ? null
+                    : () async {
+                        final customerNo = _customerController.text.trim();
+                        if (customerNo.isEmpty) return;
+                        setState(() {
+                          _isInquiryLoading = true;
+                          _inquiry = null;
+                        });
+                        try {
+                          final data = await ApiService().checkDigitalBill(
+                            customerNo,
+                            widget.serviceName,
+                            productId: _selectedSku,
+                          );
+                          if (mounted) {
+                            setState(() {
+                              _inquiry = data;
+                            });
+                          }
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                  content:
+                                      Text('Inquiry gagal: ${e.toString()}'),
+                                  backgroundColor: Colors.red),
+                            );
+                          }
+                        } finally {
+                          if (mounted)
+                            setState(() => _isInquiryLoading = false);
+                        }
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: widget.color,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  side: BorderSide(color: widget.color.withOpacity(0.5)),
+                ),
+                child: _isInquiryLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator())
+                    : const Text('Cek Tagihan'),
               ),
             ),
-
+          ],
+          if (_inquiry != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(_inquiry!['customerName']?.toString() ?? 'Tagihan',
+                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 6),
+                  Text('Ref: ${_inquiry!['refId']?.toString() ?? '-'}',
+                      style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                  const SizedBox(height: 6),
+                  Text(
+                      'Estimasi bayar: Rp ${_inquiry!['estimatedCharge']?.toString() ?? '-'}',
+                      style: const TextStyle(fontSize: 12)),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 24),
           SizedBox(
-            child: Consumer<WalletProvider>(
-              builder: (context, wallet, _) {
-                return ElevatedButton(
-                  onPressed: wallet.isLoading ? null : () async {
-                     final amountInput = _products != null && _selectedSku != null 
-                        ? _products!.firstWhere((p) => p['id'] == _selectedSku)['price']
-                        : 0.0;
-                     
-                     if (amountInput == 0) return;
+            child: Consumer<WalletProvider>(builder: (context, wallet, _) {
+              return ElevatedButton(
+                onPressed: wallet.isLoading
+                    ? null
+                    : () async {
+                        try {
+                          final customerNo = _customerController.text.trim();
+                          if (customerNo.isEmpty) return;
 
-                     try {
-                        // 1. Call API
-                        await ApiService().purchaseDigitalProduct(
-                          sku: _selectedSku!, 
-                          amount: (amountInput as num).toDouble(),
-                          customerId: '08123456789' 
-                        );
+                          Map<String, dynamic> result;
+                          if (_isPostpaid) {
+                            final refId = _inquiry?['refId']?.toString();
+                            final sku = _selectedSku ??
+                                _inquiry?['buyerSkuCode']?.toString();
+                            if (refId == null || refId.isEmpty) return;
+                            if (sku == null || sku.isEmpty) return;
+                            result = await ApiService().purchaseDigitalProduct(
+                              productId: sku,
+                              customerId: customerNo,
+                              commands: 'pay-pasca',
+                              refId: refId,
+                            );
+                          } else {
+                            if (_selectedSku == null) return;
+                            final amountInput = _products != null
+                                ? _products!.firstWhere(
+                                    (p) => p['id'] == _selectedSku)['price']
+                                : 0.0;
+                            if (amountInput == 0) return;
+                            result = await ApiService().purchaseDigitalProduct(
+                              sku: _selectedSku!,
+                              amount: (amountInput as num).toDouble(),
+                              customerId: customerNo,
+                            );
+                          }
 
-                        // 2. Reload Wallet
-                        await wallet.loadData();
+                          // 2. Reload Wallet
+                          await wallet.loadData();
 
-                        if (context.mounted) {
-                          Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pembayaran Sukses!'), backgroundColor: Colors.green));
+                          if (context.mounted) {
+                            Navigator.pop(context);
+                            final status =
+                                result['status']?.toString() ?? 'SUCCESS';
+                            final refId = result['refId']?.toString() ?? '';
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(status == 'SUCCESS'
+                                    ? 'Pembayaran sukses'
+                                    : 'Status: $status ${refId.isNotEmpty ? '(ref $refId)' : ''}'),
+                                backgroundColor: status == 'SUCCESS'
+                                    ? Colors.green
+                                    : Colors.orange,
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                              content: Text('Gagal: ${e.toString()}'),
+                              backgroundColor: Colors.red));
                         }
-                     } catch (e) {
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal: ${e.toString()}'), backgroundColor: Colors.red));
-                     }
-                  },
-                  style: ElevatedButton.styleFrom(backgroundColor: widget.color, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                  child: wallet.isLoading 
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white))
+                      },
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: widget.color,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12))),
+                child: wallet.isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(color: Colors.white))
                     : const Text('Lanjutkan Pembayaran'),
-                );
-              }
-            ),
+              );
+            }),
           )
         ],
       ),

@@ -1,6 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const bcrypt = require('bcrypt'); // [NEW]
+const crypto = require('crypto');
 const { successResponse, errorResponse } = require('../utils/response');
 
 // Get Withdrawals with filtering
@@ -258,9 +259,56 @@ const rejectWithdrawal = async (req, res) => {
 // Get Global Settings
 const getSettings = async (req, res) => {
     try {
+        const SENSITIVE_SETTING_KEYS = new Set(['DIGIFLAZZ_API_KEY', 'DIGIFLAZZ_WEBHOOK_SECRET']);
+        const deriveAesKey = (secret) =>
+            crypto.createHash('sha256').update(String(secret || '')).digest();
+
+        const decryptIfNeeded = (value) => {
+            const raw = (value || '').toString();
+            if (!raw) return '';
+            if (!raw.startsWith('enc:v1:')) return raw;
+
+            try {
+                const secret =
+                    process.env.SETTINGS_ENCRYPTION_KEY ||
+                    process.env.JWT_SECRET ||
+                    'super_secret_key_change_in_prod';
+                const key = deriveAesKey(secret);
+
+                const packed = Buffer.from(raw.slice('enc:v1:'.length), 'base64');
+                if (packed.length < 12 + 16) return '';
+
+                const iv = packed.subarray(0, 12);
+                const tag = packed.subarray(12, 28);
+                const ciphertext = packed.subarray(28);
+
+                const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+                decipher.setAuthTag(tag);
+                const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
+                return plaintext.toString('utf8');
+            } catch {
+                return '';
+            }
+        };
+
+        const maskSecret = (secret) => {
+            const s = (secret || '').toString();
+            if (!s) return '';
+            const tail = s.slice(-4);
+            return `****${tail}`;
+        };
+
         const settings = await prisma.systemSettings.findMany();
         const settingsMap = {};
-        settings.forEach(s => settingsMap[s.key] = s.value);
+        settings.forEach(s => {
+            if (SENSITIVE_SETTING_KEYS.has(s.key)) {
+                const isSet = Boolean(s.value && s.value.toString().trim());
+                settingsMap[`${s.key}_IS_SET`] = isSet ? 'true' : 'false';
+                settingsMap[s.key] = isSet ? maskSecret(decryptIfNeeded(s.value)) : '';
+                return;
+            }
+            settingsMap[s.key] = s.value;
+        });
         return successResponse(res, settingsMap);
     } catch (error) {
         return errorResponse(res, "Failed to fetch settings", 500, error);
@@ -271,11 +319,38 @@ const getSettings = async (req, res) => {
 const updateSettings = async (req, res) => {
     try {
         const { key, value, description } = req.body;
+        const SENSITIVE_SETTING_KEYS = new Set(['DIGIFLAZZ_API_KEY', 'DIGIFLAZZ_WEBHOOK_SECRET']);
+        const deriveAesKey = (secret) =>
+            crypto.createHash('sha256').update(String(secret || '')).digest();
+
+        const encryptIfNeeded = (k, v) => {
+            if (!SENSITIVE_SETTING_KEYS.has(k)) return String(v ?? '');
+            const incoming = String(v ?? '');
+            if (!incoming.trim() || incoming.includes('*')) return null;
+
+            const secret =
+                process.env.SETTINGS_ENCRYPTION_KEY ||
+                process.env.JWT_SECRET ||
+                'super_secret_key_change_in_prod';
+            const aesKey = deriveAesKey(secret);
+            const iv = crypto.randomBytes(12);
+            const cipher = crypto.createCipheriv('aes-256-gcm', aesKey, iv);
+            const ciphertext = Buffer.concat([cipher.update(incoming, 'utf8'), cipher.final()]);
+            const tag = cipher.getAuthTag();
+            const packed = Buffer.concat([iv, tag, ciphertext]).toString('base64');
+            return `enc:v1:${packed}`;
+        };
+
+        const maybeEncryptedValue = encryptIfNeeded(key, value);
+        if (maybeEncryptedValue === null) {
+            const existing = await prisma.systemSettings.findUnique({ where: { key } });
+            return successResponse(res, existing, "Setting Updated");
+        }
 
         const setting = await prisma.systemSettings.upsert({
             where: { key },
-            update: { value, description },
-            create: { key, value, description }
+            update: { value: maybeEncryptedValue, description },
+            create: { key, value: maybeEncryptedValue, description }
         });
 
         return successResponse(res, setting, "Setting Updated");

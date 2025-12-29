@@ -11,7 +11,6 @@ const initSocket = (server) => {
         }
     });
 
-    // [DEBUG] Log all connection attempts
     io.engine.on("connection_error", (err) => {
         console.log("Socket Connection Error:", err.req.url, err.code, err.message, err.context);
     });
@@ -37,6 +36,8 @@ const initSocket = (server) => {
 
     io.on('connection', (socket) => {
         console.log('User connected:', socket.user.role, socket.user.userId);
+        if (socket.user?.tenantId) socket.join(`tenant:${socket.user.tenantId}`);
+        if (socket.user?.storeId) socket.join(`store:${socket.user.storeId}`);
 
         // Join Ticket Room
         socket.on('join_ticket', (ticketId) => {
@@ -72,4 +73,13 @@ const getIo = () => {
     return io;
 };
 
-module.exports = { initSocket, getIo };
+const emitToTenant = (tenantId, event, payload) => {
+    try {
+        if (!io) return;
+        io.to(`tenant:${tenantId}`).emit(event, payload);
+    } catch (e) {
+        console.error("emitToTenant failed", e);
+    }
+};
+
+module.exports = { initSocket, getIo, emitToTenant };

@@ -19,11 +19,12 @@ const Support = () => {
     // Initialize Socket
     useEffect(() => {
         // Connect
-        const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+        const socketUrl = apiUrl.replace(/\/api\/?$/, '');
         console.log("Connecting to Socket:", socketUrl);
 
         socketRef.current = io(socketUrl, {
-            auth: { token: localStorage.getItem('token') },
+            auth: { token: localStorage.getItem('adminToken') },
             transports: ['websocket', 'polling'] // Force try both
         });
 

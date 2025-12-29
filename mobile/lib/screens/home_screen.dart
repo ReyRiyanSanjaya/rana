@@ -141,16 +141,15 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     });
 
-
     _scrollController.addListener(() {
       if (_scrollController.offset > 50 && !_isScrolled) setState(() => _isScrolled = true);
       if (_scrollController.offset <= 50 && _isScrolled) setState(() => _isScrolled = false);
     });
 
     // [NEW] Auto-Sync Loop
-    Timer.periodic(const Duration(seconds: 1), (timer) async {
+    Timer.periodic(const Duration(seconds: 30), (timer) async {
        final isOnline = await ConnectivityService().hasInternetConnection();
-       if (isOnline) {
+       if (isOnline && !SyncService().isSyncing) {
          await SyncService().syncTransactions();
        }
     });

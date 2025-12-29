@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:rana_merchant/data/remote/api_service.dart';
+import 'package:rana_merchant/constants.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO; // [NEW]
 
 class TicketDetailScreen extends StatefulWidget {
@@ -25,9 +26,8 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
   }
 
   void _connectSocket() {
-    // 10.0.2.2 for Android Emulator -> Localhost
-    socket = IO.io('http://10.0.2.2:4000', IO.OptionBuilder()
-       .setTransports(['websocket'])
+    socket = IO.io(AppConstants.baseUrl, IO.OptionBuilder()
+       .setTransports(['websocket', 'polling'])
        .setAuth({'token': ApiService().token}) // Access token from ApiService (Need getter)
        .build()
     );

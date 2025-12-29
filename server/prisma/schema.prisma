@@ -41,6 +41,7 @@ model Tenant {
   wholesaleOrders      WholesaleOrder[]      // [FIX] Added relation
   tickets              SupportTicket[]       // [NEW]
   notifications        Notification[]        // [NEW]
+  ppobTransactions     PpobTransaction[]     // [NEW]
 }
 
 model Notification {
@@ -164,6 +165,7 @@ model Store {
   topUps      TopUpRequest[] // [NEW]
   sentTransfers     WalletTransfer[] @relation("SentTransfers") // [NEW]
   receivedTransfers WalletTransfer[] @relation("ReceivedTransfers") // [NEW]
+  ppobTransactions  PpobTransaction[] // [NEW]
 }
 
 // [NEW] Withdrawal Request
@@ -759,5 +761,32 @@ model DigitalProduct {
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model PpobTransaction {
+  id                  String   @id @default(uuid())
+  tenantId            String
+  storeId             String
+  refId               String   @unique
+  buyerSkuCode        String
+  customerNo          String
+  command             String
+  status              String
+  rc                  String?
+  message             String?
+  sn                  String?
+  providerPrice       Float?
+  providerSellingPrice Float?
+  chargeAmount        Float?
+  walletLogId         String?
+  rawResponse         Json?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  tenant              Tenant   @relation(fields: [tenantId], references: [id])
+  store               Store    @relation(fields: [storeId], references: [id])
+
+  @@index([tenantId, createdAt])
+  @@index([storeId, createdAt])
 }
 

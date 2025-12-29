@@ -1,6 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const { successResponse, errorResponse } = require('../utils/response');
+const { emitToTenant } = require('../socket');
 
 // Get Inventory Logs for a Product
 const getInventoryLogs = async (req, res) => {
@@ -40,6 +41,13 @@ const adjustStock = async (req, res) => {
         if (!targetProduct) return errorResponse(res, "Product not found", 404);
         if (targetProduct.tenantId !== tenantId) return errorResponse(res, "Unauthorized", 403);
 
+        let storeId = req.user.storeId;
+        if (!storeId) {
+            const store = await prisma.store.findFirst({ where: { tenantId }, select: { id: true } });
+            storeId = store?.id;
+        }
+        if (!storeId) return errorResponse(res, "No store found for tenant", 404);
+
         const qty = parseInt(quantity);
         let change = 0;
 
@@ -48,11 +56,29 @@ const adjustStock = async (req, res) => {
         else if (type === 'ADJUSTMENT') change = qty; // Allow passing negative for adjustment
 
         const result = await prisma.$transaction(async (tx) => {
+            const currentProduct = await tx.product.findFirst({
+                where: { id: productId, tenantId },
+                select: { stock: true }
+            });
+            const nextProductStock = Math.max(0, Number(currentProduct?.stock || 0) + change);
+
             const product = await tx.product.update({
                 where: { id: productId },
-                data: {
-                    stock: { increment: change }
-                }
+                data: { stock: nextProductStock },
+                select: { id: true, stock: true }
+            });
+
+            const existingStock = await tx.stock.findUnique({
+                where: { storeId_productId: { storeId, productId } },
+                select: { quantity: true }
+            });
+            const currentStoreQty = Number(existingStock?.quantity ?? currentProduct?.stock ?? 0);
+            const nextStoreQty = Math.max(0, currentStoreQty + change);
+
+            await tx.stock.upsert({
+                where: { storeId_productId: { storeId, productId } },
+                update: { quantity: nextStoreQty },
+                create: { storeId, productId, quantity: nextStoreQty }
             });
 
             // 2. Create Log
@@ -61,13 +87,15 @@ const adjustStock = async (req, res) => {
                     productId,
                     type,
                     quantity: change,
+                    storeId,
                     reason: reason || 'Manual Adjustment'
                 }
             });
 
-            return { product, log };
+            return { product, log, storeStock: nextStoreQty };
         });
 
+        emitToTenant(tenantId, 'inventory:changed', { storeId, changes: [{ productId, stock: result.product.stock, storeStock: result.storeStock }] });
         return successResponse(res, result, "Stock Adjusted Successfully");
 
     } catch (error) {

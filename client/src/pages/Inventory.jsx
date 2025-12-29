@@ -1,14 +1,16 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import api, { fetchProductLogs, adjustStock, fetchInventoryIntelligence, fetchDashboardStats, createProduct, updateProduct, deleteProduct, fetchProducts } from '../services/api';
 import { Package, Plus, Minus, History, AlertTriangle, Search, TrendingUp, TrendingDown, Edit, Trash2, X } from 'lucide-react';
+import { io } from 'socket.io-client';
 
 const Inventory = () => {
     const [activeTab, setActiveTab] = useState('stock'); // 'stock', 'intelligence'
     const [products, setProducts] = useState([]);
     const [intelligence, setIntelligence] = useState({ slowMoving: [], topProducts: [] });
     const [loading, setLoading] = useState(true);
+    const socketRef = useRef(null);
 
     // Modal States
     const [selectedProduct, setSelectedProduct] = useState(null);
@@ -30,6 +32,26 @@ const Inventory = () => {
 
     useEffect(() => {
         loadData();
+
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        const baseUrl = api?.defaults?.baseURL || '';
+        const socketUrl = baseUrl ? baseUrl.replace(/\/api\/?$/, '') : 'http://localhost:4000';
+
+        socketRef.current = io(socketUrl, {
+            auth: { token },
+            transports: ['websocket', 'polling']
+        });
+
+        const refresh = () => loadData();
+        socketRef.current.on('inventory:changed', refresh);
+        socketRef.current.on('products:changed', refresh);
+        socketRef.current.on('transactions:created', refresh);
+
+        return () => {
+            socketRef.current?.disconnect();
+        };
     }, []);
 
     const loadData = async () => {

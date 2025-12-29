@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { DollarSign, ShoppingBag, CreditCard, Activity } from 'lucide-react';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import { fetchDashboardStats } from '../services/api';
 import api from '../services/api'; // [NEW] Default export is axios instance
+import { io } from 'socket.io-client';
 
 const StatCard = ({ title, value, subtext, icon: Icon, colorClass }) => (
     <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
@@ -25,25 +26,45 @@ const Dashboard = () => {
     const [loading, setLoading] = useState(true);
 
     const [announcements, setAnnouncements] = useState([]);
+    const socketRef = useRef(null);
+
+    const loadData = async () => {
+        const today = new Date().toISOString().split('T')[0];
+
+        try {
+            const [stats, annRes] = await Promise.all([
+                fetchDashboardStats(today),
+                api.get('/system/announcements')
+            ]);
+            setData(stats);
+            setAnnouncements(annRes.data.data);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const loadData = async () => {
-            const today = new Date().toISOString().split('T')[0];
-
-            try {
-                const [stats, annRes] = await Promise.all([
-                    fetchDashboardStats(today),
-                    api.get('/system/announcements')
-                ]);
-                setData(stats);
-                setAnnouncements(annRes.data.data);
-            } catch (e) {
-                console.error(e);
-            } finally {
-                setLoading(false);
-            }
-        };
         loadData();
+
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        const baseUrl = api?.defaults?.baseURL || '';
+        const socketUrl = baseUrl ? baseUrl.replace(/\/api\/?$/, '') : 'http://localhost:4000';
+
+        socketRef.current = io(socketUrl, {
+            auth: { token },
+            transports: ['websocket', 'polling']
+        });
+
+        socketRef.current.on('transactions:created', loadData);
+        socketRef.current.on('inventory:changed', loadData);
+
+        return () => {
+            socketRef.current?.disconnect();
+        };
     }, []);
 
     if (loading || !data) return (

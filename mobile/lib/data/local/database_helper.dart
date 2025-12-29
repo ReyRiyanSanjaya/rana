@@ -9,7 +9,8 @@ class DatabaseHelper {
 
   Future<Database> get database async {
     if (_database != null) return _database!;
-    _database = await _initDB('rana_pos_fixed.db'); // [FIX] Force fresh DB to avoid migration issues
+    _database = await _initDB(
+        'rana_pos_fixed.db'); // [FIX] Force fresh DB to avoid migration issues
     return _database!;
   }
 
@@ -19,54 +20,55 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 9, // [FIX] Increment version for migration - add syncedAt
+      version: 10, // [FIX] Increment version for migration - add syncedAt
       onCreate: _createDB,
-      onUpgrade: _onUpgrade, 
+      onUpgrade: _onUpgrade,
     );
   }
 
   // [NEW] Migration Logic
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 6) {
-       // Add missing columns to 'transactions'
-       final columnsToAdd = [
-         'storeId TEXT', 
-         'cashierId TEXT', 
-         'discount REAL DEFAULT 0', 
-         'tax REAL DEFAULT 0',
-         'customerName TEXT',
-         'notes TEXT',
-         'paymentMethod TEXT' // Ensure this exists too
-       ];
+      // Add missing columns to 'transactions'
+      final columnsToAdd = [
+        'storeId TEXT',
+        'cashierId TEXT',
+        'discount REAL DEFAULT 0',
+        'tax REAL DEFAULT 0',
+        'customerName TEXT',
+        'notes TEXT',
+        'paymentMethod TEXT' // Ensure this exists too
+      ];
 
-       for (var col in columnsToAdd) {
-         try {
-           await db.execute('ALTER TABLE transactions ADD COLUMN $col');
-         } catch (e) {
-           // Column likely exists
-         }
-       }
-       
-       // Also ensure costPrice in items
-       try {
-        await db.execute('ALTER TABLE transaction_items ADD COLUMN costPrice REAL DEFAULT 0');
-       } catch (e) {}
+      for (var col in columnsToAdd) {
+        try {
+          await db.execute('ALTER TABLE transactions ADD COLUMN $col');
+        } catch (e) {
+          // Column likely exists
+        }
+      }
+
+      // Also ensure costPrice in items
+      try {
+        await db.execute(
+            'ALTER TABLE transaction_items ADD COLUMN costPrice REAL DEFAULT 0');
+      } catch (e) {}
     }
-    
+
     // [NEW] Migration for version 7 - Add promo fields to products
     if (oldVersion < 7) {
-       final productColumnsToAdd = [
-         'originalPrice REAL',       // Store price before discount
-         'promoEndsAt TEXT',          // When promo expires (ISO8601)
-       ];
-       
-       for (var col in productColumnsToAdd) {
-         try {
-           await db.execute('ALTER TABLE products ADD COLUMN $col');
-         } catch (e) {
-           // Column likely exists
-         }
-       }
+      final productColumnsToAdd = [
+        'originalPrice REAL', // Store price before discount
+        'promoEndsAt TEXT', // When promo expires (ISO8601)
+      ];
+
+      for (var col in productColumnsToAdd) {
+        try {
+          await db.execute('ALTER TABLE products ADD COLUMN $col');
+        } catch (e) {
+          // Column likely exists
+        }
+      }
     }
 
     // [NEW] Migration for version 8 - Add syncedAt to transactions
@@ -80,18 +82,26 @@ class DatabaseHelper {
 
     // [FIX] Migration for version 9 - Ensure originalPrice/promoEndsAt exist (Recovery for broken installs)
     if (oldVersion < 9) {
-       final productColumnsToAdd = [
-         'originalPrice REAL',       
-         'promoEndsAt TEXT',          
-       ];
-       
-       for (var col in productColumnsToAdd) {
-         try {
-           await db.execute('ALTER TABLE products ADD COLUMN $col');
-         } catch (e) {
-           // Column likely exists, safe to ignore
-         }
-       }
+      final productColumnsToAdd = [
+        'originalPrice REAL',
+        'promoEndsAt TEXT',
+      ];
+
+      for (var col in productColumnsToAdd) {
+        try {
+          await db.execute('ALTER TABLE products ADD COLUMN $col');
+        } catch (e) {
+          // Column likely exists, safe to ignore
+        }
+      }
+    }
+
+    if (oldVersion < 10) {
+      try {
+        await db.execute('ALTER TABLE products ADD COLUMN imageUrl TEXT');
+      } catch (e) {
+        // Column likely exists
+      }
     }
   }
 
@@ -176,13 +186,20 @@ class DatabaseHelper {
   }
 
   // --- CRUD Operations ---
-  
+
   Future<void> insertProduct(Map<String, dynamic> product) async {
     final db = await instance.database;
-    await db.insert('products', product, conflictAlgorithm: ConflictAlgorithm.replace);
+    if (!product.containsKey('category') ||
+        product['category'] == null ||
+        product['category'].toString().isEmpty) {
+      product['category'] = 'All';
+    }
+    await db.insert('products', product,
+        conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
-  Future<void> updateProductDetails(String id, Map<String, dynamic> data) async {
+  Future<void> updateProductDetails(
+      String id, Map<String, dynamic> data) async {
     final db = await instance.database;
     await db.update('products', data, where: 'id = ?', whereArgs: [id]);
   }
@@ -212,33 +229,36 @@ class DatabaseHelper {
     return await db.query('products');
   }
 
-  Future<void> queueTransaction(Map<String, dynamic> txn, List<Map<String, dynamic>> items) async {
+  Future<void> queueTransaction(
+      Map<String, dynamic> txn, List<Map<String, dynamic>> items) async {
     final db = await instance.database;
     await db.transaction((txnObj) async {
       // 1. Save Transaction Header
       await txnObj.insert('transactions', txn);
-      
+
       // 2. Save Items and Decrement Stock
       for (var item in items) {
         // [UPDATED] Ensure costPrice is saved
         if (!item.containsKey('costPrice')) {
-           // Fallback: fetch current cost from product if not provided in item object
-           final productRes = await txnObj.query('products', columns: ['costPrice'], where: 'id = ?', whereArgs: [item['productId']]);
-           if (productRes.isNotEmpty) {
-             item['costPrice'] = productRes.first['costPrice'] ?? 0;
-           } else {
-             item['costPrice'] = 0;
-           }
+          // Fallback: fetch current cost from product if not provided in item object
+          final productRes = await txnObj.query('products',
+              columns: ['costPrice'],
+              where: 'id = ?',
+              whereArgs: [item['productId']]);
+          if (productRes.isNotEmpty) {
+            item['costPrice'] = productRes.first['costPrice'] ?? 0;
+          } else {
+            item['costPrice'] = 0;
+          }
         }
-        
+
         await txnObj.insert('transaction_items', item);
-        
+
         // Decrement stock for the product
         // We use rawQuery/execute for update
         await txnObj.rawUpdate(
-          'UPDATE products SET stock = stock - ? WHERE id = ?',
-          [item['quantity'], item['productId']]
-        );
+            'UPDATE products SET stock = stock - ? WHERE id = ?',
+            [item['quantity'], item['productId']]);
       }
     });
   }
@@ -246,28 +266,27 @@ class DatabaseHelper {
   // Used by Stock Opname Screen
   Future<void> updateProductStock(String productId, int newStock) async {
     final db = await instance.database;
-    await db.update(
-      'products',
-      {'stock': newStock},
-      where: 'id = ?',
-      whereArgs: [productId]
-    );
+    await db.update('products', {'stock': newStock},
+        where: 'id = ?', whereArgs: [productId]);
   }
 
   Future<List<Map<String, dynamic>>> getPendingTransactions() async {
     final db = await instance.database;
     // Join logic needed in real app, simplified here
-    return await db.query('transactions', where: 'status = ?', whereArgs: ['PENDING_SYNC']);
+    return await db.query('transactions',
+        where: 'status = ?', whereArgs: ['PENDING_SYNC']);
   }
-  
-  Future<List<Map<String, dynamic>>> getItemsForTransaction(String offlineId) async {
-      final db = await instance.database;
-      return await db.query('transaction_items', where: 'transactionOfflineId = ?', whereArgs: [offlineId]);
+
+  Future<List<Map<String, dynamic>>> getItemsForTransaction(
+      String offlineId) async {
+    final db = await instance.database;
+    return await db.query('transaction_items',
+        where: 'transactionOfflineId = ?', whereArgs: [offlineId]);
   }
-  
+
   Future<List<Map<String, dynamic>>> getAllTransactions() async {
-      final db = await instance.database;
-      return await db.query('transactions', orderBy: 'occurredAt DESC');
+    final db = await instance.database;
+    return await db.query('transactions', orderBy: 'occurredAt DESC');
   }
 
   Future<void> markSynced(String offlineId) async {
@@ -287,25 +306,27 @@ class DatabaseHelper {
     await db.insert('expenses', data);
   }
 
-  Future<List<Map<String, dynamic>>> getExpenses({DateTime? start, DateTime? end}) async {
+  Future<List<Map<String, dynamic>>> getExpenses(
+      {DateTime? start, DateTime? end}) async {
     final db = await instance.database;
-     final startDate = start ?? DateTime.now().subtract(const Duration(days: 30));
+    final startDate =
+        start ?? DateTime.now().subtract(const Duration(days: 30));
     final endDate = end ?? DateTime.now();
 
-    return await db.query(
-      'expenses',
-      where: 'date BETWEEN ? AND ?',
-      whereArgs: [startDate.toIso8601String(), endDate.toIso8601String()]
-    );
+    return await db.query('expenses',
+        where: 'date BETWEEN ? AND ?',
+        whereArgs: [startDate.toIso8601String(), endDate.toIso8601String()]);
   }
 
   // --- REPORTING QUERIES ---
 
-  Future<Map<String, dynamic>> getSalesReport({DateTime? start, DateTime? end}) async {
+  Future<Map<String, dynamic>> getSalesReport(
+      {DateTime? start, DateTime? end}) async {
     final db = await instance.database;
-    
+
     // Default to last 30 days if null
-    final startDate = start ?? DateTime.now().subtract(const Duration(days: 30));
+    final startDate =
+        start ?? DateTime.now().subtract(const Duration(days: 30));
     final endDate = end ?? DateTime.now();
 
     final startStr = startDate.toIso8601String();
@@ -333,7 +354,8 @@ class DatabaseHelper {
       WHERE t.occurredAt BETWEEN ? AND ?
     ''', [startStr, endStr]);
 
-    final totalProfit = (profitRes.first['totalProfit'] as num?)?.toDouble() ?? 0.0;
+    final totalProfit =
+        (profitRes.first['totalProfit'] as num?)?.toDouble() ?? 0.0;
 
     // 3. Sales Trend (Daily)
     final trendRes = await db.rawQuery('''
@@ -353,8 +375,9 @@ class DatabaseHelper {
       WHERE date BETWEEN ? AND ?
     ''', [startStr, endStr]);
 
-    final totalExpenses = (expRes.first['totalExpenses'] as num?)?.toDouble() ?? 0.0;
-    
+    final totalExpenses =
+        (expRes.first['totalExpenses'] as num?)?.toDouble() ?? 0.0;
+
     // Net Profit = (Sales - COGS) - Expenses
     final netProfit = totalProfit - totalExpenses;
 
@@ -363,12 +386,14 @@ class DatabaseHelper {
       'grossSales': grossSales,
       'netProfit': netProfit,
       'totalExpenses': totalExpenses, // [NEW] Return this too
-      'averageOrderValue': totalTransactions > 0 ? grossSales / totalTransactions : 0,
+      'averageOrderValue':
+          totalTransactions > 0 ? grossSales / totalTransactions : 0,
       'trend': trendRes
     };
   }
 
-  Future<List<Map<String, dynamic>>> getTopSellingProducts({int limit = 5}) async {
+  Future<List<Map<String, dynamic>>> getTopSellingProducts(
+      {int limit = 5}) async {
     final db = await instance.database;
     return await db.rawQuery('''
       SELECT 
@@ -384,9 +409,11 @@ class DatabaseHelper {
   }
 
   // [NEW] Category Breakdown
-  Future<List<Map<String, dynamic>>> getSalesByCategory({DateTime? start, DateTime? end}) async {
+  Future<List<Map<String, dynamic>>> getSalesByCategory(
+      {DateTime? start, DateTime? end}) async {
     final db = await instance.database;
-    final startDate = start ?? DateTime.now().subtract(const Duration(days: 30));
+    final startDate =
+        start ?? DateTime.now().subtract(const Duration(days: 30));
     final endDate = end ?? DateTime.now();
 
     return await db.rawQuery('''
@@ -402,9 +429,11 @@ class DatabaseHelper {
   }
 
   // [NEW] Payment Method Breakdown
-  Future<List<Map<String, dynamic>>> getSalesByPaymentMethod({DateTime? start, DateTime? end}) async {
+  Future<List<Map<String, dynamic>>> getSalesByPaymentMethod(
+      {DateTime? start, DateTime? end}) async {
     final db = await instance.database;
-    final startDate = start ?? DateTime.now().subtract(const Duration(days: 30));
+    final startDate =
+        start ?? DateTime.now().subtract(const Duration(days: 30));
     final endDate = end ?? DateTime.now();
 
     return await db.rawQuery('''
@@ -419,15 +448,15 @@ class DatabaseHelper {
   }
 
   // [NEW] Low Stock Alert
-  Future<List<Map<String, dynamic>>> getLowStockProducts({int threshold = 5}) async {
+  Future<List<Map<String, dynamic>>> getLowStockProducts(
+      {int threshold = 5}) async {
     final db = await instance.database;
-    return await db.query(
-      'products',
-      where: 'trackStock = 1 AND stock <= ?',
-      whereArgs: [threshold],
-      orderBy: 'stock ASC'
-    );
+    return await db.query('products',
+        where: 'trackStock = 1 AND stock <= ?',
+        whereArgs: [threshold],
+        orderBy: 'stock ASC');
   }
+
   // [NEW] Get Tenant Info
   Future<Map<String, dynamic>?> getTenantInfo() async {
     final db = await instance.database;

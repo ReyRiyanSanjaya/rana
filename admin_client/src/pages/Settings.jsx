@@ -12,9 +12,20 @@ const Settings = () => {
         BANK_NAME: '',
         BANK_ACCOUNT_NUMBER: '',
         BANK_ACCOUNT_NAME: '',
-        PLATFORM_FEE_PERCENTAGE: ''
+        PLATFORM_FEE_PERCENTAGE: '',
+        DIGIFLAZZ_USERNAME: '',
+        DIGIFLAZZ_MODE: 'production',
+        DIGIFLAZZ_BASE_URL: '',
+        DIGIFLAZZ_MARKUP_FLAT: '0',
+        DIGIFLAZZ_MARKUP_PERCENT: '0',
+        DIGIFLAZZ_API_KEY: '',
+        DIGIFLAZZ_API_KEY_IS_SET: 'false',
+        DIGIFLAZZ_WEBHOOK_SECRET: '',
+        DIGIFLAZZ_WEBHOOK_SECRET_IS_SET: 'false'
     });
     const [loading, setLoading] = useState(false);
+    const [digiflazzApiKeyInput, setDigiflazzApiKeyInput] = useState('');
+    const [digiflazzWebhookSecretInput, setDigiflazzWebhookSecretInput] = useState('');
 
     useEffect(() => {
         api.get('/admin/settings').then(res => {
@@ -58,6 +69,71 @@ const Settings = () => {
         } catch (error) {
             console.error(error);
             alert("Failed to save some settings");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSaveDigiflazz = async () => {
+        setLoading(true);
+        try {
+            const requests = [
+                api.post('/admin/settings', {
+                    key: 'DIGIFLAZZ_USERNAME',
+                    value: String(settings.DIGIFLAZZ_USERNAME || ''),
+                    description: 'Digiflazz Username'
+                }),
+                api.post('/admin/settings', {
+                    key: 'DIGIFLAZZ_MODE',
+                    value: String(settings.DIGIFLAZZ_MODE || 'production'),
+                    description: 'Digiflazz Mode'
+                }),
+                api.post('/admin/settings', {
+                    key: 'DIGIFLAZZ_BASE_URL',
+                    value: String(settings.DIGIFLAZZ_BASE_URL || ''),
+                    description: 'Digiflazz Base URL'
+                }),
+                api.post('/admin/settings', {
+                    key: 'DIGIFLAZZ_MARKUP_FLAT',
+                    value: String(settings.DIGIFLAZZ_MARKUP_FLAT || '0'),
+                    description: 'Digiflazz Markup Flat'
+                }),
+                api.post('/admin/settings', {
+                    key: 'DIGIFLAZZ_MARKUP_PERCENT',
+                    value: String(settings.DIGIFLAZZ_MARKUP_PERCENT || '0'),
+                    description: 'Digiflazz Markup Percent'
+                }),
+            ];
+
+            if (digiflazzApiKeyInput.trim()) {
+                requests.push(api.post('/admin/settings', {
+                    key: 'DIGIFLAZZ_API_KEY',
+                    value: digiflazzApiKeyInput,
+                    description: 'Digiflazz API Key'
+                }));
+            }
+            if (digiflazzWebhookSecretInput.trim()) {
+                requests.push(api.post('/admin/settings', {
+                    key: 'DIGIFLAZZ_WEBHOOK_SECRET',
+                    value: digiflazzWebhookSecretInput,
+                    description: 'Digiflazz Webhook Secret'
+                }));
+            }
+
+            await Promise.all(requests);
+
+            setDigiflazzApiKeyInput('');
+            setDigiflazzWebhookSecretInput('');
+
+            const res = await api.get('/admin/settings');
+            if (res.data.data) {
+                setSettings(prev => ({ ...prev, ...res.data.data }));
+            }
+
+            alert("Digiflazz settings saved!");
+        } catch (error) {
+            console.error(error);
+            alert("Failed to save Digiflazz settings");
         } finally {
             setLoading(false);
         }
@@ -175,6 +251,103 @@ const Settings = () => {
                         >
                             Save Bank & Fees
                         </Button>
+                    </div>
+                </Card>
+
+                {/* Digiflazz PPOB */}
+                <Card className="p-6 h-fit">
+                    <div className="flex items-start justify-between mb-6">
+                        <div>
+                            <h3 className="font-semibold text-slate-900">PPOB Configuration (Digiflazz)</h3>
+                            <p className="text-sm text-slate-500 mt-1">Configure Digiflazz credentials and pricing markup.</p>
+                        </div>
+                        <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
+                            <Save size={20} />
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <Input
+                            label="Digiflazz Username"
+                            name="DIGIFLAZZ_USERNAME"
+                            value={settings.DIGIFLAZZ_USERNAME || ''}
+                            onChange={(e) => handleChange('DIGIFLAZZ_USERNAME', e.target.value)}
+                            placeholder="username"
+                        />
+
+                        <Input
+                            label="Digiflazz API Key"
+                            type="password"
+                            helperText={
+                                settings.DIGIFLAZZ_API_KEY_IS_SET === 'true'
+                                    ? `Sudah tersimpan (${settings.DIGIFLAZZ_API_KEY || '****'}). Isi untuk mengganti.`
+                                    : 'Belum di-set.'
+                            }
+                            value={digiflazzApiKeyInput}
+                            onChange={(e) => setDigiflazzApiKeyInput(e.target.value)}
+                            placeholder="Masukkan API key baru jika ingin ganti"
+                        />
+
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Mode</label>
+                            <select
+                                className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+                                value={settings.DIGIFLAZZ_MODE || 'production'}
+                                onChange={(e) => handleChange('DIGIFLAZZ_MODE', e.target.value)}
+                            >
+                                <option value="production">production</option>
+                                <option value="testing">testing</option>
+                            </select>
+                        </div>
+
+                        <Input
+                            label="Base URL (optional)"
+                            helperText="Kosongkan untuk default https://api.digiflazz.com/v1"
+                            name="DIGIFLAZZ_BASE_URL"
+                            value={settings.DIGIFLAZZ_BASE_URL || ''}
+                            onChange={(e) => handleChange('DIGIFLAZZ_BASE_URL', e.target.value)}
+                            placeholder="https://api.digiflazz.com/v1"
+                        />
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <Input
+                                label="Markup Flat"
+                                type="number"
+                                value={settings.DIGIFLAZZ_MARKUP_FLAT || '0'}
+                                onChange={(e) => handleChange('DIGIFLAZZ_MARKUP_FLAT', e.target.value)}
+                                placeholder="0"
+                            />
+                            <Input
+                                label="Markup Percent (%)"
+                                type="number"
+                                value={settings.DIGIFLAZZ_MARKUP_PERCENT || '0'}
+                                onChange={(e) => handleChange('DIGIFLAZZ_MARKUP_PERCENT', e.target.value)}
+                                placeholder="0"
+                            />
+                        </div>
+
+                        <Input
+                            label="Webhook Secret (optional)"
+                            type="password"
+                            helperText={
+                                settings.DIGIFLAZZ_WEBHOOK_SECRET_IS_SET === 'true'
+                                    ? `Sudah tersimpan (${settings.DIGIFLAZZ_WEBHOOK_SECRET || '****'}). Isi untuk mengganti.`
+                                    : 'Kosongkan jika tidak memakai.'
+                            }
+                            value={digiflazzWebhookSecretInput}
+                            onChange={(e) => setDigiflazzWebhookSecretInput(e.target.value)}
+                            placeholder="Masukkan secret baru jika ingin ganti"
+                        />
+
+                        <div className="pt-2">
+                            <Button
+                                onClick={handleSaveDigiflazz}
+                                isLoading={loading}
+                                className="w-full sm:w-auto"
+                            >
+                                Save Digiflazz Settings
+                            </Button>
+                        </div>
                     </div>
                 </Card>
             </div>

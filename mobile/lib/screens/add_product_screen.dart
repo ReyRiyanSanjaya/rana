@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:rana_merchant/data/local/database_helper.dart';
 import 'package:rana_merchant/data/remote/api_service.dart';
 import 'package:rana_merchant/constants.dart';
 import 'package:dio/dio.dart';
+import 'package:image_picker/image_picker.dart';
 
 class AddProductScreen extends StatefulWidget {
   final Map<String, dynamic>? product; // [NEW] Optional product for editing
@@ -21,6 +25,10 @@ class _AddProductScreenState extends State<AddProductScreen> {
   List<String> _existingCategories = []; // [NEW] Dynamic Categories
   String _selectedCategory = 'Beverage'; 
   bool _isLoading = false;
+  final ImagePicker _imagePicker = ImagePicker();
+  Uint8List? _pickedImageBytes;
+  String? _pickedImageBase64;
+  String? _existingImageUrl;
   
   @override
   void initState() {
@@ -33,7 +41,25 @@ class _AddProductScreenState extends State<AddProductScreen> {
       _sellPriceCtrl.text = p['sellingPrice'].toString();
       _costPriceCtrl.text = (p['costPrice'] ?? 0).toString();
       _selectedCategory = p['category'] ?? 'Beverage';
+      _existingImageUrl = p['imageUrl'];
     }
+  }
+
+  Future<void> _pickImage() async {
+    final picked = await _imagePicker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+      maxWidth: 1024,
+    );
+    if (picked == null) return;
+
+    final bytes = await picked.readAsBytes();
+    final b64 = base64Encode(bytes);
+    if (!mounted) return;
+    setState(() {
+      _pickedImageBytes = bytes;
+      _pickedImageBase64 = 'data:image/jpeg;base64,$b64';
+    });
   }
 
   // [NEW] Fetch unique categories from DB
@@ -65,11 +91,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
           'name': _nameCtrl.text,
           'sku': _skuCtrl.text,
           'sellingPrice': sell,
-          'costPrice': cost, 
+          'basePrice': cost,
           'stock': 0, 
           'minStock': 5, 
           'trackStock': true,
-          'category': _selectedCategory
+          'category': _selectedCategory,
+          if (_pickedImageBase64 != null) 'imageBase64': _pickedImageBase64
         });
 
         await DatabaseHelper.instance.insertProduct({
@@ -77,11 +104,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
           'tenantId': newProduct['tenantId'],
           'sku': newProduct['sku'],
           'name': newProduct['name'],
-          'costPrice': newProduct['costPrice'] ?? 0, 
+          'costPrice': newProduct['basePrice'] ?? cost,
           'sellingPrice': newProduct['sellingPrice'],
           'trackStock': 1,
           'stock': 0,
-          'category': _selectedCategory 
+          'category': _selectedCategory,
+          'imageUrl': newProduct['imageUrl']
         });
 
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Produk Berhasil Ditambahkan!')));
@@ -93,19 +121,21 @@ class _AddProductScreenState extends State<AddProductScreen> {
           'name': _nameCtrl.text,
           'sku': _skuCtrl.text,
           'sellingPrice': sell,
-          'costPrice': cost,
-          'category': _selectedCategory
+          'basePrice': cost,
+          'category': _selectedCategory,
+          if (_pickedImageBase64 != null) 'imageBase64': _pickedImageBase64
         };
         
-        await ApiService().updateProduct(id, updateData);
+        final updated = await ApiService().updateProduct(id, updateData);
         
         // Update Local DB
         await DatabaseHelper.instance.updateProductDetails(id, {
           'name': _nameCtrl.text,
           'sku': _skuCtrl.text,
           'sellingPrice': sell,
-          'costPrice': cost,
-          'category': _selectedCategory
+          'costPrice': updated['basePrice'] ?? cost,
+          'category': _selectedCategory,
+          'imageUrl': updated['imageUrl']
         });
 
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Produk Berhasil Diupdate!')));
@@ -125,6 +155,13 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final existingImage = _existingImageUrl;
+    final existingImageFullUrl = existingImage == null
+        ? null
+        : (existingImage.toString().startsWith('http')
+            ? existingImage.toString()
+            : '${AppConstants.baseUrl}${existingImage.toString()}');
+
     return Scaffold(
       appBar: AppBar(title: Text(widget.product == null ? 'Tambah Produk Baru' : 'Edit Produk')),
       body: SingleChildScrollView(
@@ -133,6 +170,62 @@ class _AddProductScreenState extends State<AddProductScreen> {
           key: _formKey,
           child: Column(
             children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  children: [
+                    AspectRatio(
+                      aspectRatio: 16 / 9,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: _pickedImageBytes != null
+                            ? Image.memory(_pickedImageBytes!, fit: BoxFit.cover)
+                            : (existingImageFullUrl != null && existingImageFullUrl.isNotEmpty
+                                ? Image.network(existingImageFullUrl, fit: BoxFit.cover)
+                                : Container(
+                                    color: Colors.grey.shade100,
+                                    child: const Center(child: Icon(Icons.image, size: 40, color: Colors.grey)),
+                                  )),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: _isLoading ? null : _pickImage,
+                            icon: const Icon(Icons.photo_library),
+                            label: Text(widget.product == null ? 'Pilih Gambar Produk' : 'Ganti Gambar Produk'),
+                          ),
+                        ),
+                        if (_pickedImageBytes != null) ...[
+                          const SizedBox(width: 12),
+                          IconButton(
+                            onPressed: _isLoading
+                                ? null
+                                : () => setState(() {
+                                      _pickedImageBytes = null;
+                                      _pickedImageBase64 = null;
+                                    }),
+                            icon: const Icon(Icons.delete_outline),
+                          ),
+                        ]
+                      ],
+                    ),
+                    if (kIsWeb)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 8),
+                        child: Text('Jika di web, gambar akan diupload sebagai base64.', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                      )
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
               TextFormField(
                 controller: _skuCtrl,
                 decoration: const InputDecoration(labelText: 'Kode Barang / SKU', border: OutlineInputBorder(), prefixIcon: Icon(Icons.qr_code)),

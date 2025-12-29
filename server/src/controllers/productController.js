@@ -1,6 +1,35 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const { successResponse, errorResponse } = require('../utils/response');
+const { emitToTenant } = require('../socket');
+const fs = require('fs');
+const path = require('path');
+
+const saveProductImage = (base64String, tenantId, productId) => {
+    try {
+        if (!base64String) return null;
+
+        const matches = base64String.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+        if (!matches || matches.length !== 3) return null;
+
+        const mimeType = matches[1];
+        if (!mimeType.startsWith('image/')) return null;
+
+        const buffer = Buffer.from(matches[2], 'base64');
+        const ext = mimeType.split('/')[1] || 'jpg';
+        const safeExt = ext.replace(/[^a-z0-9]/gi, '').toLowerCase() || 'jpg';
+        const fileName = `product_${productId || 'new'}_${Date.now()}.${safeExt}`;
+
+        const uploadDir = path.join(__dirname, '../../uploads/products', tenantId);
+        if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+        fs.writeFileSync(path.join(uploadDir, fileName), buffer);
+        return `/uploads/products/${tenantId}/${fileName}`;
+    } catch (e) {
+        console.error("Save Product Image Error:", e);
+        return null;
+    }
+};
 
 // List Products (Active Only)
 const getProducts = async (req, res) => {
@@ -27,7 +56,7 @@ const getProducts = async (req, res) => {
 // Create Product
 const createProduct = async (req, res) => {
     try {
-        const { name, sku, basePrice, sellingPrice, stock, minStock, categoryId, category, description } = req.body;
+        const { name, sku, basePrice, sellingPrice, stock, minStock, categoryId, category, description, imageBase64 } = req.body;
         const { tenantId, storeId } = req.user;
 
         if (!tenantId) return errorResponse(res, "Unauthorized: No Tenant ID", 401);
@@ -64,6 +93,17 @@ const createProduct = async (req, res) => {
             }
         });
 
+        if (imageBase64) {
+            const imageUrl = saveProductImage(imageBase64, tenantId, product.id);
+            if (imageUrl) {
+                await prisma.product.update({
+                    where: { id: product.id },
+                    data: { imageUrl }
+                });
+                product.imageUrl = imageUrl;
+            }
+        }
+
         // Log Initial Stock
         if (stock > 0) {
             await prisma.inventoryLog.create({
@@ -89,6 +129,8 @@ const createProduct = async (req, res) => {
             }
         }
 
+        emitToTenant(tenantId, 'products:changed', { type: 'CREATED', id: product.id });
+        emitToTenant(tenantId, 'inventory:changed', { storeId, changes: [{ productId: product.id, stock: product.stock }] });
         return successResponse(res, product, "Product created successfully", 201);
     } catch (error) {
         console.error("Create Product Error:", error); // Log error for debugging
@@ -100,7 +142,7 @@ const createProduct = async (req, res) => {
 const updateProduct = async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, sku, basePrice, sellingPrice, minStock, categoryId, category, description } = req.body;
+        const { name, sku, basePrice, sellingPrice, minStock, categoryId, category, description, imageBase64 } = req.body;
         const { tenantId } = req.user;
 
         // Verify Ownership
@@ -139,6 +181,19 @@ const updateProduct = async (req, res) => {
             }
         });
 
+        if (imageBase64) {
+            const imageUrl = saveProductImage(imageBase64, tenantId, product.id);
+            if (imageUrl) {
+                const updatedWithImage = await prisma.product.update({
+                    where: { id: product.id },
+                    data: { imageUrl }
+                });
+                emitToTenant(tenantId, 'products:changed', { type: 'UPDATED', id: product.id });
+                return successResponse(res, updatedWithImage, "Product updated successfully");
+            }
+        }
+
+        emitToTenant(tenantId, 'products:changed', { type: 'UPDATED', id: product.id });
         return successResponse(res, product, "Product updated successfully");
     } catch (error) {
         console.error("Update Product Error:", error);
@@ -166,6 +221,7 @@ const deleteProduct = async (req, res) => {
             }
         });
 
+        emitToTenant(tenantId, 'products:changed', { type: 'DELETED', id });
         return successResponse(res, null, "Product deleted successfully");
     } catch (error) {
         return errorResponse(res, "Failed to delete product", 500, error);

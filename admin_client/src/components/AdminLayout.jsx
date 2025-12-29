@@ -59,7 +59,7 @@ const AdminLayout = ({ children }) => {
                 setIsSearching(true);
                 try {
                     // Import api internally to avoid circular dep issues if any, or just use global
-                    const api = require('../api').default;
+                    const { default: api } = await import('../api');
                     const res = await api.get(`/admin/search?q=${searchQuery}`);
                     setSearchResults(res.data.data);
                 } catch (e) {

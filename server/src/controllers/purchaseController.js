@@ -1,6 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const { successResponse, errorResponse } = require('../utils/response');
+const { emitToTenant } = require('../socket');
 
 const createPurchase = async (req, res) => {
     try {
@@ -34,6 +35,7 @@ const createPurchase = async (req, res) => {
 
         // 3. Transaction: Record Purchase + Update Stock + Update Product Cost (Moving Average?)
         // For simplicity MVP: Update Product Cost to latest Purchase Price
+        const stockChanges = [];
         const result = await prisma.$transaction(async (tx) => {
             // A. Create Purchase Record
             const purchase = await tx.purchase.create({
@@ -57,15 +59,20 @@ const createPurchase = async (req, res) => {
                 // Update Product Master Cost
                 // Logic: Optional, some prefer weighted average. 
                 // We will just update 'costPrice' to Reflect LATEST value for future sales margin calc.
-                await tx.product.updateMany({
+                const product = await tx.product.findFirst({
                     where: { id: item.productId, tenantId },
-                    data: { costPrice: item.costPrice }
+                    select: { id: true }
                 });
+                if (!product) throw new Error('Product not found');
 
-                // Note: Stock Quantity in 'Product' table isn't tracked directly in my schema?
-                // Wait, checking Schema... 
-                // My schema has 'Stock' model separated or implicit?
-                // Let's check Schema... 'stock Stock[]' in Store.
+                const updatedProduct = await tx.product.update({
+                    where: { id: product.id },
+                    data: {
+                        costPrice: item.costPrice,
+                        stock: { increment: item.quantity }
+                    },
+                    select: { id: true, stock: true }
+                });
 
                 // Upsert Stock Record
                 const existingStock = await tx.stock.findFirst({
@@ -87,6 +94,19 @@ const createPurchase = async (req, res) => {
                         }
                     });
                 }
+
+                await tx.inventoryLog.create({
+                    data: {
+                        productId: item.productId,
+                        storeId,
+                        type: 'IN',
+                        quantity: item.quantity,
+                        reason: `Purchase${supplierName ? `: ${supplierName}` : ''}`,
+                        createdAt: new Date()
+                    }
+                });
+
+                stockChanges.push({ productId: item.productId, stock: updatedProduct.stock });
             }
 
             // C. Record Cashflow Log (Money Out)
@@ -105,6 +125,7 @@ const createPurchase = async (req, res) => {
             return purchase;
         });
 
+        if (stockChanges.length) emitToTenant(tenantId, 'inventory:changed', { storeId, changes: stockChanges });
         return successResponse(res, result, "Purchase Recorded");
 
     } catch (error) {
