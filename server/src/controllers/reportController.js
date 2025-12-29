@@ -16,21 +16,51 @@ const getDashboardStats = async (req, res) => {
         const startOfDay = new Date(`${date}T00:00:00.000Z`);
 
         // Fetch Daily Summary
-        // This reads from the PRE-CALCULATED table, avoiding huge JOINs on the fly.
-        const summary = await prisma.dailySalesSummary.findFirst({
-            where: {
-                tenantId,
-                storeId: storeId || undefined, // If no storeId, we might need to sum all stores (optional feature)
-                date: startOfDay
+        let summary;
+
+        if (storeId) {
+            // Specific Store
+            summary = await prisma.dailySalesSummary.findFirst({
+                where: {
+                    tenantId,
+                    storeId,
+                    date: startOfDay
+                }
+            });
+        } else {
+            // Global (All Stores) - Aggregate
+            const agg = await prisma.dailySalesSummary.aggregate({
+                where: {
+                    tenantId,
+                    date: startOfDay
+                },
+                _sum: {
+                    totalSales: true,
+                    totalTrans: true
+                }
+            });
+
+            // Map aggregation result to match expected summary object structure
+            if (agg._sum.totalSales !== null) {
+                summary = {
+                    totalSales: agg._sum.totalSales,
+                    totalTrans: agg._sum.totalTrans,
+                    // Add other fields if schema has them and they were summed
+                };
             }
-        });
+        }
 
         // Also get Top 5 Products for widget
+        // [FIX] Ensure we filter by storeId if provided, otherwise global
+        const topProductWhere = {
+            tenantId,
+            date: startOfDay
+        };
+        // Note: productSalesSummary currently does not seem to support storeId based on aggregationService.
+        // If it did, we would add: if (storeId) topProductWhere.storeId = storeId;
+
         const topSummaries = await prisma.productSalesSummary.findMany({
-            where: {
-                tenantId,
-                date: startOfDay
-            },
+            where: topProductWhere,
             orderBy: {
                 totalRevenue: 'desc'
             },
@@ -53,7 +83,7 @@ const getDashboardStats = async (req, res) => {
 
         return successResponse(res, {
             financials: summary || {
-                grossSales: 0, netSales: 0, grossProfit: 0, transactionCount: 0
+                totalSales: 0, totalTrans: 0 // Match the keys we actually use (totalSales found in aggregation)
             },
             topProducts
         });

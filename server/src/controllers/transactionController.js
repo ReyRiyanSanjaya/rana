@@ -44,9 +44,12 @@ const syncTransaction = async (req, res) => {
         }
 
         const productIds = transactionData.items.map(i => i.productId);
-        // Verify products exist to prevent FK errors
+        // Verify products exist AND belong to the tenant to prevent FK errors or data leaks
         const validProducts = await prisma.product.findMany({
-            where: { id: { in: productIds } },
+            where: {
+                id: { in: productIds },
+                tenantId: tenantId // [SECURITY] Compulsory filter
+            },
             select: { id: true, sellingPrice: true, basePrice: true }
         });
         const validProductMap = new Map(validProducts.map(p => [p.id, p]));

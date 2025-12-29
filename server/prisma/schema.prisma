@@ -742,3 +742,22 @@ model BlogPost {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
+
+// ================================
+// PPOB & DIGITAL PRODUCTS
+// ================================
+
+model DigitalProduct {
+  id          String   @id @default(uuid())
+  sku         String   @unique // e.g. "P5", "PLN20"
+  name        String
+  category    String   // "pulsa", "pln", "game"
+  brand       String?  // "Telkomsel", "Indosat"
+  price       Float    // Base price from provider
+  sellingPrice Float   // Price sold to merchant/user
+  isPromo     Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+

@@ -157,7 +157,8 @@ const createProduct = async (req, res) => {
 // Create Order (Merchant buys items)
 const createOrder = async (req, res) => {
     try {
-        const { tenantId, items, paymentMethod, shippingAddress, shippingCost, couponCode } = req.body;
+        const { tenantId } = req.user; // [SECURE] Trust token
+        const { items, paymentMethod, shippingAddress, shippingCost, couponCode } = req.body;
         // items: [{ productId, quantity, price }]
 
         // Calculate subtotal
@@ -227,13 +228,23 @@ const createOrder = async (req, res) => {
 // Get Orders (Admin or Merchant)
 const getOrders = async (req, res) => {
     try {
-        const { tenantId, status } = req.query; // If tenantId provided, filter by it (Merchant View). Else Admin view.
+        const { role, tenantId: userTenantId } = req.user;
+        const { status, tenantId } = req.query;
+
+        const where = {
+            status: status || undefined
+        };
+
+        // [SECURE] If not Admin, force own tenant
+        if (role !== 'ADMIN') {
+            where.tenantId = userTenantId;
+        } else if (tenantId) {
+            // Admin filtering by specific tenant
+            where.tenantId = tenantId;
+        }
 
         const orders = await prisma.wholesaleOrder.findMany({
-            where: {
-                tenantId: tenantId || undefined,
-                status: status || undefined
-            },
+            where,
             include: {
                 items: { include: { product: true } },
                 tenant: { select: { name: true } } // Show who bought it

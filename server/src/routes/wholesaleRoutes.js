@@ -2,11 +2,16 @@ const express = require('express');
 const router = express.Router();
 const controller = require('../controllers/wholesaleController');
 
+const authenticateToken = require('../middleware/auth');
+
 // Public / Merchant
-router.get('/products', controller.getProducts);
+router.get('/products', controller.getProducts); // Public browsing allowed? Or restrict? Let's keep public for now or restrict later.
 router.get('/categories', controller.getCategories);
-router.post('/orders', controller.createOrder);
-router.get('/orders', controller.getOrders); // Can filter by tenantId query
+
+// Protected Merchant Routes
+router.post('/orders', authenticateToken, controller.createOrder);
+router.get('/orders', authenticateToken, controller.getOrders);
+router.post('/validate-coupon', authenticateToken, controller.validateCoupon);
 
 // Admin (Should have auth middleware in real production)
 router.post('/products', controller.createProduct);

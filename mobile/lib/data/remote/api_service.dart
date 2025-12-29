@@ -143,7 +143,7 @@ class ApiService {
   Future<void> fetchAndSaveProducts() async {
     try {
       // 1. Fetch from Server
-      final response = await _dio.get('/products');
+      final response = await _dio.get('/products', options: Options(headers: {'Authorization': 'Bearer ${_token}'}));
       final List<dynamic> serverProducts = response.data['data'];
 
       final db = DatabaseHelper.instance;

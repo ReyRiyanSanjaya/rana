@@ -39,24 +39,11 @@ class _ReportScreenState extends State<ReportScreen> {
     setState(() => _isLoading = true);
     
     try {
-      // Hybrid Aproach: Try Server First
-      final startStr = _startDate.toIso8601String().split('T')[0];
-      final endStr = _endDate.toIso8601String().split('T')[0];
-
-      // 1. Fetch High Level P&L from Server
-      final pnlData = await ApiService().getProfitLoss(startDate: startStr, endDate: endStr);
-      final pnl = pnlData['pnl'] ?? {};
-      
-      // 2. We still need trend/charts which might not be fully in PnL, 
-      // but let's assume we use Local for granular lists (Top Products, Categories) 
-      // UNTIL we make endpoints for those.
-      // Actually, let's use Local for charts for now to ensure speed, 
-      // BUT overwrite the "Executive Summary" numbers with Server Truth if available.
-      
-      // Fetch Local Detailed Data (Charts etc)
       final start = DateTime(_startDate.year, _startDate.month, _startDate.day, 0, 0, 0);
       final end = DateTime(_endDate.year, _endDate.month, _endDate.day, 23, 59, 59);
 
+      // [FIX] Use Local Data as Source of Truth for Reports (Offline First)
+      // This ensures data entered visually in the app appears immediately in reports.
       final localSummary = await DatabaseHelper.instance.getSalesReport(start: start, end: end);
       final top = await DatabaseHelper.instance.getTopSellingProducts(limit: 5);
       final categories = await DatabaseHelper.instance.getSalesByCategory(start: start, end: end);
@@ -66,16 +53,13 @@ class _ReportScreenState extends State<ReportScreen> {
 
       if (mounted) {
         setState(() {
-          // Merge: Use Server numbers for Money, Local for Lists (for now)
-          // Ideally we fetch everything from server, but to be safe and complete:
           _summary = {
-            'grossSales': (pnl['revenue'] as num?)?.toDouble() ?? localSummary['grossSales'],
-            'netProfit': (pnl['netProfit'] as num?)?.toDouble() ?? localSummary['netProfit'],
-            'totalExpenses': (pnl['totalExpenses'] as num?)?.toDouble() ?? localSummary['totalExpenses'],
-            // Server doesn't send avg order value yet, stick to local or calc
+            'grossSales': localSummary['grossSales'],
+            'netProfit': localSummary['netProfit'],
+            'totalExpenses': localSummary['totalExpenses'],
             'totalTransactions': localSummary['totalTransactions'], 
             'averageOrderValue': localSummary['averageOrderValue'],
-            'trend': localSummary['trend'] // Keep local trend for chart responsiveness
+            'trend': localSummary['trend']
           };
 
           _topProducts = List<Map<String, dynamic>>.from(top);
@@ -87,10 +71,9 @@ class _ReportScreenState extends State<ReportScreen> {
         });
       }
     } catch (e) {
-      debugPrint('Server Fetch Failed, Falling back to Local: $e');
-      // FALLBACK TO PURE LOCAL
+      debugPrint('Error fetching report data: $e');
       if (mounted) {
-         await _fetchLocalOnly();
+        setState(() => _isLoading = false);
       }
     }
   }

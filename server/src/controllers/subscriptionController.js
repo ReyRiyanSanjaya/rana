@@ -34,7 +34,16 @@ exports.createRequest = async (req, res) => {
 
 exports.getAllRequests = async (req, res) => {
     try {
+        const { tenantId, role } = req.user;
+        const whereClause = {};
+
+        // If not ADMIN (or similar role), restrict to own tenant
+        if (role !== 'ADMIN') {
+            whereClause.tenantId = tenantId;
+        }
+
         const requests = await prisma.subscriptionRequest.findMany({
+            where: whereClause,
             include: {
                 tenant: true,
                 package: true // [NEW] Include package info

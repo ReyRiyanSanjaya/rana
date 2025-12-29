@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "seed:menus": "node prisma/seed_menus.js"
+    "seed:menus": "node prisma/seed_menus.js",
+    "seed:ppob": "node prisma/seed_ppob.js"
   },
   "dependencies": {
     "@prisma/client": "^5.7.0",

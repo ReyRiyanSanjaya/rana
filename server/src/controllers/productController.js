@@ -5,16 +5,14 @@ const { successResponse, errorResponse } = require('../utils/response');
 // List Products (Active Only)
 const getProducts = async (req, res) => {
     try {
-        const { storeId } = req.user; // Assuming user attached to store, or request query?
-        // Let's use user's storeId if available, or query param for flexibility
-        // For Owner, they might have multiple stores.
+        const { tenantId, storeId } = req.user;
 
-        // Simplified: Fetch all products for the tenant or specific store
         const products = await prisma.product.findMany({
             where: {
                 isActive: true,
-                // storeId: ... ? If we want to filter by store. Let's list all for now or filter by tenant.
-                // tenantId: req.user.tenantId
+                tenantId: tenantId
+                // Optional: Filter by storeId if needed, but usually tenant-wide products are fine for owner
+                // storeId: storeId 
             },
             include: { category: true },
             orderBy: { name: 'asc' }
@@ -30,37 +28,20 @@ const getProducts = async (req, res) => {
 const createProduct = async (req, res) => {
     try {
         const { name, sku, basePrice, sellingPrice, stock, minStock, categoryId, category, description } = req.body;
+        const { tenantId, storeId } = req.user;
 
-        // Dynamic fetch for demo purposes since auth might be off
-        let tenant = await prisma.tenant.findFirst({ where: { name: 'Demo Tenant' } });
-        if (!tenant) {
-            // [FIX] Self-healing: Create Demo Tenant if missing
-            console.log("Demo Tenant missing. Creating...");
-            tenant = await prisma.tenant.create({
-                data: { name: 'Demo Tenant', plan: 'FREE', subscriptionStatus: 'ACTIVE' }
-            });
-        }
-
-        // Find demo store
-        let demoStore = await prisma.store.findFirst({ where: { tenantId: tenant.id } });
-        if (!demoStore) {
-            // [FIX] Self-healing: Create Demo Store if missing
-            console.log("Demo Store missing. Creating...");
-            demoStore = await prisma.store.create({
-                data: { tenantId: tenant.id, name: 'Main Store', balance: 0 }
-            });
-        }
+        if (!tenantId) return errorResponse(res, "Unauthorized: No Tenant ID", 401);
 
         // [FIX] Handle Category String (Find or Create)
         let finalCategoryId = categoryId;
         if (!finalCategoryId && category) {
             let cat = await prisma.category.findFirst({
-                where: { tenantId: tenant.id, name: category }
+                where: { tenantId: tenantId, name: category }
             });
             if (!cat) {
                 cat = await prisma.category.create({
                     data: {
-                        tenantId: tenant.id,
+                        tenantId: tenantId,
                         name: category
                     }
                 });
@@ -78,8 +59,8 @@ const createProduct = async (req, res) => {
                 minStock: isNaN(parseInt(minStock)) ? 0 : parseInt(minStock),
                 category: finalCategoryId ? { connect: { id: finalCategoryId } } : undefined,
                 description,
-                tenant: { connect: { id: tenant.id } },
-                storeId: demoStore ? demoStore.id : undefined
+                tenant: { connect: { id: tenantId } },
+                storeId: storeId // Associate with the creator's store
             }
         });
 
@@ -88,12 +69,24 @@ const createProduct = async (req, res) => {
             await prisma.inventoryLog.create({
                 data: {
                     productId: product.id,
+                    storeId: storeId,
                     type: 'IN',
                     quantity: parseInt(stock),
                     reason: 'Initial Creation',
                     createdAt: new Date()
                 }
             });
+
+            // Also create Stock record
+            if (storeId) {
+                await prisma.stock.create({
+                    data: {
+                        storeId: storeId,
+                        productId: product.id,
+                        quantity: parseInt(stock)
+                    }
+                });
+            }
         }
 
         return successResponse(res, product, "Product created successfully", 201);
@@ -108,27 +101,29 @@ const updateProduct = async (req, res) => {
     try {
         const { id } = req.params;
         const { name, sku, basePrice, sellingPrice, minStock, categoryId, category, description } = req.body;
+        const { tenantId } = req.user;
 
-        // [FIX] Handle Category String (Find or Create) - Need Tenant ID.
-        // Assuming we can get tenant from the existing product if not in req.user
+        // Verify Ownership
+        const existingProduct = await prisma.product.findUnique({ where: { id } });
+        if (!existingProduct) return errorResponse(res, "Product not found", 404);
+        if (existingProduct.tenantId !== tenantId) return errorResponse(res, "Unauthorized Access", 403);
+
+        // [FIX] Handle Category String (Find or Create)
         let finalCategoryId = categoryId;
 
         if (!finalCategoryId && category) {
-            const existingProduct = await prisma.product.findUnique({ where: { id }, select: { tenantId: true } });
-            if (existingProduct) {
-                let cat = await prisma.category.findFirst({
-                    where: { tenantId: existingProduct.tenantId, name: category }
+            let cat = await prisma.category.findFirst({
+                where: { tenantId: tenantId, name: category }
+            });
+            if (!cat) {
+                cat = await prisma.category.create({
+                    data: {
+                        tenantId: tenantId,
+                        name: category
+                    }
                 });
-                if (!cat) {
-                    cat = await prisma.category.create({
-                        data: {
-                            tenantId: existingProduct.tenantId,
-                            name: category
-                        }
-                    });
-                }
-                finalCategoryId = cat.id;
             }
+            finalCategoryId = cat.id;
         }
 
         const product = await prisma.product.update({
@@ -155,12 +150,19 @@ const updateProduct = async (req, res) => {
 const deleteProduct = async (req, res) => {
     try {
         const { id } = req.params;
+        const { tenantId } = req.user;
+
+        // Verify Ownership
+        const existingProduct = await prisma.product.findUnique({ where: { id } });
+        if (!existingProduct) return errorResponse(res, "Product not found", 404);
+        if (existingProduct.tenantId !== tenantId) return errorResponse(res, "Unauthorized Access", 403);
 
         const product = await prisma.product.update({
             where: { id },
             data: {
                 isActive: false,
-                deletedAt: new Date()
+                // deletedAt field not in schema shown previously, relying on isActive=false
+                // deletedAt: new Date() 
             }
         });
 
@@ -178,6 +180,9 @@ const applyDiscount = async (req, res) => {
 
         const product = await prisma.product.findUnique({ where: { id } });
         if (!product) return errorResponse(res, "Product not found", 404);
+
+        const { tenantId } = req.user;
+        if (product.tenantId !== tenantId) return errorResponse(res, "Unauthorized Access", 403);
 
         // Store original price if not already set
         let basePrice = product.originalPrice ? product.originalPrice : product.sellingPrice;
@@ -224,6 +229,9 @@ const revertPrice = async (req, res) => {
         if (!product || !product.originalPrice) {
             return errorResponse(res, "No discount to revert or product not found", 400);
         }
+
+        const { tenantId } = req.user;
+        if (product.tenantId !== tenantId) return errorResponse(res, "Unauthorized Access", 403);
 
         const updated = await prisma.product.update({
             where: { id },

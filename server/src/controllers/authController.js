@@ -40,7 +40,7 @@ const register = async (req, res) => {
                     tenantId: tenant.id,
                     name: businessName, // Changed from 'Pusat'
                     waNumber: waNumber,
-                    address: address, // Changed from 'location' to 'address'
+                    location: address, // Map 'address' input to 'location' field in DB
                     category: category, // [NEW] Save Category
                     latitude: latitude ? parseFloat(latitude) : null, // [NEW] Save Location
                     longitude: longitude ? parseFloat(longitude) : null // [NEW] Save Location
@@ -123,7 +123,7 @@ const updateStoreProfile = async (req, res) => {
             await prisma.store.update({
                 where: { id: store.id },
                 data: {
-                    address,
+                    location: address,
                     latitude: latitude ? parseFloat(latitude) : undefined,
                     longitude: longitude ? parseFloat(longitude) : undefined
                 }

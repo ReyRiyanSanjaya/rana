@@ -39,6 +39,7 @@ import 'package:rana_merchant/screens/ppob_screen.dart'; // [NEW] feature
 import 'package:rana_merchant/screens/notification_screen.dart'; // [NEW]
 import 'package:rana_merchant/screens/blog_detail_screen.dart'; // [NEW]
 import 'package:rana_merchant/screens/blog_list_screen.dart'; // [NEW]
+import 'package:rana_merchant/screens/subscription_pending_screen.dart'; // [NEW] Lock Screen
 import 'dart:async'; // For Timer
 
 
@@ -314,6 +315,11 @@ class _HomeScreenState extends State<HomeScreen> {
            ),
          ),
        );
+    }
+    
+    // [NEW] Lock if Pending
+    if (sub.status == SubscriptionStatus.pending) {
+      return const SubscriptionPendingScreen();
     }
 
     return Scaffold(

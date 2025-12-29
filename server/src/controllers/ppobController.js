@@ -69,47 +69,23 @@ const purchaseProduct = async (req, res) => {
     }
 };
 
-// Mock Data on Server (Simulating a connection to Shopee/Aggregator)
-const MOCK_PULSA = [
-    { id: 'P5', name: 'Telkomsel 5.000', price: 5250, promo: false, category: 'pulsa' },
-    { id: 'P10', name: 'Telkomsel 10.000', price: 10200, promo: false, category: 'pulsa' },
-    { id: 'P25', name: 'Telkomsel 25.000', price: 24900, promo: true, category: 'pulsa' },
-    { id: 'P50', name: 'Telkomsel 50.000', price: 49500, promo: true, category: 'pulsa' },
-    { id: 'P100', name: 'Telkomsel 100.000', price: 98500, promo: false, category: 'pulsa' },
-    { id: 'I5', name: 'Indosat 5.000', price: 5800, promo: false, category: 'pulsa' },
-    { id: 'I10', name: 'Indosat 10.000', price: 10800, promo: false, category: 'pulsa' },
-];
-
-const MOCK_PLN = [
-    { id: 'PLN20', name: 'Token PLN 20.000', price: 20500, promo: false, category: 'pln' },
-    { id: 'PLN50', name: 'Token PLN 50.000', price: 50500, promo: false, category: 'pln' },
-    { id: 'PLN100', name: 'Token PLN 100.000', price: 100500, promo: false, category: 'pln' },
-    { id: 'PLN200', name: 'Token PLN 200.000', price: 200500, promo: false, category: 'pln' },
-];
-
-const MOCK_GAMES = [
-    { id: 'FF70', name: 'Free Fire 70 Diamonds', price: 9500, promo: true, category: 'game' },
-    { id: 'FF140', name: 'Free Fire 140 Diamonds', price: 19000, promo: false, category: 'game' },
-    { id: 'ML86', name: 'Mobile Legends 86 Diamonds', price: 22000, promo: false, category: 'game' },
-];
-
 const getProducts = async (req, res) => {
     try {
         const { category } = req.query;
-        let data = [];
+        let whereClause = { isActive: true };
 
-        const type = (category || '').toLowerCase();
-
-        if (type.includes('pulsa') || type.includes('data')) {
-            data = MOCK_PULSA;
-        } else if (type.includes('listrik') || type.includes('pln')) {
-            data = MOCK_PLN;
-        } else if (type.includes('game')) {
-            data = MOCK_GAMES;
+        if (category) {
+            whereClause.category = { contains: category, mode: 'insensitive' };
         }
+
+        const data = await prisma.digitalProduct.findMany({
+            where: whereClause,
+            orderBy: { price: 'asc' }
+        });
 
         return successResponse(res, data);
     } catch (error) {
+        console.error(error);
         return errorResponse(res, "Failed to fetch PPOB products", 500);
     }
 };

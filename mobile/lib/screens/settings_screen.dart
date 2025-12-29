@@ -131,6 +131,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 subtitle: Text(userProfile['tenant']?['name'] ?? userProfile['store']?['name'] ?? 'Memuat...'),
               ),
               // [NEW] Display Merchant ID
+
               if (userProfile.isNotEmpty)
                 ListTile(
                   leading: const Icon(Icons.fingerprint, color: Color(0xFFBF092F)),
@@ -147,6 +148,50 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     },
                   ),
                 ),
+
+              // [NEW] Subscription Validity
+              Consumer<SubscriptionProvider>(
+                builder: (context, sub, _) {
+                  String statusText = 'Memuat...';
+                  Color statusColor = Colors.grey;
+                  String expiryText = '';
+
+                  if (sub.status == SubscriptionStatus.active) {
+                    statusText = 'PREMIUM';
+                    statusColor = Colors.green;
+                    if (sub.expiryDate != null) {
+                      expiryText = 'Aktif sampai: ${sub.expiryDate!.day}/${sub.expiryDate!.month}/${sub.expiryDate!.year}';
+                    }
+                  } else if (sub.status == SubscriptionStatus.trial) {
+                    statusText = 'TRIAL';
+                    statusColor = Colors.blue;
+                    if (sub.daysRemaining != null) {
+                      expiryText = 'Sisa ${sub.daysRemaining} hari';
+                    }
+                  } else if (sub.status == SubscriptionStatus.expired) {
+                    statusText = 'EXPIRED';
+                    statusColor = Colors.red;
+                  } else if (sub.status == SubscriptionStatus.pending) {
+                    statusText = 'PENDING';
+                    statusColor = Colors.orange;
+                  }
+
+                  return ListTile(
+                    leading: const Icon(Icons.stars, color: Colors.amber),
+                    title: Row(
+                       children: [
+                         const Text('Status Akun: '),
+                         Container(
+                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                           decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
+                           child: Text(statusText, style: TextStyle(fontWeight: FontWeight.bold, color: statusColor, fontSize: 12))
+                         )
+                       ],
+                    ),
+                    subtitle: expiryText.isNotEmpty ? Text(expiryText, style: const TextStyle(fontWeight: FontWeight.bold)) : null,
+                  );
+                }
+              ),
 
                ListTile(
                 leading: const Icon(Icons.phone),

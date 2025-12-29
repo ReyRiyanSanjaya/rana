@@ -19,7 +19,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 7, // [FIX] Increment version for migration - add originalPrice
+      version: 9, // [FIX] Increment version for migration - add syncedAt
       onCreate: _createDB,
       onUpgrade: _onUpgrade, 
     );
@@ -68,6 +68,31 @@ class DatabaseHelper {
          }
        }
     }
+
+    // [NEW] Migration for version 8 - Add syncedAt to transactions
+    if (oldVersion < 8) {
+      try {
+        await db.execute('ALTER TABLE transactions ADD COLUMN syncedAt TEXT');
+      } catch (e) {
+        // Column likely exists
+      }
+    }
+
+    // [FIX] Migration for version 9 - Ensure originalPrice/promoEndsAt exist (Recovery for broken installs)
+    if (oldVersion < 9) {
+       final productColumnsToAdd = [
+         'originalPrice REAL',       
+         'promoEndsAt TEXT',          
+       ];
+       
+       for (var col in productColumnsToAdd) {
+         try {
+           await db.execute('ALTER TABLE products ADD COLUMN $col');
+         } catch (e) {
+           // Column likely exists, safe to ignore
+         }
+       }
+    }
   }
 
   Future<void> _createDB(Database db, int version) async {
@@ -92,6 +117,8 @@ class DatabaseHelper {
         description TEXT,
         costPrice REAL DEFAULT 0,
         sellingPrice REAL,
+        originalPrice REAL, -- [FIXED] Added to initial creation
+        promoEndsAt TEXT,   -- [FIXED] Added to initial creation
         stock INTEGER DEFAULT 0,
         trackStock INTEGER DEFAULT 1,
         category TEXT,
@@ -163,6 +190,21 @@ class DatabaseHelper {
   Future<void> deleteProduct(String id) async {
     final db = await instance.database;
     await db.delete('products', where: 'id = ?', whereArgs: [id]);
+  }
+
+  // [NEW] Clear all products (For Logout/New login to prevent data leaks)
+  Future<void> clearProducts() async {
+    final db = await instance.database;
+    await db.delete('products');
+  }
+
+  // [NEW] Clear ALL data on Logout
+  Future<void> clearAllData() async {
+    final db = await instance.database;
+    await db.delete('products');
+    await db.delete('transactions');
+    await db.delete('transaction_items');
+    await db.delete('expenses');
   }
 
   Future<List<Map<String, dynamic>>> getAllProducts() async {
