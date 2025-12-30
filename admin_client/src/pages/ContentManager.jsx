@@ -4,7 +4,7 @@ import AdminLayout from '../components/AdminLayout';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/button';
 import Input from '../components/ui/Input';
-import { Layout, Image, Type, Save, Globe, Users, Star, List } from 'lucide-react';
+import { Layout, Image, Type, Save, Globe, Users, Star, List, Percent, Wallet } from 'lucide-react';
 
 const ContentManager = () => {
     const [activeTab, setActiveTab] = useState('general');
@@ -20,6 +20,12 @@ const ContentManager = () => {
         CMS_FEATURES_LIST: '[]' // JSON String
     });
     const [loading, setLoading] = useState(true);
+    const [flashSales, setFlashSales] = useState([]);
+    const [preview, setPreview] = useState({
+        buyerSubtotal: 0,
+        wholesaleSubtotal: 0,
+        withdrawalAmount: 0
+    });
 
     useEffect(() => {
         fetchSettings();
@@ -61,6 +67,7 @@ const ContentManager = () => {
         { id: 'general', label: 'General & Hero', icon: <Layout size={18} /> },
         { id: 'company', label: 'Company Profile', icon: <Users size={18} /> },
         { id: 'values', label: 'Core Values & Features', icon: <Star size={18} /> },
+        { id: 'fees', label: 'Fee Settings', icon: <Percent size={18} /> },
     ];
 
     return (
@@ -217,6 +224,222 @@ const ContentManager = () => {
                         </div>
                     </Card>
                 )}
+
+                {activeTab === 'fees' && (
+                    <Card className="p-6 col-span-2">
+                        <h3 className="text-lg font-bold mb-4">Fee Settings</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="space-y-4">
+                                <div className="font-semibold text-slate-900">Buyer Fee</div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Type</label>
+                                    <select
+                                        className="w-full border rounded p-2"
+                                        value={settings.BUYER_SERVICE_FEE_TYPE || 'FLAT'}
+                                        onChange={e => setSettings({ ...settings, BUYER_SERVICE_FEE_TYPE: e.target.value })}
+                                    >
+                                        <option value="FLAT">Flat</option>
+                                        <option value="PERCENT">Percent</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Value</label>
+                                    <Input
+                                        value={settings.BUYER_SERVICE_FEE || ''}
+                                        onChange={e => setSettings({ ...settings, BUYER_SERVICE_FEE: e.target.value })}
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Min Cap</label>
+                                        <Input
+                                            value={settings.BUYER_FEE_CAP_MIN || ''}
+                                            onChange={e => setSettings({ ...settings, BUYER_FEE_CAP_MIN: e.target.value })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Max Cap</label>
+                                        <Input
+                                            value={settings.BUYER_FEE_CAP_MAX || ''}
+                                            onChange={e => setSettings({ ...settings, BUYER_FEE_CAP_MAX: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+                                <Button onClick={async () => {
+                                    await handleSave('BUYER_SERVICE_FEE_TYPE', settings.BUYER_SERVICE_FEE_TYPE || 'FLAT');
+                                    await handleSave('BUYER_SERVICE_FEE', settings.BUYER_SERVICE_FEE || '0');
+                                    await handleSave('BUYER_FEE_CAP_MIN', settings.BUYER_FEE_CAP_MIN || '');
+                                    await handleSave('BUYER_FEE_CAP_MAX', settings.BUYER_FEE_CAP_MAX || '');
+                                }}>Save Buyer Fee</Button>
+                            </div>
+                            <div className="space-y-4">
+                                <div className="font-semibold text-slate-900">Merchant Payout Fee</div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Type</label>
+                                    <select
+                                        className="w-full border rounded p-2"
+                                        value={settings.MERCHANT_SERVICE_FEE_TYPE || 'FLAT'}
+                                        onChange={e => setSettings({ ...settings, MERCHANT_SERVICE_FEE_TYPE: e.target.value })}
+                                    >
+                                        <option value="FLAT">Flat</option>
+                                        <option value="PERCENT">Percent</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Value</label>
+                                    <Input
+                                        value={settings.MERCHANT_SERVICE_FEE || ''}
+                                        onChange={e => setSettings({ ...settings, MERCHANT_SERVICE_FEE: e.target.value })}
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Min Cap</label>
+                                        <Input
+                                            value={settings.MERCHANT_FEE_CAP_MIN || ''}
+                                            onChange={e => setSettings({ ...settings, MERCHANT_FEE_CAP_MIN: e.target.value })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Max Cap</label>
+                                        <Input
+                                            value={settings.MERCHANT_FEE_CAP_MAX || ''}
+                                            onChange={e => setSettings({ ...settings, MERCHANT_FEE_CAP_MAX: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+                                <Button onClick={async () => {
+                                    await handleSave('MERCHANT_SERVICE_FEE_TYPE', settings.MERCHANT_SERVICE_FEE_TYPE || 'FLAT');
+                                    await handleSave('MERCHANT_SERVICE_FEE', settings.MERCHANT_SERVICE_FEE || '0');
+                                    await handleSave('MERCHANT_FEE_CAP_MIN', settings.MERCHANT_FEE_CAP_MIN || '');
+                                    await handleSave('MERCHANT_FEE_CAP_MAX', settings.MERCHANT_FEE_CAP_MAX || '');
+                                }}>Save Merchant Fee</Button>
+                            </div>
+                            <div className="space-y-4">
+                                <div className="font-semibold text-slate-900">Wholesale Service Fee</div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Type</label>
+                                    <select
+                                        className="w-full border rounded p-2"
+                                        value={settings.WHOLESALE_SERVICE_FEE_TYPE || 'FLAT'}
+                                        onChange={e => setSettings({ ...settings, WHOLESALE_SERVICE_FEE_TYPE: e.target.value })}
+                                    >
+                                        <option value="FLAT">Flat</option>
+                                        <option value="PERCENT">Percent</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Value</label>
+                                    <Input
+                                        value={settings.WHOLESALE_SERVICE_FEE || ''}
+                                        onChange={e => setSettings({ ...settings, WHOLESALE_SERVICE_FEE: e.target.value })}
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Min Cap</label>
+                                        <Input
+                                            value={settings.WHOLESALE_FEE_CAP_MIN || ''}
+                                            onChange={e => setSettings({ ...settings, WHOLESALE_FEE_CAP_MIN: e.target.value })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Max Cap</label>
+                                        <Input
+                                            value={settings.WHOLESALE_FEE_CAP_MAX || ''}
+                                            onChange={e => setSettings({ ...settings, WHOLESALE_FEE_CAP_MAX: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+                                <Button onClick={async () => {
+                                    await handleSave('WHOLESALE_SERVICE_FEE_TYPE', settings.WHOLESALE_SERVICE_FEE_TYPE || 'FLAT');
+                                    await handleSave('WHOLESALE_SERVICE_FEE', settings.WHOLESALE_SERVICE_FEE || '0');
+                                    await handleSave('WHOLESALE_FEE_CAP_MIN', settings.WHOLESALE_FEE_CAP_MIN || '');
+                                    await handleSave('WHOLESALE_FEE_CAP_MAX', settings.WHOLESALE_FEE_CAP_MAX || '');
+                                }}>Save Wholesale Fee</Button>
+                            </div>
+                        </div>
+
+                        <div className="mt-8">
+                            <h4 className="text-md font-semibold mb-4 flex items-center gap-2"><Wallet size={18} /> Preview Impact</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div className="space-y-3">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Buyer Subtotal</label>
+                                        <Input
+                                            value={preview.buyerSubtotal}
+                                            onChange={e => setPreview({ ...preview, buyerSubtotal: parseFloat(e.target.value || 0) })}
+                                        />
+                                    </div>
+                                    <div className="text-sm text-slate-600">
+                                        Buyer Fee: {(() => {
+                                            const type = settings.BUYER_SERVICE_FEE_TYPE || 'FLAT';
+                                            const val = parseFloat(settings.BUYER_SERVICE_FEE || 0);
+                                            let fee = type === 'PERCENT' ? (preview.buyerSubtotal * val) / 100 : val;
+                                            const minCap = parseFloat(settings.BUYER_FEE_CAP_MIN || NaN);
+                                            const maxCap = parseFloat(settings.BUYER_FEE_CAP_MAX || NaN);
+                                            if (!isNaN(minCap) && fee < minCap) fee = minCap;
+                                            if (!isNaN(maxCap) && fee > maxCap) fee = maxCap;
+                                            return `Rp ${Math.round(fee).toLocaleString()}`;
+                                        })()}
+                                    </div>
+                                </div>
+                                <div className="space-y-3">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Wholesale Subtotal</label>
+                                        <Input
+                                            value={preview.wholesaleSubtotal}
+                                            onChange={e => setPreview({ ...preview, wholesaleSubtotal: parseFloat(e.target.value || 0) })}
+                                        />
+                                    </div>
+                                    <div className="text-sm text-slate-600">
+                                        Wholesale Fee: {(() => {
+                                            const type = settings.WHOLESALE_SERVICE_FEE_TYPE || 'FLAT';
+                                            const val = parseFloat(settings.WHOLESALE_SERVICE_FEE || 0);
+                                            let fee = type === 'PERCENT' ? (preview.wholesaleSubtotal * val) / 100 : val;
+                                            const minCap = parseFloat(settings.WHOLESALE_FEE_CAP_MIN || NaN);
+                                            const maxCap = parseFloat(settings.WHOLESALE_FEE_CAP_MAX || NaN);
+                                            if (!isNaN(minCap) && fee < minCap) fee = minCap;
+                                            if (!isNaN(maxCap) && fee > maxCap) fee = maxCap;
+                                            return `Rp ${Math.round(fee).toLocaleString()}`;
+                                        })()}
+                                    </div>
+                                </div>
+                                <div className="space-y-3">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Withdrawal Amount</label>
+                                        <Input
+                                            value={preview.withdrawalAmount}
+                                            onChange={e => setPreview({ ...preview, withdrawalAmount: parseFloat(e.target.value || 0) })}
+                                        />
+                                    </div>
+                                    <div className="text-sm text-slate-600">
+                                        Merchant Fee: {(() => {
+                                            const type = settings.MERCHANT_SERVICE_FEE_TYPE;
+                                            const val = parseFloat(settings.MERCHANT_SERVICE_FEE || 0);
+                                            let fee = 0;
+                                            if (type === 'PERCENT') fee = (preview.withdrawalAmount * val) / 100;
+                                            else if (type === 'FLAT') fee = val;
+                                            else {
+                                                const percentFallback = parseFloat(settings.PLATFORM_FEE_PERCENTAGE || 0);
+                                                fee = (preview.withdrawalAmount * percentFallback) / 100;
+                                            }
+                                            const minCap = parseFloat(settings.MERCHANT_FEE_CAP_MIN || NaN);
+                                            const maxCap = parseFloat(settings.MERCHANT_FEE_CAP_MAX || NaN);
+                                            if (!isNaN(minCap) && fee < minCap) fee = minCap;
+                                            if (!isNaN(maxCap) && fee > maxCap) fee = maxCap;
+                                            const net = Math.max(0, preview.withdrawalAmount - fee);
+                                            return `Rp ${Math.round(fee).toLocaleString()} | Net: Rp ${Math.round(net).toLocaleString()}`;
+                                        })()}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
+                )}
+
+                
+
             </div>
         </AdminLayout>
     );

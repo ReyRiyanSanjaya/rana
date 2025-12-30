@@ -43,6 +43,7 @@ const DashboardLayout = ({ children }) => {
         subscription: { icon: Zap, label: 'Subscription', path: '/subscription' },
         stores: { icon: Store, label: 'Stores / Tenants', path: '/stores' },
         reports: { icon: BarChart3, label: 'Advanced Reports', path: '/reports' },
+        flashsales: { icon: Zap, label: 'Flash Sales', path: '/flashsales' },
         support: { icon: Menu, label: 'Help & Support', path: '/support' }, // Using Menu icon as placeholder or find HelpCircle
         settings: { icon: Settings, label: 'Settings', path: '/settings' },
     };
@@ -64,6 +65,7 @@ const DashboardLayout = ({ children }) => {
             ALL_NAV_ITEMS.pnl,
             ALL_NAV_ITEMS.inventory,
             ALL_NAV_ITEMS.cashOps,
+            ALL_NAV_ITEMS.flashsales,
             // ALL_NAV_ITEMS.subscription, // Maybe owner wants to see sub status?
             ALL_NAV_ITEMS.support,
             ALL_NAV_ITEMS.settings

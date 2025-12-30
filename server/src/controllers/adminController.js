@@ -41,12 +41,26 @@ const approveWithdrawal = async (req, res) => {
         if (!withdrawal) return errorResponse(res, "Withdrawal not found", 404);
         if (withdrawal.status !== 'PENDING') return errorResponse(res, "Withdrawal already processed", 400);
 
-        // 1. Get Platform Fee %
-        const feeSetting = await prisma.systemSettings.findUnique({ where: { key: 'PLATFORM_FEE_PERCENTAGE' } });
-        const feePercent = feeSetting ? parseFloat(feeSetting.value) : 0;
-
-        // 2. Calculate Fee
-        const feeAmount = (withdrawal.amount * feePercent) / 100;
+        const feeValSetting = await prisma.systemSettings.findUnique({ where: { key: 'MERCHANT_SERVICE_FEE' } });
+        const feeTypeSetting = await prisma.systemSettings.findUnique({ where: { key: 'MERCHANT_SERVICE_FEE_TYPE' } });
+        const percentFallbackSetting = await prisma.systemSettings.findUnique({ where: { key: 'PLATFORM_FEE_PERCENTAGE' } });
+        const minCapSetting = await prisma.systemSettings.findUnique({ where: { key: 'MERCHANT_FEE_CAP_MIN' } });
+        const maxCapSetting = await prisma.systemSettings.findUnique({ where: { key: 'MERCHANT_FEE_CAP_MAX' } });
+        const feeVal = feeValSetting ? parseFloat(feeValSetting.value) : 0;
+        const feeType = feeTypeSetting ? String(feeTypeSetting.value) : undefined;
+        let feeAmount = 0;
+        if (feeType === 'PERCENT') {
+            feeAmount = (withdrawal.amount * feeVal) / 100;
+        } else if (feeType === 'FLAT') {
+            feeAmount = feeVal;
+        } else {
+            const feePercent = percentFallbackSetting ? parseFloat(percentFallbackSetting.value) : 0;
+            feeAmount = (withdrawal.amount * feePercent) / 100;
+        }
+        const minCap = minCapSetting ? parseFloat(minCapSetting.value) : undefined;
+        const maxCap = maxCapSetting ? parseFloat(maxCapSetting.value) : undefined;
+        if (minCap !== undefined && feeAmount < minCap) feeAmount = minCap;
+        if (maxCap !== undefined && feeAmount > maxCap) feeAmount = maxCap;
         const netAmount = withdrawal.amount - feeAmount;
 
         // 3. Create Platform Revenue Log if fee exists
@@ -1087,7 +1101,10 @@ const getBusinessAnalytics = async (req, res) => {
 
         successResponse(res, {
             totalRevenue,
-            revenueBySource,
+            totalSubscriptionRevenue, // [NEW]
+            totalTxnFees, // [NEW]
+            totalWholesaleFees, // [NEW]
+            revenueBySource: revenueSources, // [UPDATED]
             revenueChart,
             growthChart,
             activeSubscribers,
@@ -1274,7 +1291,24 @@ const exportTransactions = async (req, res) => {
             orderBy: { occurredAt: 'desc' }
         });
 
-        successResponse(res, transactions);
+        const mapped = transactions.map(t => ({
+            id: t.id,
+            occurredAt: t.occurredAt,
+            tenant: t.tenant?.name || null,
+            store: t.store?.name || null,
+            totalAmount: t.totalAmount,
+            buyerFee: t.buyerFee || 0,
+            merchantFee: t.merchantFee || 0,
+            platformFee: t.platformFee || 0,
+            paymentMethod: t.paymentMethod,
+            paymentStatus: t.paymentStatus,
+            orderStatus: t.orderStatus,
+            source: t.source || null,
+            fulfillmentType: t.fulfillmentType || null,
+            cashier: t.user?.name || null
+        }));
+
+        successResponse(res, mapped);
     } catch (error) {
         console.error(error);
         errorResponse(res, "Failed to export transactions", 500);
@@ -1323,6 +1357,55 @@ module.exports = {
     rejectTopUp,
     getAllTransactions, // [NEW]
     exportTransactions, // [NEW]
+    // [NEW] Flash Sales Admin
+    getFlashSales: async (req, res) => {
+        try {
+            const { status, storeId } = req.query;
+            const where = {
+                status: status || undefined,
+                storeId: storeId || undefined
+            };
+            const sales = await prisma.flashSale.findMany({
+                where,
+                include: {
+                    store: { select: { name: true } },
+                    tenant: { select: { name: true } },
+                    items: {
+                        include: { product: { select: { name: true, sellingPrice: true } } }
+                    }
+                },
+                orderBy: { createdAt: 'desc' }
+            });
+            return successResponse(res, sales);
+        } catch (error) {
+            console.error(error);
+            return errorResponse(res, "Failed to fetch flash sales", 500);
+        }
+    },
+    updateFlashSaleStatus: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { action } = req.body; // APPROVE, REJECT, ACTIVATE, END
+            const sale = await prisma.flashSale.findUnique({ where: { id } });
+            if (!sale) return errorResponse(res, "Flash sale not found", 404);
+            let newStatus = sale.status;
+            if (action === 'APPROVE') newStatus = 'APPROVED';
+            else if (action === 'REJECT') newStatus = 'REJECTED';
+            else if (action === 'ACTIVATE') newStatus = 'ACTIVE';
+            else if (action === 'END') newStatus = 'ENDED';
+            else return errorResponse(res, "Invalid action", 400);
+
+            const updated = await prisma.flashSale.update({
+                where: { id },
+                data: { status: newStatus, updatedAt: new Date() }
+            });
+
+            return successResponse(res, updated, "Flash sale status updated");
+        } catch (error) {
+            console.error(error);
+            return errorResponse(res, "Failed to update status", 500);
+        }
+    },
 
     // [NEW] Get Admin Users
     getAdminUsers: async (req, res) => {

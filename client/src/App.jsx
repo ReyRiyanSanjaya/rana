@@ -19,6 +19,7 @@ import About from './pages/About'; // [NEW]
 import Features from './pages/Features'; // [NEW]
 import Contact from './pages/Contact'; // [NEW]
 import Support from './pages/Support'; // [NEW]
+import FlashSales from './pages/FlashSales';
 
 // Placeholders for other routes
 const Placeholder = ({ title }) => (
@@ -70,6 +71,11 @@ function App() {
                     <Route path="/reports" element={
                         <ProtectedRoute allowedRoles={['OWNER', 'STORE_MANAGER']}>
                             <Reports />
+                        </ProtectedRoute>
+                    } />
+                    <Route path="/flashsales" element={
+                        <ProtectedRoute allowedRoles={['OWNER', 'STORE_MANAGER']}>
+                            <FlashSales />
                         </ProtectedRoute>
                     } />
                     <Route path="/subscription" element={

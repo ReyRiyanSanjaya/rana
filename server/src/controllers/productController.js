@@ -311,5 +311,195 @@ module.exports = {
     updateProduct,
     deleteProduct,
     applyDiscount,
-    revertPrice
+    revertPrice,
+    // [NEW] Flash Sale: Merchant Submission
+    createFlashSale: async (req, res) => {
+        try {
+            const { tenantId, storeId } = req.user;
+            const { title, startAt, endAt, items } = req.body;
+            if (!title || !startAt || !endAt) {
+                return errorResponse(res, "Invalid flash sale data", 400);
+            }
+            const start = new Date(startAt);
+            const end = new Date(endAt);
+            if (!(start < end)) return errorResponse(res, "Invalid time range", 400);
+            const normalizedItems = Array.isArray(items) ? items : [];
+            for (const it of normalizedItems) {
+                if (!it.productId || it.salePrice === undefined) {
+                    return errorResponse(res, "Invalid item in flash sale", 400);
+                }
+            }
+
+            const result = await prisma.$transaction(async (tx) => {
+                const fs = await tx.flashSale.create({
+                    data: {
+                        tenantId,
+                        storeId,
+                        title,
+                        startAt: start,
+                        endAt: end,
+                        status: 'PENDING'
+                    }
+                });
+                if (normalizedItems.length > 0) {
+                    await tx.flashSaleItem.createMany({
+                        data: normalizedItems.map(it => ({
+                            flashSaleId: fs.id,
+                            productId: it.productId,
+                            salePrice: parseFloat(it.salePrice),
+                            maxQtyPerOrder: it.maxQtyPerOrder ? parseInt(it.maxQtyPerOrder) : 0,
+                            saleStock: it.saleStock ? parseInt(it.saleStock) : null
+                        }))
+                    });
+                }
+                return fs;
+            });
+
+            return successResponse(res, result, "Flash sale submitted for approval");
+        } catch (error) {
+            return errorResponse(res, "Failed to create flash sale", 500, error);
+        }
+    },
+    getMyFlashSales: async (req, res) => {
+        try {
+            const { tenantId, storeId } = req.user;
+            const sales = await prisma.flashSale.findMany({
+                where: { tenantId, storeId },
+                include: {
+                    items: {
+                        include: {
+                            product: { select: { name: true, sellingPrice: true } }
+                        }
+                    }
+                },
+                orderBy: { createdAt: 'desc' }
+            });
+            return successResponse(res, sales);
+        } catch (error) {
+            return errorResponse(res, "Failed to fetch flash sales", 500, error);
+        }
+    },
+    updateFlashSale: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { tenantId, storeId } = req.user;
+            const { title, startAt, endAt } = req.body;
+            const sale = await prisma.flashSale.findUnique({ where: { id } });
+            if (!sale || sale.tenantId !== tenantId || sale.storeId !== storeId) {
+                return errorResponse(res, "Unauthorized or not found", 403);
+            }
+            const updated = await prisma.flashSale.update({
+                where: { id },
+                data: {
+                    title: title ?? sale.title,
+                    startAt: startAt ? new Date(startAt) : sale.startAt,
+                    endAt: endAt ? new Date(endAt) : sale.endAt
+                }
+            });
+            return successResponse(res, updated, "Updated");
+        } catch (error) {
+            return errorResponse(res, "Failed to update flash sale", 500, error);
+        }
+    },
+    addFlashSaleItem: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { tenantId, storeId } = req.user;
+            const sale = await prisma.flashSale.findUnique({ where: { id } });
+            if (!sale || sale.tenantId !== tenantId || sale.storeId !== storeId) {
+                return errorResponse(res, "Unauthorized or not found", 403);
+            }
+            const { productId, salePrice, maxQtyPerOrder, saleStock } = req.body;
+            const item = await prisma.flashSaleItem.create({
+                data: {
+                    flashSaleId: id,
+                    productId,
+                    salePrice: parseFloat(salePrice),
+                    maxQtyPerOrder: maxQtyPerOrder ? parseInt(maxQtyPerOrder) : 0,
+                    saleStock: saleStock ? parseInt(saleStock) : null
+                }
+            });
+            return successResponse(res, item, "Item added");
+        } catch (error) {
+            return errorResponse(res, "Failed to add item", 500, error);
+        }
+    },
+    updateFlashSaleItem: async (req, res) => {
+        try {
+            const { id, itemId } = req.params;
+            const { tenantId, storeId } = req.user;
+            const sale = await prisma.flashSale.findUnique({ where: { id } });
+            if (!sale || sale.tenantId !== tenantId || sale.storeId !== storeId) {
+                return errorResponse(res, "Unauthorized or not found", 403);
+            }
+            const { salePrice, maxQtyPerOrder, saleStock } = req.body;
+            const item = await prisma.flashSaleItem.update({
+                where: { id: itemId },
+                data: {
+                    salePrice: salePrice !== undefined ? parseFloat(salePrice) : undefined,
+                    maxQtyPerOrder: maxQtyPerOrder !== undefined ? parseInt(maxQtyPerOrder) : undefined,
+                    saleStock: saleStock !== undefined ? parseInt(saleStock) : undefined
+                }
+            });
+            return successResponse(res, item, "Item updated");
+        } catch (error) {
+            return errorResponse(res, "Failed to update item", 500, error);
+        }
+    },
+    deleteFlashSaleItem: async (req, res) => {
+        try {
+            const { id, itemId } = req.params;
+            const { tenantId, storeId } = req.user;
+            const sale = await prisma.flashSale.findUnique({ where: { id } });
+            if (!sale || sale.tenantId !== tenantId || sale.storeId !== storeId) {
+                return errorResponse(res, "Unauthorized or not found", 403);
+            }
+            await prisma.flashSaleItem.delete({ where: { id: itemId } });
+            return successResponse(res, null, "Item deleted");
+        } catch (error) {
+            return errorResponse(res, "Failed to delete item", 500, error);
+        }
+    },
+    deleteFlashSale: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { tenantId, storeId } = req.user;
+            const sale = await prisma.flashSale.findUnique({ where: { id } });
+            if (!sale || sale.tenantId !== tenantId || sale.storeId !== storeId) {
+                return errorResponse(res, "Unauthorized or not found", 403);
+            }
+            if (sale.status === 'ACTIVE') {
+                return errorResponse(res, "Cannot delete active sale", 400);
+            }
+            await prisma.flashSaleItem.deleteMany({ where: { flashSaleId: id } });
+            await prisma.flashSale.delete({ where: { id } });
+            return successResponse(res, null, "Flash sale deleted");
+        } catch (error) {
+            return errorResponse(res, "Failed to delete flash sale", 500, error);
+        }
+    },
+    updateFlashSaleStatusForMerchant: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { action } = req.body;
+            const { tenantId, storeId } = req.user;
+            const sale = await prisma.flashSale.findUnique({ where: { id } });
+            if (!sale || sale.tenantId !== tenantId || sale.storeId !== storeId) {
+                return errorResponse(res, "Unauthorized or not found", 403);
+            }
+            if (action === 'CANCEL') {
+                if (sale.status === 'ACTIVE') {
+                    return errorResponse(res, "Cannot cancel active sale", 400);
+                }
+                const updated = await prisma.flashSale.update({
+                    where: { id },
+                    data: { status: 'REJECTED' }
+                });
+                return successResponse(res, updated, "Cancelled");
+            }
+            return errorResponse(res, "Invalid action", 400);
+        } catch (error) {
+            return errorResponse(res, "Failed to update status", 500, error);
+        }
+    }
 };

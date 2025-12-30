@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const adminController = require('../controllers/adminController');
+const systemController = require('../controllers/systemController');
 const verifyToken = require('../middleware/auth');
 const checkRole = require('../middleware/role');
 
@@ -60,6 +61,8 @@ router.put('/topups/:id/reject', adminController.rejectTopUp);
 // System Settings
 router.get('/settings', adminController.getSettings);
 router.post('/settings', adminController.updateSettings);
+router.get('/settings/fees', systemController.getFeeSettings);
+router.post('/settings/fees', systemController.updateFeeSettings);
 
 // App Menu Management
 router.get('/app-menus', adminController.getAppMenus);
@@ -84,5 +87,9 @@ router.get('/search', adminController.globalSearch); // [NEW]
 // Transaction Management
 router.get('/transactions', adminController.getAllTransactions); // [NEW]
 router.get('/transactions/export', adminController.exportTransactions); // [NEW]
+
+// Flash Sales Management
+router.get('/flashsales', adminController.getFlashSales); // [NEW]
+router.put('/flashsales/:id/status', adminController.updateFlashSaleStatus); // [NEW]
 
 module.exports = router;

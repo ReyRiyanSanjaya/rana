@@ -194,6 +194,77 @@ class ApiService {
     await _dio.delete('/products/$id');
   }
 
+  // --- Flash Sales (Merchant) ---
+  Future<Map<String, dynamic>> createFlashSale({
+    required String title,
+    required DateTime startAt,
+    required DateTime endAt,
+    List<Map<String, dynamic>> items = const [],
+  }) async {
+    final response = await _dio.post(
+      '/products/flashsales',
+      data: {
+        'title': title,
+        'startAt': startAt.toIso8601String(),
+        'endAt': endAt.toIso8601String(),
+        'items': items,
+      },
+      options: Options(headers: {'Authorization': 'Bearer ${_token}'}),
+    );
+    if (response.data['status'] != 'success') {
+      throw Exception(response.data['message'] ?? 'Failed to create flash sale');
+    }
+    return response.data['data'];
+  }
+
+  Future<List<dynamic>> getMyFlashSales() async {
+    final response = await _dio.get(
+      '/products/flashsales',
+      options: Options(headers: {'Authorization': 'Bearer ${_token}'}),
+    );
+    if (response.data['status'] != 'success') {
+      throw Exception(response.data['message'] ?? 'Failed to fetch flash sales');
+    }
+    return response.data['data'] ?? [];
+  }
+
+  Future<void> addFlashSaleItem({
+    required String saleId,
+    required String productId,
+    required double salePrice,
+    int? maxQtyPerOrder,
+    int? saleStock,
+  }) async {
+    await _dio.post(
+      '/products/flashsales/$saleId/items',
+      data: {
+        'productId': productId,
+        'salePrice': salePrice,
+        'maxQtyPerOrder': maxQtyPerOrder,
+        'saleStock': saleStock,
+      },
+      options: Options(headers: {'Authorization': 'Bearer ${_token}'}),
+    );
+  }
+
+  Future<void> deleteFlashSaleItem({
+    required String saleId,
+    required String itemId,
+  }) async {
+    await _dio.delete(
+      '/products/flashsales/$saleId/items/$itemId',
+      options: Options(headers: {'Authorization': 'Bearer ${_token}'}),
+    );
+  }
+
+  Future<void> cancelFlashSale({required String saleId}) async {
+    await _dio.put(
+      '/products/flashsales/$saleId/status',
+      data: {'action': 'CANCEL'},
+      options: Options(headers: {'Authorization': 'Bearer ${_token}'}),
+    );
+  }
+
   Future<List<dynamic>> getSubscriptionPackages() async {
     try {
       final response = await _dio.get('/subscriptions/packages');

@@ -42,6 +42,7 @@ import 'package:rana_merchant/screens/blog_list_screen.dart'; // [NEW]
 import 'package:rana_merchant/screens/subscription_pending_screen.dart'; // [NEW] Lock Screen
 import 'dart:async'; // For Timer
 import 'package:flutter/services.dart';
+import 'package:rana_merchant/screens/flash_sales_screen.dart';
 
 
 
@@ -72,6 +73,7 @@ class _HomeScreenState extends State<HomeScreen> {
       case 'REPORT': return Icons.bar_chart;
       case 'STOCK': return Icons.inventory_2; // [NEW]
       case 'ADS': return Icons.campaign;
+      case 'FLASH_SALE': return Icons.flash_on;
       case 'SUPPORT': return Icons.support_agent;
       case 'SETTINGS': return Icons.settings;
       case 'KULAKAN': return Icons.storefront;
@@ -91,6 +93,7 @@ class _HomeScreenState extends State<HomeScreen> {
       case '/reports': return const ReportScreen();
       case '/stock': return const StockOpnameScreen(); // [NEW]
       case '/marketing': return const MarketingScreen();
+      case '/flashsale': return const FlashSalesScreen();
       case '/support': return const SupportScreen();
       case '/settings': return const SettingsScreen();
       case '/kulakan': return const PurchaseScreen();
@@ -648,6 +651,7 @@ class _HomeScreenState extends State<HomeScreen> {
              {'label': 'Stok', 'key': 'STOCK', 'route': '/stock'}, // [NEW] Restored Stock Menu
              {'label': 'Kulakan', 'key': 'KULAKAN', 'route': '/kulakan'},
              {'label': 'Iklan', 'key': 'ADS', 'route': '/marketing'},
+             {'label': 'Flash Sale', 'key': 'FLASH_SALE', 'route': '/flashsale'},
              {'label': 'Bantuan', 'key': 'SUPPORT', 'route': '/support'},
              {'label': 'PPOB', 'key': 'PPOB', 'route': '/ppob'},
            ];
@@ -655,14 +659,17 @@ class _HomeScreenState extends State<HomeScreen> {
            menuItems = List.from(snapshot.data!);
            menuItems.removeWhere((m) => m['key'] == 'SETTINGS'); // [FIX] Remove Setting menu as requested
            // [FIX] Force "Stok" menu if missing from backend
-           if (!menuItems.any((m) => m['key'] == 'STOCK')) {
-              // Insert at index 3 (after Laporan) or append
-              if (menuItems.length >= 3) {
-                 menuItems.insert(3, {'label': 'Stok', 'key': 'STOCK', 'route': '/stock'});
-              } else {
-                 menuItems.add({'label': 'Stok', 'key': 'STOCK', 'route': '/stock'});
-              }
-           }
+            if (!menuItems.any((m) => m['key'] == 'STOCK')) {
+               // Insert at index 3 (after Laporan) or append
+               if (menuItems.length >= 3) {
+                  menuItems.insert(3, {'label': 'Stok', 'key': 'STOCK', 'route': '/stock'});
+               } else {
+                  menuItems.add({'label': 'Stok', 'key': 'STOCK', 'route': '/stock'});
+               }
+             }
+             if (!menuItems.any((m) => m['key'] == 'FLASH_SALE')) {
+               menuItems.add({'label': 'Flash Sale', 'key': 'FLASH_SALE', 'route': '/flashsale'});
+             }
         }
 
         return GridView.builder(
@@ -738,6 +745,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ListTile(leading: const Icon(Icons.inventory_2), title: const Text('Produk'), onTap: () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const AddProductScreen())); }),
           ListTile(leading: const Icon(Icons.bar_chart), title: const Text('Laporan'), onTap: () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const ReportScreen())); }),
           ListTile(leading: const Icon(Icons.campaign), title: const Text('Iklan'), onTap: () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const MarketingScreen())); }),
+          ListTile(leading: const Icon(Icons.flash_on), title: const Text('Flash Sale'), onTap: () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const FlashSalesScreen())); }),
           ListTile(leading: const Icon(Icons.support_agent), title: const Text('Bantuan'), onTap: () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const SupportScreen())); }),
           const Divider(),
           ListTile(leading: const Icon(Icons.settings), title: const Text('Pengaturan'), onTap: () { Navigator.pop(context); Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())); }),

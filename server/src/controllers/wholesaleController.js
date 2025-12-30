@@ -184,7 +184,25 @@ const createOrder = async (req, res) => {
             }
         }
 
-        const totalAmount = subtotal + finalShippingCost - discountAmount;
+        // Get Service Fee
+        const feeSetting = await prisma.systemSettings.findUnique({ where: { key: 'WHOLESALE_SERVICE_FEE' } });
+        const feeTypeSetting = await prisma.systemSettings.findUnique({ where: { key: 'WHOLESALE_SERVICE_FEE_TYPE' } });
+        const minCapSetting = await prisma.systemSettings.findUnique({ where: { key: 'WHOLESALE_FEE_CAP_MIN' } });
+        const maxCapSetting = await prisma.systemSettings.findUnique({ where: { key: 'WHOLESALE_FEE_CAP_MAX' } });
+        const feeVal = feeSetting ? parseFloat(feeSetting.value) : 0;
+        const feeType = feeTypeSetting ? String(feeTypeSetting.value) : 'FLAT';
+        let serviceFee = 0;
+        if (feeType === 'PERCENT') {
+            serviceFee = (subtotal * feeVal) / 100;
+        } else {
+            serviceFee = feeVal;
+        }
+        const minCap = minCapSetting ? parseFloat(minCapSetting.value) : undefined;
+        const maxCap = maxCapSetting ? parseFloat(maxCapSetting.value) : undefined;
+        if (minCap !== undefined && serviceFee < minCap) serviceFee = minCap;
+        if (maxCap !== undefined && serviceFee > maxCap) serviceFee = maxCap;
+
+        const totalAmount = subtotal + finalShippingCost + serviceFee - discountAmount;
 
         const result = await prisma.$transaction(async (tx) => {
             // Create Order
@@ -192,6 +210,7 @@ const createOrder = async (req, res) => {
                 data: {
                     tenantId, // Which merchant is buying
                     totalAmount: totalAmount > 0 ? totalAmount : 0,
+                    serviceFee: serviceFee, // [NEW]
                     status: 'PENDING',
                     paymentMethod,
                     shippingAddress,
@@ -268,6 +287,17 @@ const updateOrderStatus = async (req, res) => {
             where: { id },
             data: { status }
         });
+
+        if (status === 'PAID' && order.serviceFee && order.serviceFee > 0) {
+            await prisma.platformRevenue.create({
+                data: {
+                    amount: order.serviceFee,
+                    source: 'OTHER',
+                    description: `Wholesale Service Fee - ${order.id}`,
+                    referenceId: order.id
+                }
+            });
+        }
 
         // TODO: Notification logic here
 

@@ -26,6 +26,8 @@ const getPaymentInfo = async (req, res) => {
 const updatePaymentInfo = async (req, res) => {
     try {
         const { qrisUrl, bankInfo } = req.body;
+        const { id: userId, tenantId } = req.user || {};
+        const { logAudit } = require('./adminController');
 
         if (qrisUrl) {
             await prisma.systemSettings.upsert({
@@ -33,6 +35,9 @@ const updatePaymentInfo = async (req, res) => {
                 update: { value: qrisUrl },
                 create: { key: 'PLATFORM_QRIS_URL', value: qrisUrl, description: 'Main QRIS' }
             });
+            if (logAudit) {
+                await logAudit(tenantId || 'SYSTEM', userId, 'UPDATE_SETTING', 'SystemSettings', 'PLATFORM_QRIS_URL', { value: qrisUrl });
+            }
         }
 
         if (bankInfo) {
@@ -41,6 +46,9 @@ const updatePaymentInfo = async (req, res) => {
                 update: { value: bankInfo },
                 create: { key: 'PLATFORM_BANK_INFO', value: bankInfo, description: 'Bank Transfer Info' }
             });
+            if (logAudit) {
+                await logAudit(tenantId || 'SYSTEM', userId, 'UPDATE_SETTING', 'SystemSettings', 'PLATFORM_BANK_INFO', { value: bankInfo });
+            }
         }
 
         return successResponse(res, null, "Payment Info Updated");
@@ -49,9 +57,60 @@ const updatePaymentInfo = async (req, res) => {
     }
 };
 
+// GET Fee Settings (Admin)
+const getFeeSettings = async (req, res) => {
+    try {
+        const keys = ['BUYER_SERVICE_FEE', 'MERCHANT_SERVICE_FEE', 'WHOLESALE_SERVICE_FEE'];
+        const settings = await prisma.systemSettings.findMany({
+            where: { key: { in: keys } }
+        });
+        
+        const feeMap = {
+            buyerFee: '0',
+            merchantFee: '0',
+            wholesaleFee: '0'
+        };
 
+        settings.forEach(s => {
+            if (s.key === 'BUYER_SERVICE_FEE') feeMap.buyerFee = s.value;
+            if (s.key === 'MERCHANT_SERVICE_FEE') feeMap.merchantFee = s.value;
+            if (s.key === 'WHOLESALE_SERVICE_FEE') feeMap.wholesaleFee = s.value;
+        });
 
+        return successResponse(res, feeMap);
+    } catch (error) {
+        return errorResponse(res, "Failed to fetch fee settings", 500, error);
+    }
+};
 
+// UPDATE Fee Settings (Admin)
+const updateFeeSettings = async (req, res) => {
+    try {
+        const { buyerFee, merchantFee, wholesaleFee } = req.body;
+        const { id: userId, tenantId } = req.user || {};
+        const { logAudit } = require('./adminController');
+
+        const updates = [];
+        if (buyerFee !== undefined) updates.push({ key: 'BUYER_SERVICE_FEE', value: String(buyerFee), description: 'Fee charged to Buyer' });
+        if (merchantFee !== undefined) updates.push({ key: 'MERCHANT_SERVICE_FEE', value: String(merchantFee), description: 'Fee deducted from Merchant' });
+        if (wholesaleFee !== undefined) updates.push({ key: 'WHOLESALE_SERVICE_FEE', value: String(wholesaleFee), description: 'Fee on Wholesale Orders' });
+
+        for (const update of updates) {
+            await prisma.systemSettings.upsert({
+                where: { key: update.key },
+                update: { value: update.value },
+                create: update
+            });
+            if (logAudit) {
+                await logAudit(tenantId || 'SYSTEM', userId, 'UPDATE_SETTING', 'SystemSettings', update.key, { value: update.value });
+            }
+        }
+
+        return successResponse(res, null, "Fee Settings Updated");
+    } catch (error) {
+        return errorResponse(res, "Failed to update fee settings", 500, error);
+    }
+};
 
 const getAppMenus = async (req, res) => {
     try {
@@ -163,6 +222,8 @@ const deleteAnnouncement = async (req, res) => {
 module.exports = {
     getPaymentInfo,
     updatePaymentInfo,
+    getFeeSettings,
+    updateFeeSettings,
     getActiveAnnouncements,
     getAllAnnouncements, // Admin
     createAnnouncement, // Admin

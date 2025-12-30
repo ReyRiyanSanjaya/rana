@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:rana_market/providers/market_cart_provider.dart';
 import 'package:rana_market/screens/payment_screen.dart'; // [NEW]
+import 'package:rana_market/providers/orders_provider.dart';
 
 class MarketCartScreen extends StatefulWidget {
   const MarketCartScreen({super.key});
@@ -54,7 +55,7 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
               ),
               Container(
                 padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, -5))]),
+                decoration: BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Colors.grey.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, -5))]),
                 child: Column(
                   children: [
                     // [NEW] Fulfillment Toggle
@@ -102,13 +103,15 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
                                  address: _isPickup ? '-' : _addrCtrl.text,
                                  isPickup: _isPickup
                                );
-                               
-                               if (context.mounted) {
-                                 // Navigate to Payment
-                                 Navigator.push(
-                                   context, 
-                                   MaterialPageRoute(
-                                     builder: (_) => PaymentScreen(
+                              
+                              if (context.mounted) {
+                                // Add to orders list
+                                Provider.of<OrdersProvider>(context, listen: false).add(order);
+                                // Navigate to Payment
+                                Navigator.push(
+                                  context, 
+                                  MaterialPageRoute(
+                                    builder: (_) => PaymentScreen(
                                        orderId: order['id'], 
                                        amount: (order['totalAmount'] as num).toDouble()
                                      )

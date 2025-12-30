@@ -23,6 +23,7 @@ import TopUps from './pages/TopUps'; // [NEW]
 import Transactions from './pages/Transactions'; // [NEW]
 import ManageMenu from './pages/ManageMenu'; // [NEW]
 import AdminLayout from './components/AdminLayout';
+import FlashSales from './pages/FlashSales';
 
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('adminToken');
@@ -131,6 +132,9 @@ function App() {
 
         <Route path="/content-manager" element={
           <ProtectedRoute><ContentManager /></ProtectedRoute>
+        } />
+        <Route path="/flashsales" element={
+          <ProtectedRoute><FlashSales /></ProtectedRoute>
         } />
 
         <Route path="/app-menus" element={

@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
+import 'dart:async';
 import 'package:provider/provider.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:rana_market/data/market_api_service.dart';
-import 'package:rana_market/providers/market_cart_provider.dart';
 import 'package:rana_market/screens/market_cart_screen.dart';
+import 'package:rana_market/screens/product_detail_screen.dart';
+import 'package:rana_market/providers/market_cart_provider.dart';
+import 'package:rana_market/providers/favorites_provider.dart';
+import 'package:rana_market/screens/store_detail_screen.dart';
+import 'package:rana_market/providers/search_history_provider.dart';
+import 'package:rana_market/providers/reviews_provider.dart';
 
 class MarketHomeScreen extends StatefulWidget {
   const MarketHomeScreen({super.key});
@@ -16,7 +22,10 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
   String _address = 'Mencari Lokasi...';
   List<dynamic> _nearbyStores = [];
   bool _isLoading = true;
-  String _selectedCategory = 'All'; // [NEW]
+  String _selectedCategory = 'All'; 
+  final TextEditingController _searchCtrl = TextEditingController();
+  String _query = '';
+  Timer? _debounce;
 
   @override
   void initState() {
@@ -55,6 +64,13 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
   }
 
   @override
+  void dispose() {
+    _debounce?.cancel();
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -66,47 +82,207 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Lokasi Kamu', style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.normal)),
-                const Text('Jakarta Selatan', style: TextStyle(fontSize: 14)),
+                Text(_address, style: const TextStyle(fontSize: 14)),
               ],
             )
           ],
         ),
         actions: [
-          IconButton(icon: const Icon(Icons.notifications_none, color: Colors.black), onPressed: (){}),
-          IconButton(icon: const Icon(Icons.shopping_bag_outlined, color: Colors.black), onPressed: (){}),
+          Consumer<MarketCartProvider>(
+            builder: (context, cart, _) {
+              final count = cart.items.values.fold<int>(0, (acc, it) => acc + it.quantity);
+              return Stack(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.shopping_bag_outlined, color: Colors.black), 
+                    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MarketCartScreen()))
+                  ),
+                  if (count > 0)
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(10)),
+                        child: Text('$count', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Column(
+      body: RefreshIndicator(
+        onRefresh: () async {
+          setState(() => _isLoading = true);
+          final permission = await Geolocator.checkPermission();
+          if (permission == LocationPermission.whileInUse || permission == LocationPermission.always) {
+            final pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+            await _fetchNearby(pos.latitude, pos.longitude);
+          } else {
+            await _initLocation();
+          }
+        },
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Search Bar
             Padding(
               padding: const EdgeInsets.all(16.0),
-              child: TextField(
-                decoration: InputDecoration(
-                  hintText: 'Mau makan apa hari ini?',
-                  prefixIcon: const Icon(Icons.search),
-                  filled: true,
-                  fillColor: Colors.grey.shade100,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: _searchCtrl,
+                    onChanged: (val) {
+                      if (_debounce?.isActive ?? false) _debounce!.cancel();
+                      _debounce = Timer(const Duration(milliseconds: 300), () {
+                        setState(() => _query = val.toLowerCase().trim());
+                      });
+                    },
+                    onSubmitted: (val) {
+                      Provider.of<SearchHistoryProvider>(context, listen: false).addQuery(val);
+                    },
+                    decoration: InputDecoration(
+                      hintText: 'Mau makan apa hari ini?',
+                      prefixIcon: const Icon(Icons.search),
+                      filled: true,
+                      fillColor: Colors.grey.shade100,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Consumer<SearchHistoryProvider>(
+                    builder: (context, hist, _) {
+                      if (!hist.loaded || hist.history.isEmpty) return const SizedBox.shrink();
+                      return SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            for (final q in hist.history)
+                              Padding(
+                                padding: const EdgeInsets.only(right: 8.0),
+                                child: ActionChip(
+                                  label: Text(q),
+                                  onPressed: () {
+                                    _searchCtrl.text = q;
+                                    setState(() => _query = q.toLowerCase());
+                                  },
+                                ),
+                              ),
+                            TextButton(
+                              onPressed: () => hist.clear(),
+                              child: const Text('Hapus Riwayat'),
+                            )
+                          ],
+                        ),
+                      );
+                    },
+                  )
+                ],
               ),
             ),
             
-            // Unused Banners
-            Container(
+            // Banner Carousel
+            SizedBox(
               height: 150,
-              margin: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: Colors.green.shade100,
-                borderRadius: BorderRadius.circular(16),
+              child: PageView(
+                children: [
+                  _buildBanner(Colors.green.shade100, 'Promo Spesial Hari Ini!', Colors.green.shade800),
+                  _buildBanner(Colors.orange.shade100, 'Diskon Ongkir s/d 10rb', Colors.orange.shade800),
+                  _buildBanner(Colors.blue.shade100, 'Flash Sale 50% Off', Colors.blue.shade800),
+                ],
               ),
-              child: Center(child: Text('Promo Spesial Hari Ini!', style: TextStyle(color: Colors.green.shade800, fontWeight: FontWeight.bold, fontSize: 18))),
             ),
             
             const SizedBox(height: 24),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Text('Untuk Kamu', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 180,
+              child: Consumer2<ReviewsProvider, SearchHistoryProvider>(
+                builder: (context, rev, hist, _) {
+                  final all = _nearbyStores.expand((s) => (s['products'] as List<dynamic>? ?? [])).toList();
+                  final lastQuery = (hist.history.isNotEmpty ? hist.history.first : '').toLowerCase();
+                  all.sort((a, b) {
+                    final ar = rev.getAverage(a['id']);
+                    final br = rev.getAverage(b['id']);
+                    final am = lastQuery.isEmpty ? 0 : ((a['name'] ?? '').toString().toLowerCase().contains(lastQuery) ? 1 : 0);
+                    final bm = lastQuery.isEmpty ? 0 : ((b['name'] ?? '').toString().toLowerCase().contains(lastQuery) ? 1 : 0);
+                    // Prioritize match, then rating desc
+                    if (am != bm) return bm.compareTo(am);
+                    return br.compareTo(ar);
+                  });
+                  final list = all.take(12).toList();
+                  return ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    separatorBuilder: (_, __) => const SizedBox(width: 12),
+                    itemCount: list.length,
+                    itemBuilder: (context, i) {
+                      final p = list[i];
+                      final avg = rev.getAverage(p['id']);
+                      final lastQuery = Provider.of<SearchHistoryProvider>(context, listen: false).history.isNotEmpty
+                          ? Provider.of<SearchHistoryProvider>(context, listen: false).history.first.toLowerCase()
+                          : '';
+                      final match = lastQuery.isNotEmpty &&
+                          (p['name'] ?? '').toString().toLowerCase().contains(lastQuery);
+                      return Container(
+                        width: 140,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade200),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade200,
+                                  borderRadius: const BorderRadius.vertical(top: Radius.circular(12))
+                                ),
+                                child: const Center(child: Icon(Icons.fastfood, size: 30, color: Colors.grey)),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(p['name'], maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                                  Row(
+                                    children: [
+                                      Icon(Icons.star, size: 14, color: Colors.orange.shade400),
+                                      Text(avg.toStringAsFixed(1), style: const TextStyle(fontSize: 12)),
+                                    ],
+                                  ),
+                                  if (match)
+                                    Container(
+                                      margin: const EdgeInsets.only(top: 4),
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(6)),
+                                      child: const Text('Cocok dengan pencarian', style: TextStyle(fontSize: 10, color: Colors.blue)),
+                                    )
+                                ],
+                              ),
+                            )
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
             
             // Categories
             const Padding(
@@ -161,160 +337,210 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
               itemBuilder: (context, index) {
                 final store = _nearbyStores[index];
                 
-                // [NEW] Client-side filter
+                // Client-side filter
                 if (_selectedCategory != 'All' && store['category'] != _selectedCategory) {
-                   return const SizedBox.shrink(); // Hide if mismatch (simple way) or better: Filter list before building
+                   return const SizedBox.shrink(); 
                 }
                 
                 final dist = (store['distance'] as num?)?.toStringAsFixed(1) ?? '0.0';
                 final prods = store['products'] as List<dynamic>? ?? [];
+                final filtered = _query.isEmpty 
+                    ? prods 
+                    : prods.where((p) => (p['name'] ?? '').toString().toLowerCase().contains(_query)).toList();
+                if (_query.isNotEmpty && filtered.isEmpty) {
+                  return const SizedBox.shrink();
+                }
                 
                 return Card(
-                  margin: const EdgeInsets.only(bottom: 16),
+                  margin: const EdgeInsets.only(bottom: 24),
+                  elevation: 2,
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Store Header
-                      Row(
-                        children: [
-                          Container(
-                            width: 100,
-                            height: 100,
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade200,
-                              borderRadius: const BorderRadius.only(topLeft: Radius.circular(16), bottomLeft: Radius.circular(0)), // Corner styling fixed
-                              image: const DecorationImage(image: NetworkImage('https://via.placeholder.com/150'), fit: BoxFit.cover) // Placeholder
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                          border: Border(bottom: BorderSide(color: Colors.grey.shade100))
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 40, height: 40,
+                              decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(8)),
+                              child: const Icon(Icons.store, color: Colors.grey),
                             ),
-                            child: const Icon(Icons.store, size: 40, color: Colors.grey),
-                          ),
-                          Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.all(12.0),
+                            const SizedBox(width: 12),
+                            Expanded(
                               child: Column(
-                                 crossAxisAlignment: CrossAxisAlignment.start,
-                                 children: [
-                                   Text(store['name'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                                   const SizedBox(height: 4),
-                                   Text('${store['address'] ?? 'No Address'} • $dist km', style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                                   const SizedBox(height: 4),
-                                   if (store['category'] != null)
-                                     Container(
-                                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                       decoration: BoxDecoration(color: Colors.indigo.shade50, borderRadius: BorderRadius.circular(4)),
-                                       child: Text(store['category'], style: TextStyle(color: Colors.indigo.shade800, fontSize: 10, fontWeight: FontWeight.bold)),
-                                     ),
-                                   const SizedBox(height: 8),
-                                   Row(
-                                     children: [
-                                       Icon(Icons.star, size: 14, color: Colors.orange.shade400),
-                                       const Text(' 4.8 ', style: TextStyle(fontWeight: FontWeight.bold)),
-                                     ],
-                                   )
-                                 ],
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(store['name'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                  Text('${store['address']} • $dist km', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                                ],
                               ),
                             ),
-                          )
-                        ],
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(color: Colors.indigo.shade50, borderRadius: BorderRadius.circular(4)),
+                                  child: Text(store['category'], style: TextStyle(color: Colors.indigo.shade800, fontSize: 10, fontWeight: FontWeight.bold)),
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    Icon(Icons.star, size: 14, color: Colors.orange.shade400),
+                                    const Text(' 4.8 ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.push(context, MaterialPageRoute(builder: (_) => StoreDetailScreen(store: store)));
+                                  }, 
+                                  child: const Text('Lihat Toko')
+                                )
+                              ],
+                            )
+                          ],
+                        ),
                       ),
-                                   )
-                                 ],
-                              ),
-                            ),
-                          )
-                        ],
-                      ),
-                      // Product Teaser
-                      if (prods.isNotEmpty)
+                      
+                      // Product Horizontal List
+                      if ((filtered).isNotEmpty)
                         Container(
-                           height: 50,
-                           padding: const EdgeInsets.symmetric(horizontal: 12),
-                           color: Colors.grey.shade50,
-                           child: ListView.separated(
-                             scrollDirection: Axis.horizontal,
-                             itemCount: prods.length,
-                             separatorBuilder: (_,__) => const SizedBox(width: 10),
-                             itemBuilder: (ctx, i) {
-                               final p = prods[i];
-                               return ActionChip( // Clickable Chip
-                                 label: Text('${p['name']} - Rp ${p['sellingPrice']}'), 
-                                 backgroundColor: Colors.white, 
-                                 side: BorderSide(color: Colors.grey.shade300),
-                                 onPressed: () {
-                                    try {
-                                      // Context is tricky here if builder isn't right, but usually ok
-                                      Provider.of<MarketCartProvider>(context, listen: false).addToCart(
-                                        store['id'], 
-                                        store['name'], 
-                                        p['id'], 
-                                        p['name'], 
-                                        (p['sellingPrice'] as num).toDouble()
+                          height: 140, // Taller for cards
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          color: Colors.grey.shade50,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            itemCount: filtered.length,
+                            separatorBuilder: (_, __) => const SizedBox(width: 12),
+                            itemBuilder: (ctx, i) {
+                              final p = filtered[i];
+                              return Consumer2<FavoritesProvider, ReviewsProvider>(
+                                builder: (context, fav, rev, _) {
+                                  final isFav = fav.isFavorite(p['id']);
+                                  final avg = rev.getAverage(p['id']);
+                                  return GestureDetector(
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(builder: (_) => ProductDetailScreen(
+                                          product: p,
+                                          storeId: store['id'],
+                                          storeName: store['name'],
+                                        ))
                                       );
-                                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${p['name']} masuk keranjang +1')));
-                                    } catch (e) {
-                                      if (e.toString().contains('DIFFERENT_STORE')) {
-                                         // Show dialog to reset (Mock)
-                                         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Hanya bisa pesan dari 1 Resto sekaligus!')));
-                                      }
-                                    }
-                                 },
-                               );
-                             },
-                           ),
-                        )
+                                    },
+                                    child: Stack(
+                                      children: [
+                                        Container(
+                                          width: 120,
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius: BorderRadius.circular(8),
+                                            border: Border.all(color: Colors.grey.shade200)
+                                          ),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Expanded(
+                                                child: Container(
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.grey.shade200,
+                                                    borderRadius: const BorderRadius.vertical(top: Radius.circular(8))
+                                                  ),
+                                                  child: const Center(child: Icon(Icons.fastfood, size: 30, color: Colors.grey)),
+                                                ),
+                                              ),
+                                              Padding(
+                                                padding: const EdgeInsets.all(8.0),
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(p['name'], maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                                                    Text('Rp ${p['sellingPrice']}', style: const TextStyle(fontSize: 12, color: Colors.green)),
+                                                    Row(
+                                                      children: [
+                                                        Icon(Icons.star, size: 14, color: Colors.orange.shade400),
+                                                        Text(avg.toStringAsFixed(1), style: const TextStyle(fontSize: 12)),
+                                                      ],
+                                                    ),
+                                                  ],
+                                                ),
+                                              )
+                                            ],
+                                          ),
+                                        ),
+                                        Positioned(
+                                          right: 4,
+                                          top: 4,
+                                          child: IconButton(
+                                            icon: Icon(isFav ? Icons.favorite : Icons.favorite_border, color: isFav ? Colors.red : Colors.grey),
+                                            onPressed: () => fav.toggleFavorite(p['id']),
+                                            iconSize: 20,
+                                            padding: EdgeInsets.zero,
+                                            constraints: const BoxConstraints(),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              );
+                            },
+                          ),
+                        ),
                     ],
                   ),
                 );
               },
             ),
-            const SizedBox(height: 80), // Padding for FAB
+            
+            const SizedBox(height: 80), // Bottom padding for nav bar
           ],
+          ),
         ),
       ),
-      floatingActionButton: Consumer<MarketCartProvider>(
-        builder: (ctx, cart, _) => cart.items.isEmpty ? const SizedBox.shrink() : FloatingActionButton.extended(
-          onPressed: () {
-             Navigator.push(context, MaterialPageRoute(builder: (_) => const MarketCartScreen()));
-          },
-          label: Text('${cart.items.length} Item | Rp ${cart.totalAmount}'),
-          icon: const Icon(Icons.shopping_basket),
-          backgroundColor: Theme.of(context).primaryColor,
-        ),
+    );
+  }
+
+  Widget _buildBanner(Color bg, String text, Color textCol) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(16),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-          ],
-        ),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        selectedItemColor: Theme.of(context).primaryColor,
-        unselectedItemColor: Colors.grey,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: 'Pesanan'),
-          BottomNavigationBarItem(icon: Icon(Icons.chat), label: 'Chat'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
-        ],
-      ),
+      child: Center(child: Text(text, style: TextStyle(color: textCol, fontWeight: FontWeight.bold, fontSize: 18))),
     );
   }
 
   Widget _buildCategoryItem(IconData icon, String label, Color color, {bool isSelected = false}) {
     return GestureDetector(
-      onTap: () => setState(() => _selectedCategory = label == 'Semua' ? 'All' : label),
+      onTap: () => setState(() => _selectedCategory = isSelected ? 'All' : (label == 'Semua' ? 'All' : label)),
       child: Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: isSelected ? color : color.withOpacity(0.1), 
-            shape: BoxShape.circle,
-            border: isSelected ? Border.all(color: Colors.white, width: 2) : null,
-            boxShadow: isSelected ? [BoxShadow(color: color.withOpacity(0.4), blurRadius: 8)] : null
+        children: [
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: isSelected ? color : color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: isSelected ? Border.all(color: color, width: 2) : null
+            ),
+            child: Icon(icon, color: isSelected ? Colors.white : color),
           ),
-          child: Icon(icon, color: isSelected ? Colors.white : color),
-        ),
-        const SizedBox(height: 8),
-        Text(label, style: TextStyle(fontSize: 12, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal))
-      ],
-    )
+          const SizedBox(height: 4),
+          Text(label, style: TextStyle(fontSize: 10, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+        ],
+      ),
     );
   }
 }

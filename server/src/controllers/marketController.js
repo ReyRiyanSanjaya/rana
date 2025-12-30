@@ -68,4 +68,30 @@ const getNearbyStores = async (req, res) => {
     }
 };
 
-module.exports = { getNearbyStores };
+// [NEW] Public: Get Active Flash Sales
+const getActiveFlashSales = async (req, res) => {
+    try {
+        const { storeId } = req.query;
+        const now = new Date();
+        const sales = await prisma.flashSale.findMany({
+            where: {
+                ...(storeId ? { storeId } : {}),
+                status: { in: ['APPROVED', 'ACTIVE'] },
+                startAt: { lte: now },
+                endAt: { gte: now }
+            },
+            include: {
+                store: { select: { name: true } },
+                items: {
+                    include: { product: { select: { name: true, sellingPrice: true, imageUrl: true } } }
+                }
+            },
+            orderBy: { startAt: 'asc' }
+        });
+        return successResponse(res, sales);
+    } catch (error) {
+        return errorResponse(res, "Failed to fetch flash sales", 500, error);
+    }
+};
+
+module.exports = { getNearbyStores, getActiveFlashSales };

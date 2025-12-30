@@ -42,6 +42,7 @@ model Tenant {
   tickets              SupportTicket[]       // [NEW]
   notifications        Notification[]        // [NEW]
   ppobTransactions     PpobTransaction[]     // [NEW]
+  flashSales           FlashSale[]           // [FIX] Added relation
 }
 
 model Notification {
@@ -166,6 +167,7 @@ model Store {
   sentTransfers     WalletTransfer[] @relation("SentTransfers") // [NEW]
   receivedTransfers WalletTransfer[] @relation("ReceivedTransfers") // [NEW]
   ppobTransactions  PpobTransaction[] // [NEW]
+  flashSales        FlashSale[] // [FIX] Added relation
 }
 
 // [NEW] Withdrawal Request
@@ -263,6 +265,7 @@ model Product {
   // [NEW] Discount features
   originalPrice Float?         // For storing price before discount
   discountLabel String?        // e.g. "Flash Sale"
+  flashSaleItems FlashSaleItem[] // [FIX] Added relation
 }
 
 enum InventoryType {
@@ -328,6 +331,9 @@ model Transaction {
   paymentMethod String  // CASH, QRIS, TRANSFER
   amountPaid    Float
   change        Float
+  buyerFee      Float    @default(0)
+  merchantFee   Float    @default(0)
+  platformFee   Float    @default(0)
   
   // O2O Fields
   orderStatus   String   // PENDING, COMPLETED, CANCELLED
@@ -579,6 +585,9 @@ model WholesaleOrder {
   shippingAddress String?
   shippingCost  Float    @default(0)
   
+  // [NEW] Platform Fee
+  serviceFee    Float    @default(0)
+
   // Coupon Fields
   couponCode    String?
   discountAmount Float   @default(0)
@@ -637,6 +646,48 @@ model WholesaleBanner {
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+// ================================
+// FLASH SALE (Marketplace Promo)
+// ================================
+
+enum FlashSaleStatus {
+  PENDING
+  APPROVED
+  ACTIVE
+  REJECTED
+  ENDED
+}
+
+model FlashSale {
+  id        String   @id @default(uuid())
+  tenantId  String
+  storeId   String
+  title     String
+  startAt   DateTime
+  endAt     DateTime
+  status    FlashSaleStatus @default(PENDING)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  store     Store    @relation(fields: [storeId], references: [id])
+  items     FlashSaleItem[]
+
+  @@index([storeId, startAt, endAt])
+}
+
+model FlashSaleItem {
+  id            String   @id @default(uuid())
+  flashSaleId   String
+  productId     String
+  salePrice     Float
+  maxQtyPerOrder Int     @default(0) // 0 means unlimited
+  saleStock     Int?     // Optional limited stock
+
+  flashSale     FlashSale @relation(fields: [flashSaleId], references: [id])
+  product       Product   @relation(fields: [productId], references: [id])
 }
 
 // ================================

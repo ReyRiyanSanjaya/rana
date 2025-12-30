@@ -17,7 +17,56 @@ const createOrder = async (req, res) => {
         const store = await prisma.store.findUnique({ where: { id: storeId } });
         if (!store) return errorResponse(res, "Store not found", 404);
 
-        const totalAmount = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        // Apply Flash Sale Pricing if applicable
+        const now = new Date();
+        const activeSales = await prisma.flashSale.findMany({
+            where: {
+                storeId,
+                status: { in: ['APPROVED', 'ACTIVE'] },
+                startAt: { lte: now },
+                endAt: { gte: now }
+            },
+            include: { items: true }
+        });
+        const saleMap = new Map();
+        for (const sale of activeSales) {
+            for (const si of sale.items) {
+                saleMap.set(si.productId, { price: si.salePrice, maxQtyPerOrder: si.maxQtyPerOrder || 0 });
+            }
+        }
+        // Recalculate item prices with flash sale
+        let recomputedItems = [];
+        for (const i of items) {
+            const sale = saleMap.get(i.productId);
+            if (sale) {
+                if (sale.maxQtyPerOrder > 0 && i.quantity > sale.maxQtyPerOrder) {
+                    return errorResponse(res, "Quantity exceeds flash sale limit", 400);
+                }
+                recomputedItems.push({ ...i, price: sale.price });
+            } else {
+                recomputedItems.push(i);
+            }
+        }
+
+        // Get Fee Settings
+        const subtotal = recomputedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const feeSetting = await prisma.systemSettings.findUnique({ where: { key: 'BUYER_SERVICE_FEE' } });
+        const feeTypeSetting = await prisma.systemSettings.findUnique({ where: { key: 'BUYER_SERVICE_FEE_TYPE' } });
+        const minCapSetting = await prisma.systemSettings.findUnique({ where: { key: 'BUYER_FEE_CAP_MIN' } });
+        const maxCapSetting = await prisma.systemSettings.findUnique({ where: { key: 'BUYER_FEE_CAP_MAX' } });
+        const feeVal = feeSetting ? parseFloat(feeSetting.value) : 0;
+        const feeType = feeTypeSetting ? String(feeTypeSetting.value) : 'FLAT';
+        let buyerFee = 0;
+        if (feeType === 'PERCENT') {
+            buyerFee = (subtotal * feeVal) / 100;
+        } else {
+            buyerFee = feeVal;
+        }
+        const minCap = minCapSetting ? parseFloat(minCapSetting.value) : undefined;
+        const maxCap = maxCapSetting ? parseFloat(maxCapSetting.value) : undefined;
+        if (minCap !== undefined && buyerFee < minCap) buyerFee = minCap;
+        if (maxCap !== undefined && buyerFee > maxCap) buyerFee = maxCap;
+        const totalAmount = subtotal + buyerFee;
 
         // [NEW] Generate Pickup Code
         let pickupCode = null;
@@ -31,6 +80,8 @@ const createOrder = async (req, res) => {
                 tenantId: store.tenantId,
                 storeId: storeId,
                 totalAmount: totalAmount,
+                buyerFee: buyerFee, // [NEW]
+                platformFee: buyerFee, // [NEW] Initially just buyer fee, merchant fee deducted later
                 paymentMethod: 'ONLINE_SIMULATION', // Mocking Online Payment
                 amountPaid: totalAmount,
                 change: 0,
@@ -44,7 +95,7 @@ const createOrder = async (req, res) => {
                 deliveryAddress,
                 occurredAt: new Date(),
                 transactionItems: {
-                    create: items.map(i => ({
+                    create: recomputedItems.map(i => ({
                         productId: i.productId,
                         quantity: i.quantity,
                         price: i.price
@@ -77,6 +128,17 @@ const confirmPayment = async (req, res) => {
                 paidAt: new Date()
             }
         });
+
+        if (order.platformFee && order.platformFee > 0) {
+            await prisma.platformRevenue.create({
+                data: {
+                    amount: order.platformFee,
+                    source: 'OTHER',
+                    description: `Transaction Fee (Buyer) - ${order.id}`,
+                    referenceId: order.id
+                }
+            });
+        }
 
         // Trigger Notification to Merchant here if needed
 
