@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 import 'package:rana_merchant/providers/cart_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:rana_merchant/providers/auth_provider.dart';
-import 'package:rana_merchant/services/sound_service.dart';
 
 class PaymentScreen extends StatefulWidget {
   final CartProvider cart;

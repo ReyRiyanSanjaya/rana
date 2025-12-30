@@ -283,6 +283,12 @@ const updateOrderStatus = async (req, res) => {
         const { id } = req.params;
         const { status } = req.body; // PAID, SHIPPED, etc.
 
+        // Validate status against enum
+        const validStatuses = ['PENDING', 'PAID', 'PROCESSED', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
+        if (!validStatuses.includes(status)) {
+            return errorResponse(res, `Invalid status. Allowed: ${validStatuses.join(', ')}`, 400);
+        }
+
         const order = await prisma.wholesaleOrder.update({
             where: { id },
             data: { status }
@@ -398,7 +404,52 @@ const deleteCategory = async (req, res) => {
     }
 };
 
+// Upload Proof
+const uploadProof = async (req, res) => {
+    try {
+        if (!req.file) return errorResponse(res, "No file uploaded", 400);
+        // Assuming public/uploads is served statically
+        const url = `/uploads/proofs/${req.file.filename}`;
+        return successResponse(res, { url }, "Proof uploaded");
+    } catch (error) {
+        return errorResponse(res, "Upload failed", 500, error);
+    }
+};
+
+// Scan Order (Merchant receives goods)
+const scanOrder = async (req, res) => {
+    try {
+        const { pickupCode } = req.body;
+        // Find by ID or PickupCode
+        const order = await prisma.wholesaleOrder.findFirst({
+            where: {
+                OR: [
+                    { id: pickupCode },
+                    { pickupCode: pickupCode }
+                ]
+            }
+        });
+
+        if (!order) return errorResponse(res, "Order not found", 404);
+
+        if (order.status !== 'SHIPPED') {
+            return errorResponse(res, `Order cannot be received. Status: ${order.status}`, 400);
+        }
+
+        const updated = await prisma.wholesaleOrder.update({
+            where: { id: order.id },
+            data: { status: 'DELIVERED' }
+        });
+
+        return successResponse(res, updated, "Order received successfully");
+    } catch (error) {
+        return errorResponse(res, "Scan failed", 500, error);
+    }
+};
+
 module.exports = {
+    uploadProof,
+    scanOrder, // [NEW]
     getProducts,
     createProduct,
     createOrder,

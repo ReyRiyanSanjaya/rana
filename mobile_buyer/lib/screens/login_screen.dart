@@ -19,26 +19,22 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _login() async {
     if (_emailCtrl.text.isEmpty || _passCtrl.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Mohon isi email dan password'))
-      );
+          const SnackBar(content: Text('Mohon isi email dan password')));
       return;
     }
 
     setState(() => _isLoading = true);
+    final navigator = Navigator.of(context);
 
     try {
       await Provider.of<AuthProvider>(context, listen: false)
           .login(_emailCtrl.text, _passCtrl.text);
-      // Navigation is handled in main.dart via Auth State, 
-      // but if we pushReplacement, we might need to pop or main.dart rebuilds.
-      // Usually, wrapper in main.dart handles switch. 
-      // However, since we might push LoginScreen, popping it is safe?
-      // No, let's assume Main Wrapper.
+      if (!mounted) return;
+      navigator.pop(true);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Login Gagal: $e'))
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Login Gagal: $e')));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -69,18 +65,17 @@ class _LoginScreenState extends State<LoginScreen> {
                 style: TextStyle(color: Colors.grey.shade600),
               ),
               const SizedBox(height: 32),
-              
               TextField(
                 controller: _emailCtrl,
                 decoration: InputDecoration(
                   labelText: 'Email',
                   prefixIcon: const Icon(Icons.email_outlined),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
                 keyboardType: TextInputType.emailAddress,
               ),
               const SizedBox(height: 16),
-              
               TextField(
                 controller: _passCtrl,
                 obscureText: _obscureText,
@@ -88,25 +83,33 @@ class _LoginScreenState extends State<LoginScreen> {
                   labelText: 'Password',
                   prefixIcon: const Icon(Icons.lock_outline),
                   suffixIcon: IconButton(
-                    icon: Icon(_obscureText ? Icons.visibility_off : Icons.visibility),
-                    onPressed: () => setState(() => _obscureText = !_obscureText),
+                    icon: Icon(
+                        _obscureText ? Icons.visibility_off : Icons.visibility),
+                    onPressed: () =>
+                        setState(() => _obscureText = !_obscureText),
                   ),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
               ),
               const SizedBox(height: 24),
-              
               FilledButton(
                 onPressed: _isLoading ? null : _login,
                 style: FilledButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
-                child: _isLoading 
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Text('MASUK', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                child: _isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                            color: Colors.white, strokeWidth: 2))
+                    : const Text('MASUK',
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold)),
               ),
-              
               const SizedBox(height: 24),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -114,7 +117,16 @@ class _LoginScreenState extends State<LoginScreen> {
                   const Text('Belum punya akun?'),
                   TextButton(
                     onPressed: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => const RegisterScreen()));
+                      final navigator = Navigator.of(context);
+                      Navigator.push<bool>(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => const RegisterScreen()))
+                          .then((ok) {
+                        if (ok == true && mounted) {
+                          navigator.pop(true);
+                        }
+                      });
                     },
                     child: const Text('Daftar Sekarang'),
                   )

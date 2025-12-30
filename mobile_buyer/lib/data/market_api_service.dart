@@ -6,7 +6,7 @@ class MarketApiService {
   factory MarketApiService() => _instance;
   
   late Dio _dio;
-  static const bool _isProduction = false;
+  static const bool _isProduction = bool.fromEnvironment('RANA_PROD', defaultValue: kReleaseMode);
   final String _baseUrl = _isProduction
       ? 'https://api.rana-app.com/api'
       : (kIsWeb ? 'http://localhost:4000/api' : 'http://10.0.2.2:4000/api');
@@ -22,6 +22,38 @@ class MarketApiService {
   }
 
   Dio get dio => _dio;
+
+  bool _isSuccess(dynamic body) {
+    if (body is! Map) return false;
+    final dynamic success = body['success'];
+    if (success is bool) return success;
+    final dynamic status = body['status'];
+    if (status is String) return status.toLowerCase() == 'success';
+    return false;
+  }
+
+  String _messageFromBody(dynamic body, {String fallback = 'Terjadi kesalahan'}) {
+    if (body is Map) {
+      final dynamic msg = body['message'];
+      if (msg is String && msg.trim().isNotEmpty) return msg;
+      final dynamic error = body['error'];
+      if (error is String && error.trim().isNotEmpty) return error;
+    }
+    if (body is String && body.trim().isNotEmpty) return body;
+    return fallback;
+  }
+
+  Exception _toApiException(Object e, {String fallback = 'Terjadi kesalahan'}) {
+    if (e is DioException) {
+      final responseData = e.response?.data;
+      final msg = _messageFromBody(
+        responseData,
+        fallback: e.message?.trim().isNotEmpty == true ? e.message!.trim() : fallback,
+      );
+      return Exception(msg);
+    }
+    return Exception(e.toString());
+  }
  
   Future<List<dynamic>> getProductReviews(
     String productId, {
@@ -50,12 +82,12 @@ class MarketApiService {
          'rating': rating,
          'comment': comment,
        });
-       if (!(response.data['success'] ?? false)) {
-         throw Exception(response.data['message'] ?? 'Failed');
+       if (!_isSuccess(response.data)) {
+         throw Exception(_messageFromBody(response.data, fallback: 'Gagal menambahkan ulasan'));
        }
        return response.data['data'] ?? {};
      } catch (e) {
-       throw Exception('Add Review Failed: $e');
+       throw _toApiException(e, fallback: 'Gagal menambahkan ulasan');
      }
    }
 
@@ -75,13 +107,10 @@ class MarketApiService {
         'role': 'BUYER'
       });
       
-      if (response.data['success']) {
-        return response.data['data'];
-      } else {
-        throw Exception(response.data['message']);
-      }
+      if (_isSuccess(response.data)) return Map<String, dynamic>.from(response.data['data'] ?? {});
+      throw Exception(_messageFromBody(response.data, fallback: 'Login gagal'));
     } catch (e) {
-      throw Exception('Login Failed: $e');
+      throw _toApiException(e, fallback: 'Login gagal');
     }
   }
 
@@ -95,13 +124,10 @@ class MarketApiService {
         'role': 'BUYER'
       });
       
-      if (response.data['success']) {
-        return response.data['data'];
-      } else {
-        throw Exception(response.data['message']);
-      }
+      if (_isSuccess(response.data)) return Map<String, dynamic>.from(response.data['data'] ?? {});
+      throw Exception(_messageFromBody(response.data, fallback: 'Daftar gagal'));
     } catch (e) {
-      throw Exception('Register Failed: $e');
+      throw _toApiException(e, fallback: 'Daftar gagal');
     }
   }
 
@@ -112,11 +138,8 @@ class MarketApiService {
         'long': long
       });
       
-      if (response.data['success']) {
-        return response.data['data'];
-      } else {
-        throw Exception(response.data['message']);
-      }
+      if (_isSuccess(response.data)) return response.data['data'] ?? [];
+      throw Exception(_messageFromBody(response.data, fallback: 'Gagal memuat toko terdekat'));
     } catch (e) {
       debugPrint('Nearby Error: $e');
       return []; // Return empty on error for fail-soft
@@ -141,32 +164,32 @@ class MarketApiService {
         'fulfillmentType': fulfillmentType
       });
       
-      if (!response.data['success']) {
-         throw Exception(response.data['message']);
+      if (!_isSuccess(response.data)) {
+        throw Exception(_messageFromBody(response.data, fallback: 'Gagal membuat pesanan'));
       }
-      return response.data['data']; // Return Order Data (ID, Amount)
+      return Map<String, dynamic>.from(response.data['data'] ?? {});
     } catch (e) {
-      throw Exception('Order Failed: $e');
+      throw _toApiException(e, fallback: 'Gagal membuat pesanan');
     }
   }
 
   Future<Map<String, dynamic>> getPaymentInfo() async {
     try {
       final response = await _dio.get('/market/config/payment');
-      if (response.data['success']) return response.data['data'];
-      throw Exception('Failed to get config');
+      if (_isSuccess(response.data)) return Map<String, dynamic>.from(response.data['data'] ?? {});
+      throw Exception(_messageFromBody(response.data, fallback: 'Gagal memuat konfigurasi pembayaran'));
     } catch (e) {
-      throw Exception('Payment Config Error: $e');
+      throw _toApiException(e, fallback: 'Gagal memuat konfigurasi pembayaran');
     }
   }
 
   Future<Map<String, dynamic>> confirmPayment(String orderId) async {
      try {
       final response = await _dio.post('/market/order/confirm', data: {'orderId': orderId});
-      if (!response.data['success']) throw Exception(response.data['message']);
-      return response.data['data'];
+      if (!_isSuccess(response.data)) throw Exception(_messageFromBody(response.data, fallback: 'Gagal konfirmasi pembayaran'));
+      return Map<String, dynamic>.from(response.data['data'] ?? {});
     } catch (e) {
-      throw Exception('Confirm Failed: $e');
+      throw _toApiException(e, fallback: 'Gagal konfirmasi pembayaran');
     }
   }
 

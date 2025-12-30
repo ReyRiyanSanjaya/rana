@@ -7,18 +7,28 @@ class MarketCartItem {
   final double price;
   int quantity;
 
-  MarketCartItem({required this.productId, required this.name, required this.price, this.quantity = 1});
+  MarketCartItem(
+      {required this.productId,
+      required this.name,
+      required this.price,
+      this.quantity = 1});
 }
 
 class MarketCartProvider with ChangeNotifier {
   // StoreId -> ItemId -> Item
-  // Complex: Marketplace carts usually split by Store. 
+  // Complex: Marketplace carts usually split by Store.
   // MVP: Single Store Cart for simplicity (Like GoFood, one store at a time).
   String? _activeStoreId;
   String? _activeStoreName;
+  String? _activeStoreAddress;
+  double? _activeStoreLat;
+  double? _activeStoreLong;
   final Map<String, MarketCartItem> _items = {};
 
   String? get activeStoreName => _activeStoreName;
+  String? get activeStoreAddress => _activeStoreAddress;
+  double? get activeStoreLat => _activeStoreLat;
+  double? get activeStoreLong => _activeStoreLong;
   Map<String, MarketCartItem> get items => _items;
 
   double get totalAmount {
@@ -29,47 +39,65 @@ class MarketCartProvider with ChangeNotifier {
     return total;
   }
 
-  void addToCart(String storeId, String storeName, String productId, String name, double price) {
+  void addToCart(
+    String storeId,
+    String storeName,
+    String productId,
+    String name,
+    double price, {
+    String? storeAddress,
+    double? storeLat,
+    double? storeLong,
+  }) {
     // If adding from different store, confirm reset
     if (_activeStoreId != null && _activeStoreId != storeId) {
-      throw Exception('DIFFERENT_STORE'); 
+      throw Exception('DIFFERENT_STORE');
     }
 
     _activeStoreId = storeId;
     _activeStoreName = storeName;
+    _activeStoreAddress = storeAddress ?? _activeStoreAddress;
+    _activeStoreLat = storeLat ?? _activeStoreLat;
+    _activeStoreLong = storeLong ?? _activeStoreLong;
 
     if (_items.containsKey(productId)) {
       _items[productId]!.quantity += 1;
     } else {
-      _items[productId] = MarketCartItem(productId: productId, name: name, price: price);
+      _items[productId] =
+          MarketCartItem(productId: productId, name: name, price: price);
     }
     notifyListeners();
   }
-  
+
   void clearCart() {
     _items.clear();
     _activeStoreId = null;
     _activeStoreName = null;
+    _activeStoreAddress = null;
+    _activeStoreLat = null;
+    _activeStoreLong = null;
     notifyListeners();
   }
 
-  Future<Map<String, dynamic>> submitOrder({required String customerName, required String phone, required String address, bool isPickup = false}) async {
+  Future<Map<String, dynamic>> submitOrder(
+      {required String customerName, required String phone}) async {
     if (_items.isEmpty || _activeStoreId == null) throw Exception('Empty');
-    
-    final orderItems = _items.values.map((i) => {
-      'productId': i.productId,
-      'quantity': i.quantity,
-      'price': i.price
-    }).toList();
+
+    final orderItems = _items.values
+        .map((i) => {
+              'productId': i.productId,
+              'quantity': i.quantity,
+              'price': i.price
+            })
+        .toList();
 
     final result = await MarketApiService().createOrder(
-      storeId: _activeStoreId!,
-      items: orderItems,
-      customerName: customerName,
-      customerPhone: phone,
-      deliveryAddress: address,
-      fulfillmentType: isPickup ? 'PICKUP' : 'DELIVERY'
-    );
+        storeId: _activeStoreId!,
+        items: orderItems,
+        customerName: customerName,
+        customerPhone: phone,
+        deliveryAddress: '-',
+        fulfillmentType: 'PICKUP');
 
     clearCart();
     return result;

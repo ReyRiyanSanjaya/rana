@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api';
 import AdminLayout from '../components/AdminLayout';
-import { Save, AlertCircle } from 'lucide-react';
+import { Save, AlertCircle, Truck } from 'lucide-react';
 import Card from '../components/ui/Card';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
@@ -21,7 +21,10 @@ const Settings = () => {
         DIGIFLAZZ_API_KEY: '',
         DIGIFLAZZ_API_KEY_IS_SET: 'false',
         DIGIFLAZZ_WEBHOOK_SECRET: '',
-        DIGIFLAZZ_WEBHOOK_SECRET_IS_SET: 'false'
+        DIGIFLAZZ_WEBHOOK_SECRET_IS_SET: 'false',
+        WHOLESALE_SERVICE_FEE: '2500',
+        WHOLESALE_SHIPPING_COST_PER_KM: '3000',
+        WHOLESALE_PAYMENT_METHODS: 'Transfer Bank (BCA),Transfer Bank (Mandiri),Bayar di Tempat (COD)'
     });
     const [loading, setLoading] = useState(false);
     const [digiflazzApiKeyInput, setDigiflazzApiKeyInput] = useState('');
@@ -51,6 +54,23 @@ const Settings = () => {
         } catch (error) {
             console.error(error);
             alert("Failed to save");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSaveWholesale = async () => {
+        setLoading(true);
+        try {
+            await Promise.all([
+                api.post('/admin/settings', { key: 'WHOLESALE_SERVICE_FEE', value: settings.WHOLESALE_SERVICE_FEE, description: 'Service Fee (Biaya Layanan)' }),
+                api.post('/admin/settings', { key: 'WHOLESALE_SHIPPING_COST_PER_KM', value: settings.WHOLESALE_SHIPPING_COST_PER_KM, description: 'Shipping Cost per KM' }),
+                api.post('/admin/settings', { key: 'WHOLESALE_PAYMENT_METHODS', value: settings.WHOLESALE_PAYMENT_METHODS, description: 'Payment Methods' }),
+            ]);
+            alert("Wholesale Settings Saved!");
+        } catch (error) {
+            console.error(error);
+            alert("Failed to save wholesale settings");
         } finally {
             setLoading(false);
         }
@@ -147,6 +167,59 @@ const Settings = () => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Wholesale Config */}
+                <Card className="p-6 h-fit">
+                    <div className="flex items-start justify-between mb-6">
+                        <div>
+                            <h3 className="font-semibold text-slate-900">Wholesale (Kulakan) Configuration</h3>
+                            <p className="text-sm text-slate-500 mt-1">Manage fees, shipping costs, and payment methods for merchants.</p>
+                        </div>
+                        <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
+                            <Truck size={20} />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Service Fee (Biaya Layanan)</label>
+                            <Input
+                                type="number"
+                                placeholder="2500"
+                                value={settings.WHOLESALE_SERVICE_FEE || ''}
+                                onChange={(e) => handleChange('WHOLESALE_SERVICE_FEE', e.target.value)}
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Shipping Cost per KM (Ongkir)</label>
+                            <Input
+                                type="number"
+                                placeholder="3000"
+                                value={settings.WHOLESALE_SHIPPING_COST_PER_KM || ''}
+                                onChange={(e) => handleChange('WHOLESALE_SHIPPING_COST_PER_KM', e.target.value)}
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Payment Methods (Comma Separated)</label>
+                            <Input
+                                placeholder="Transfer Bank (BCA), COD"
+                                value={settings.WHOLESALE_PAYMENT_METHODS || ''}
+                                onChange={(e) => handleChange('WHOLESALE_PAYMENT_METHODS', e.target.value)}
+                            />
+                            <p className="text-xs text-slate-500 mt-1">Example: Transfer Bank (BCA),Bayar di Tempat (COD)</p>
+                        </div>
+                    </div>
+
+                    <div className="pt-4 mt-2">
+                        <Button
+                            onClick={handleSaveWholesale}
+                            isLoading={loading}
+                            className="w-full sm:w-auto"
+                        >
+                            Save Wholesale Settings
+                        </Button>
+                    </div>
+                </Card>
+
                 {/* QRIS Config */}
                 <Card className="p-6 h-fit">
                     <div className="flex items-start justify-between mb-6">

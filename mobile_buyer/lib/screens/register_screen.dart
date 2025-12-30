@@ -18,32 +18,42 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscureText = true;
 
   Future<void> _register() async {
-    if (_nameCtrl.text.isEmpty || _emailCtrl.text.isEmpty || _phoneCtrl.text.isEmpty || _passCtrl.text.isEmpty) {
+    if (_nameCtrl.text.isEmpty ||
+        _emailCtrl.text.isEmpty ||
+        _phoneCtrl.text.isEmpty ||
+        _passCtrl.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Mohon lengkapi semua data'))
-      );
+          const SnackBar(content: Text('Mohon lengkapi semua data')));
       return;
     }
 
     setState(() => _isLoading = true);
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
 
     try {
-      await Provider.of<AuthProvider>(context, listen: false).register(
+      await auth.register(
         _nameCtrl.text,
         _emailCtrl.text,
         _phoneCtrl.text,
         _passCtrl.text,
       );
-      // Upon success, AuthProvider updates state, Main wrapper switches screen.
-      // But we are in a pushed route. We should pop everything until home.
-      if (mounted) {
-         Navigator.of(context).popUntil((route) => route.isFirst);
+      if (!mounted) return;
+      if (auth.isAuthenticated) {
+        navigator.pop(true);
+      } else {
+        messenger.showSnackBar(
+          const SnackBar(
+              content: Text(
+                  'Akun berhasil dibuat. Silakan login untuk melanjutkan.')),
+        );
+        navigator.pop(false);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Daftar Gagal: $e'))
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Daftar Gagal: $e')));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -69,39 +79,38 @@ class _RegisterScreenState extends State<RegisterScreen> {
               style: TextStyle(color: Colors.grey.shade600),
             ),
             const SizedBox(height: 32),
-            
             TextField(
               controller: _nameCtrl,
               decoration: InputDecoration(
                 labelText: 'Nama Lengkap',
                 prefixIcon: const Icon(Icons.person_outline),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
             const SizedBox(height: 16),
-            
             TextField(
               controller: _emailCtrl,
               keyboardType: TextInputType.emailAddress,
               decoration: InputDecoration(
                 labelText: 'Email',
                 prefixIcon: const Icon(Icons.email_outlined),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
             const SizedBox(height: 16),
-            
             TextField(
               controller: _phoneCtrl,
               keyboardType: TextInputType.phone,
               decoration: InputDecoration(
                 labelText: 'Nomor WhatsApp',
                 prefixIcon: const Icon(Icons.phone_android),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
             const SizedBox(height: 16),
-            
             TextField(
               controller: _passCtrl,
               obscureText: _obscureText,
@@ -109,23 +118,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 labelText: 'Password',
                 prefixIcon: const Icon(Icons.lock_outline),
                 suffixIcon: IconButton(
-                  icon: Icon(_obscureText ? Icons.visibility_off : Icons.visibility),
+                  icon: Icon(
+                      _obscureText ? Icons.visibility_off : Icons.visibility),
                   onPressed: () => setState(() => _obscureText = !_obscureText),
                 ),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
             const SizedBox(height: 24),
-            
             FilledButton(
               onPressed: _isLoading ? null : _register,
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
-              child: _isLoading 
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                  : const Text('DAFTAR SEKARANG', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              child: _isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                          color: Colors.white, strokeWidth: 2))
+                  : const Text('DAFTAR SEKARANG',
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             ),
           ],
         ),

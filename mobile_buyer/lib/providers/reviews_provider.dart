@@ -67,7 +67,7 @@ class ReviewsProvider with ChangeNotifier {
     final id = productId?.toString() ?? '';
     if (id.isEmpty) return;
     final page = _pages[id] ?? 1;
-    final limit = 10;
+    const limit = 10;
     final sort = _sort[id] ?? 'newest';
     _loading[id] = true;
     notifyListeners();

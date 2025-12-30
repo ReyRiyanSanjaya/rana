@@ -1,4 +1,6 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/data/latest.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -6,6 +8,7 @@ class NotificationService {
   NotificationService._internal();
 
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+  bool _timezoneInitialized = false;
 
   Future<void> init() async {
     // Android Initialization
@@ -29,9 +32,16 @@ class NotificationService {
     await flutterLocalNotificationsPlugin.initialize(
       initializationSettings,
       onDidReceiveNotificationResponse: (NotificationResponse response) async {
-        // Handle notification tap logic here
       },
     );
+
+    if (!_timezoneInitialized) {
+      tz.initializeTimeZones();
+      try {
+        tz.setLocalLocation(tz.getLocation('Asia/Jakarta'));
+      } catch (_) {}
+      _timezoneInitialized = true;
+    }
   }
 
   Future<void> showNotification({
@@ -58,6 +68,80 @@ class NotificationService {
       title,
       body,
       platformChannelSpecifics,
+      payload: payload,
+    );
+  }
+
+  Future<void> cancel(int id) async {
+    await flutterLocalNotificationsPlugin.cancel(id);
+  }
+
+  Future<void> scheduleOneTime({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime scheduledAt,
+    String? payload,
+  }) async {
+    if (!_timezoneInitialized) await init();
+
+    final details = NotificationDetails(
+      android: AndroidNotificationDetails(
+        'promo_channel',
+        'Promosi',
+        channelDescription: 'Pengingat promosi dan jadwal kampanye',
+        importance: Importance.max,
+        priority: Priority.high,
+      ),
+    );
+
+    await flutterLocalNotificationsPlugin.zonedSchedule(
+      id,
+      title,
+      body,
+      tz.TZDateTime.from(scheduledAt, tz.local),
+      details,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+      payload: payload,
+    );
+  }
+
+  Future<void> scheduleDailyAtTime({
+    required int id,
+    required String title,
+    required String body,
+    required int hour,
+    required int minute,
+    String? payload,
+  }) async {
+    if (!_timezoneInitialized) await init();
+
+    final now = tz.TZDateTime.now(tz.local);
+    var scheduled = tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
+    if (scheduled.isBefore(now)) {
+      scheduled = scheduled.add(const Duration(days: 1));
+    }
+
+    final details = NotificationDetails(
+      android: AndroidNotificationDetails(
+        'promo_channel',
+        'Promosi',
+        channelDescription: 'Pengingat promosi dan jadwal kampanye',
+        importance: Importance.max,
+        priority: Priority.high,
+      ),
+    );
+
+    await flutterLocalNotificationsPlugin.zonedSchedule(
+      id,
+      title,
+      body,
+      scheduled,
+      details,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+      matchDateTimeComponents: DateTimeComponents.time,
       payload: payload,
     );
   }

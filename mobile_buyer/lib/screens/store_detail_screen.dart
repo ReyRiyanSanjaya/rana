@@ -78,6 +78,9 @@ class StoreDetailScreen extends StatelessWidget {
                             product: p,
                             storeId: store['id'],
                             storeName: store['name'],
+                            storeAddress: (store['address'] ?? store['location'] ?? store['alamat'])?.toString(),
+                            storeLat: ((store['latitude'] ?? store['lat']) is num) ? (store['latitude'] ?? store['lat']).toDouble() : null,
+                            storeLong: ((store['longitude'] ?? store['long'] ?? store['lng']) is num) ? (store['longitude'] ?? store['long'] ?? store['lng']).toDouble() : null,
                           ))
                         );
                       },

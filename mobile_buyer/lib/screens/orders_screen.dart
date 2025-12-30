@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:rana_market/providers/auth_provider.dart';
 import 'package:rana_market/providers/orders_provider.dart';
 import 'package:rana_market/services/realtime_service.dart';
 import 'package:rana_market/screens/order_detail_screen.dart';
 import 'package:rana_market/data/market_api_service.dart';
+import 'package:rana_market/screens/login_screen.dart';
 
 class OrdersScreen extends StatefulWidget {
   const OrdersScreen({super.key});
@@ -19,7 +21,11 @@ class _OrdersScreenState extends State<OrdersScreen> {
   @override
   void initState() {
     super.initState();
-    _initialLoad();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      if (auth.isAuthenticated) _initialLoad();
+      if (!auth.isAuthenticated && mounted) setState(() => _loading = false);
+    });
   }
 
   Future<void> _initialLoad() async {
@@ -42,6 +48,56 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final auth = Provider.of<AuthProvider>(context);
+    if (!auth.isAuthenticated) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Pesanan Saya')),
+        body: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.receipt_long, size: 72, color: Colors.grey),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Masuk untuk melihat pesanan',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Riwayat pesanan tersimpan di akun kamu.',
+                    style: TextStyle(color: Colors.grey),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: () async {
+                        final ok = await Navigator.push<bool>(
+                          context,
+                          MaterialPageRoute(builder: (_) => const LoginScreen()),
+                        );
+                        if (ok == true && context.mounted) {
+                          setState(() => _loading = true);
+                          await _initialLoad();
+                        }
+                      },
+                      child: const Text('Masuk'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(title: const Text('Pesanan Saya')),
       body: RefreshIndicator(

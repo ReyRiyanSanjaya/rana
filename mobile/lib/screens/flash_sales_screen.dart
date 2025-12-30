@@ -596,58 +596,6 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
           ),
         ),
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: 0, // Default to Home
-        onDestinationSelected: (idx) {
-          if (idx == 0) {
-            Navigator.of(context).popUntil((route) => route.isFirst);
-          } else if (idx == 1) {
-            // Navigate to History/Transaction
-            Navigator.of(context).popUntil((route) => route.isFirst);
-            // You can add navigation to history screen here if needed
-          } else if (idx == 2) {
-            // Navigate to Scan
-            Navigator.of(context).popUntil((route) => route.isFirst);
-            // You can add navigation to scan screen here if needed
-          } else if (idx == 3) {
-            // Navigate to Report
-            Navigator.of(context).popUntil((route) => route.isFirst);
-            // You can add navigation to report screen here if needed
-          } else if (idx == 4) {
-            // Navigate to Account
-            Navigator.of(context).popUntil((route) => route.isFirst);
-            // You can add navigation to account screen here if needed
-          }
-        },
-        backgroundColor: Colors.white,
-        indicatorColor: Colors.red.shade100,
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home_filled),
-            label: 'Beranda',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.history_outlined),
-            selectedIcon: Icon(Icons.history),
-            label: 'Transaksi',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.qr_code_scanner_rounded),
-            label: 'Scan',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.bar_chart_outlined),
-            selectedIcon: Icon(Icons.bar_chart),
-            label: 'Laporan',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: 'Akun',
-          ),
-        ],
-      ),
       body: RefreshIndicator(
         onRefresh: _loadSales,
         child: SingleChildScrollView(

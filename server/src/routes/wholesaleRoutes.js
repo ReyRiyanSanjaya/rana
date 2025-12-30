@@ -1,10 +1,26 @@
 const express = require('express');
 const router = express.Router();
 const controller = require('../controllers/wholesaleController');
+const multer = require('multer');
+const path = require('path');
+
+// Multer Config
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, 'uploads/proofs/');
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, uniqueSuffix + path.extname(file.originalname));
+    }
+});
+const upload = multer({ storage: storage });
 
 const authenticateToken = require('../middleware/auth');
 
 // Public / Merchant
+router.post('/upload-proof', authenticateToken, upload.single('file'), controller.uploadProof); // [NEW]
+router.post('/orders/scan', authenticateToken, controller.scanOrder); // [NEW]
 router.get('/products', controller.getProducts); // Public browsing allowed? Or restrict? Let's keep public for now or restrict later.
 router.get('/categories', controller.getCategories);
 

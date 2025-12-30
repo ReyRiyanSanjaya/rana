@@ -592,6 +592,10 @@ model WholesaleOrder {
   couponCode    String?
   discountAmount Float   @default(0)
 
+  // Verification
+  proofUrl      String?
+  pickupCode    String?
+
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   

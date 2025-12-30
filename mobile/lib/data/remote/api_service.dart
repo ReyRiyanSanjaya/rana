@@ -16,7 +16,8 @@ class ApiService {
   static const String _webDevUrl = 'http://localhost:4000/api';
 
   // Set this to TRUE for production build
-  static const bool _isProduction = false;
+  static const bool _isProduction =
+      bool.fromEnvironment('RANA_PROD', defaultValue: kReleaseMode);
 
   final Dio _dio = Dio(BaseOptions(
     baseUrl: _isProduction
@@ -194,6 +195,24 @@ class ApiService {
     await _dio.delete('/products/$id');
   }
 
+  // --- Upload Proof ---
+  Future<String> uploadTransferProof(String filePath) async {
+    try {
+      String fileName = filePath.split('/').last;
+      FormData formData = FormData.fromMap({
+        'file': await MultipartFile.fromFile(filePath, filename: fileName),
+      });
+
+      final response = await _dio.post('/wholesale/upload-proof',
+          data: formData,
+          options: Options(headers: {'Authorization': 'Bearer ${_token}'}));
+
+      return response.data['url']; // Return the uploaded URL
+    } catch (e) {
+      throw Exception('Upload failed: $e');
+    }
+  }
+
   // --- Flash Sales (Merchant) ---
   Future<Map<String, dynamic>> createFlashSale({
     required String title,
@@ -212,7 +231,8 @@ class ApiService {
       options: Options(headers: {'Authorization': 'Bearer ${_token}'}),
     );
     if (response.data['status'] != 'success') {
-      throw Exception(response.data['message'] ?? 'Failed to create flash sale');
+      throw Exception(
+          response.data['message'] ?? 'Failed to create flash sale');
     }
     return response.data['data'];
   }
@@ -223,7 +243,8 @@ class ApiService {
       options: Options(headers: {'Authorization': 'Bearer ${_token}'}),
     );
     if (response.data['status'] != 'success') {
-      throw Exception(response.data['message'] ?? 'Failed to fetch flash sales');
+      throw Exception(
+          response.data['message'] ?? 'Failed to fetch flash sales');
     }
     return response.data['data'] ?? [];
   }
@@ -431,7 +452,7 @@ class ApiService {
 
   Future<void> scanQrOrder(String code) async {
     try {
-      final response = await _dio.post('/orders/scan',
+      final response = await _dio.post('/wholesale/orders/scan',
           data: {'pickupCode': code},
           options: Options(headers: {'Authorization': 'Bearer ${_token}'}));
       if (response.data['status'] != 'success')
@@ -612,7 +633,9 @@ class ApiService {
       required String paymentMethod,
       required String shippingAddress,
       required double shippingCost,
-      String? couponCode}) async {
+      double serviceFee = 0,
+      String? couponCode,
+      String? proofUrl}) async {
     try {
       await _dio.post('/wholesale/orders', data: {
         'tenantId': tenantId,
@@ -620,7 +643,9 @@ class ApiService {
         'paymentMethod': paymentMethod,
         'shippingAddress': shippingAddress,
         'shippingCost': shippingCost,
-        'couponCode': couponCode
+        'serviceFee': serviceFee,
+        'couponCode': couponCode,
+        'proofUrl': proofUrl
       });
     } catch (e) {
       throw Exception('Failed to place wholesale order');

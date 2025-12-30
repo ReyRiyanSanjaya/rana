@@ -231,25 +231,6 @@ class _StockOpnameScreenState extends State<StockOpnameScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: 0, // [FIX] Default to Home (0) to prevent crash.
-        onDestinationSelected: (idx) {
-           if (idx == 0) {
-             Navigator.of(context).popUntil((route) => route.isFirst);
-           } else if (idx == 3) { // Laporan
-              Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const ReportScreen())); 
-           }
-        },
-        backgroundColor: Colors.white,
-        indicatorColor: Colors.red.shade100,
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home_filled), label: 'Beranda'),
-          NavigationDestination(icon: Icon(Icons.history_outlined), selectedIcon: Icon(Icons.history), label: 'Transaksi'),
-          NavigationDestination(icon: Icon(Icons.qr_code_scanner_rounded), label: 'Scan'),
-          NavigationDestination(icon: Icon(Icons.bar_chart_outlined), selectedIcon: Icon(Icons.bar_chart), label: 'Laporan'),
-          NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Akun'),
-        ],
-      ),
       backgroundColor: const Color(0xFFF9FAFB),
       appBar: AppBar(
         title: const Text('Manajemen Stok', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),

@@ -16,7 +16,9 @@ import 'package:rana_merchant/providers/wholesale_cart_provider.dart'; // [NEW]
 import 'package:rana_merchant/providers/wallet_provider.dart'; // [NEW]
 import 'package:rana_merchant/providers/subscription_provider.dart'; // [FIX] Added missing import
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
   if (kIsWeb) {
     // Initialize for Web
     databaseFactory = databaseFactoryFfiWeb;
@@ -26,9 +28,7 @@ void main() {
     databaseFactory = databaseFactoryFfi;
   }
   
-  // Initialize Notifications
-  WidgetsFlutterBinding.ensureInitialized();
-  NotificationService().init();
+  await NotificationService().init();
 
   runApp(const RanaApp());
 }

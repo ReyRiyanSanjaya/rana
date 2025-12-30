@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/material.dart';
 import 'package:rana_merchant/data/local/database_helper.dart';
 import 'package:rana_merchant/services/digital_receipt_service.dart';
 import 'package:intl/intl.dart';
@@ -33,25 +32,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: 1, // History is index 1
-        onDestinationSelected: (idx) {
-           if (idx == 0) {
-              Navigator.of(context).popUntil((route) => route.isFirst);
-           }
-           // Other routes can be added here if we want full switching
-           // else if (idx == 3) ...
-        },
-        backgroundColor: Colors.white,
-        indicatorColor: Colors.red.shade100,
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home_filled), label: 'Beranda'),
-          NavigationDestination(icon: Icon(Icons.history_outlined), selectedIcon: Icon(Icons.history), label: 'Transaksi'),
-          NavigationDestination(icon: Icon(Icons.qr_code_scanner_rounded), label: 'Scan'),
-          NavigationDestination(icon: Icon(Icons.bar_chart_outlined), selectedIcon: Icon(Icons.bar_chart), label: 'Laporan'),
-          NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Akun'),
-        ],
-      ),
       body: _isLoading 
         ? const Center(child: CircularProgressIndicator()) 
         : _transactions.isEmpty 

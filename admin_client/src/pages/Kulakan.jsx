@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import AdminLayout from '../components/AdminLayout';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
-import { Search, Filter, Plus, MoreHorizontal, Package, Edit, Trash2, X, List, ShoppingCart, Truck, CheckCircle } from 'lucide-react';
+import { Search, Filter, Plus, MoreHorizontal, Package, Edit, Trash2, X, List, ShoppingCart, Truck, CheckCircle, QrCode, Printer } from 'lucide-react';
 import api from '../api';
+import { QRCodeCanvas } from 'qrcode.react';
+import { useReactToPrint } from 'react-to-print';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -14,14 +16,14 @@ import {
 import Input from "../components/ui/Input";
 
 const Kulakan = () => {
-    const [activeTab, setActiveTab] = useState('products');
+    const [activeTab, setActiveTab] = useState('orders'); // Default to orders for monitoring
 
     // Data States
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
     const [orders, setOrders] = useState([]);
     const [coupons, setCoupons] = useState([]);
-    const [banners, setBanners] = useState([]); // [NEW]
+    const [banners, setBanners] = useState([]);
     const [loading, setLoading] = useState(true);
 
     // Filter States
@@ -35,36 +37,44 @@ const Kulakan = () => {
 
     // Helper for Orders Modal/View
     const [selectedOrder, setSelectedOrder] = useState(null);
+    const printRef = useRef();
 
     // Forms
     const [productForm, setProductForm] = useState({
         name: '', categoryId: '', price: '', stock: '', supplierName: '', description: '', imageUrl: '', isActive: true
     });
     const [categoryForm, setCategoryForm] = useState({ name: '', isActive: true });
-
-    // [NEW] Coupon Form
     const [couponForm, setCouponForm] = useState({
         code: '', type: 'FIXED', value: '', minOrder: '', maxDiscount: '', isActive: true
     });
-    // [NEW] Banner Form
     const [bannerForm, setBannerForm] = useState({ title: '', imageUrl: '', description: '', isActive: true });
 
+    // Auto Refresh Logic
     useEffect(() => {
         fetchData();
-    }, [activeTab]); // Refetch when tab changes
+
+        // Polling for orders every 10 seconds if on orders tab
+        let interval;
+        if (activeTab === 'orders') {
+            interval = setInterval(() => {
+                fetchOrders(true); // silent refresh
+            }, 10000);
+        }
+        return () => clearInterval(interval);
+    }, [activeTab]);
 
     const fetchData = () => {
         setLoading(true);
         if (activeTab === 'products') {
             fetchProducts();
-            fetchCategories(); // Needed for dropdown
+            fetchCategories();
         } else if (activeTab === 'categories') {
             fetchCategories();
         } else if (activeTab === 'orders') {
             fetchOrders();
         } else if (activeTab === 'promotions') {
             fetchCoupons();
-        } else if (activeTab === 'banners') { // [NEW]
+        } else if (activeTab === 'banners') {
             fetchBanners();
         }
     };
@@ -83,11 +93,19 @@ const Kulakan = () => {
         } catch (error) { console.error(error); } finally { setLoading(false); }
     };
 
-    const fetchOrders = async () => {
+    const fetchOrders = async (silent = false) => {
+        if (!silent) setLoading(true);
         try {
             const res = await api.get('/wholesale/orders');
-            if (res.data.status === 'success') setOrders(res.data.data);
-        } catch (error) { console.error(error); } finally { setLoading(false); }
+            if (res.data.status === 'success') {
+                setOrders(res.data.data);
+                // Update selected order if open
+                if (selectedOrder) {
+                    const updated = res.data.data.find(o => o.id === selectedOrder.id);
+                    if (updated) setSelectedOrder(updated);
+                }
+            }
+        } catch (error) { console.error(error); } finally { if (!silent) setLoading(false); }
     };
 
     const fetchCoupons = async () => {
@@ -195,12 +213,15 @@ const Kulakan = () => {
     const updateOrderStatus = async (id, status) => {
         try {
             await api.put(`/wholesale/orders/${id}/status`, { status });
-            fetchOrders();
-            if (selectedOrder && selectedOrder.id === id) {
-                setSelectedOrder(prev => ({ ...prev, status }));
-            }
+            fetchOrders(); // Refresh immediately
         } catch (e) { alert("Failed update status"); }
     };
+
+    // --- PRINTING ---
+    const handlePrint = useReactToPrint({
+        content: () => printRef.current,
+        documentTitle: `Invoice-${selectedOrder?.id}`,
+    });
 
     // --- COMMON UTILS ---
     const openModal = (type, item = null) => {
@@ -221,9 +242,206 @@ const Kulakan = () => {
     const closeModal = () => {
         setIsModalOpen(false);
         setSelectedItem(null);
+        setSelectedOrder(null);
     };
 
     // --- RENDERERS ---
+
+    // INVOICE COMPONENT (Hidden from screen, visible in print)
+    const InvoiceToPrint = () => {
+        if (!selectedOrder) return null;
+        return (
+            <div className="hidden print:block"> 
+                <div ref={printRef} className="p-8 border border-slate-200 bg-white">
+                    <div className="flex justify-between mb-8">
+                        <div>
+                            <h1 className="text-2xl font-bold text-slate-800">INVOICE / DELIVERY NOTE</h1>
+                            <p className="text-sm text-slate-500">Order ID: {selectedOrder.id}</p>
+                            <p className="text-sm text-slate-500">Date: {new Date(selectedOrder.createdAt).toLocaleDateString()}</p>
+                        </div>
+                        <div className="text-right">
+                            <h2 className="text-xl font-bold text-indigo-600">Rana Wholesale</h2>
+                            <p className="text-sm text-slate-500">Distributor Center</p>
+                        </div>
+                    </div>
+
+                    <div className="mb-8 p-4 bg-slate-50 rounded">
+                        <h3 className="font-semibold mb-2">Ship To:</h3>
+                        <p>{selectedOrder.shippingAddress}</p>
+                    </div>
+
+                    <table className="w-full mb-8">
+                        <thead>
+                            <tr className="border-b border-slate-300">
+                                <th className="text-left py-2">Item</th>
+                                <th className="text-right py-2">Qty</th>
+                                <th className="text-right py-2">Price</th>
+                                <th className="text-right py-2">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {selectedOrder.items?.map((item, idx) => (
+                                <tr key={idx} className="border-b border-slate-100">
+                                    <td className="py-2">{item.productName}</td>
+                                    <td className="text-right py-2">{item.quantity}</td>
+                                    <td className="text-right py-2">Rp {item.price.toLocaleString()}</td>
+                                    <td className="text-right py-2">Rp {(item.price * item.quantity).toLocaleString()}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+
+                    <div className="flex justify-end mb-12">
+                        <div className="w-64">
+                            <div className="flex justify-between mb-2">
+                                <span>Shipping:</span>
+                                <span>Rp {selectedOrder.shippingCost.toLocaleString()}</span>
+                            </div>
+                             <div className="flex justify-between mb-2">
+                                <span>Service Fee:</span>
+                                <span>Rp {selectedOrder.serviceFee.toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between font-bold text-lg border-t pt-2">
+                                <span>Total:</span>
+                                <span>Rp {selectedOrder.totalAmount.toLocaleString()}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col items-center justify-center border-t pt-8">
+                        <p className="font-bold mb-4">SCAN UPON DELIVERY</p>
+                        <QRCodeCanvas value={selectedOrder.pickupCode || selectedOrder.id} size={150} />
+                        <p className="text-xs text-slate-400 mt-2">{selectedOrder.pickupCode || selectedOrder.id}</p>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    const renderOrders = () => {
+        // Filter logic could go here
+        return (
+            <div>
+                 <InvoiceToPrint />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {orders.map(order => (
+                        <div key={order.id} className="bg-white border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedOrder(order)}>
+                            <div className="flex justify-between items-start mb-3">
+                                <div>
+                                    <div className="text-xs text-slate-400 mb-1">{new Date(order.createdAt).toLocaleString()}</div>
+                                    <div className="font-bold text-slate-700">{order.id.substring(0, 8)}...</div>
+                                </div>
+                                <Badge variant={
+                                    order.status === 'COMPLETED' ? 'success' :
+                                    order.status === 'SHIPPED' ? 'warning' :
+                                    order.status === 'CANCELLED' ? 'destructive' : 'secondary'
+                                }>
+                                    {order.status}
+                                </Badge>
+                            </div>
+                            <div className="mb-3">
+                                <div className="text-sm font-medium">{order.items?.length} Items</div>
+                                <div className="text-sm text-slate-500">Total: Rp {order.totalAmount.toLocaleString()}</div>
+                            </div>
+                             {/* Proof of Transfer Preview */}
+                             {order.proofUrl && (
+                                <div className="mb-3">
+                                    <div className="text-xs text-indigo-600 font-semibold mb-1">Payment Proof Attached</div>
+                                </div>
+                            )}
+
+                            <div className="flex gap-2 mt-4 pt-4 border-t">
+                                {order.status === 'PENDING' && (
+                                    <Button size="sm" className="w-full bg-indigo-600 text-white" onClick={(e) => {
+                                        e.stopPropagation();
+                                        updateOrderStatus(order.id, 'PROCESSED');
+                                    }}>Process</Button>
+                                )}
+                                {order.status === 'PROCESSED' && (
+                                    <Button size="sm" className="w-full bg-orange-500 text-white" onClick={(e) => {
+                                        e.stopPropagation();
+                                        updateOrderStatus(order.id, 'SHIPPED');
+                                    }}>Ship</Button>
+                                )}
+                                {order.status === 'SHIPPED' && (
+                                     <div className="w-full text-center text-xs text-slate-500 italic">Waiting for scan...</div>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                {/* ORDER DETAIL MODAL */}
+                {selectedOrder && (
+                    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="text-xl font-bold">Order Details</h3>
+                                <button onClick={() => setSelectedOrder(null)}><X size={24} /></button>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-6 mb-6">
+                                <div>
+                                    <h4 className="text-sm font-semibold text-slate-500 mb-2">Customer Info</h4>
+                                    <p className="font-medium">{selectedOrder.tenantId}</p>
+                                    <p className="text-sm text-slate-600">{selectedOrder.shippingAddress}</p>
+                                </div>
+                                <div>
+                                    <h4 className="text-sm font-semibold text-slate-500 mb-2">Order Info</h4>
+                                    <Badge className="mb-2">{selectedOrder.status}</Badge>
+                                    <p className="text-sm">Method: {selectedOrder.paymentMethod}</p>
+                                </div>
+                            </div>
+
+                             {selectedOrder.proofUrl && (
+                                <div className="mb-6 p-4 border rounded bg-slate-50">
+                                    <h4 className="text-sm font-semibold text-slate-500 mb-2">Payment Proof</h4>
+                                    <img src={selectedOrder.proofUrl} alt="Transfer Proof" className="max-h-64 object-contain mx-auto rounded border" />
+                                </div>
+                            )}
+
+                            <div className="border rounded-lg overflow-hidden mb-6">
+                                <table className="w-full">
+                                    <thead className="bg-slate-50">
+                                        <tr>
+                                            <th className="px-4 py-2 text-left text-xs font-semibold text-slate-500">Item</th>
+                                            <th className="px-4 py-2 text-right text-xs font-semibold text-slate-500">Qty</th>
+                                            <th className="px-4 py-2 text-right text-xs font-semibold text-slate-500">Price</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {selectedOrder.items?.map((item, i) => (
+                                            <tr key={i} className="border-t border-slate-100">
+                                                <td className="px-4 py-2">{item.productName}</td>
+                                                <td className="px-4 py-2 text-right">{item.quantity}</td>
+                                                <td className="px-4 py-2 text-right">Rp {item.price.toLocaleString()}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div className="flex justify-end gap-2">
+                                <Button variant="outline" onClick={handlePrint}><Printer size={16} className="mr-2"/> Print Invoice / QR</Button>
+                                {selectedOrder.status === 'PENDING' && (
+                                    <Button className="bg-green-600 text-white" onClick={() => updateOrderStatus(selectedOrder.id, 'PAID')}>Verify Payment (Mark PAID)</Button>
+                                )}
+                                {selectedOrder.status === 'PAID' && (
+                                    <Button className="bg-indigo-600 text-white" onClick={() => updateOrderStatus(selectedOrder.id, 'PROCESSED')}>Process Order</Button>
+                                )}
+                                {selectedOrder.status === 'PROCESSED' && (
+                                    <Button className="bg-orange-500 text-white" onClick={() => updateOrderStatus(selectedOrder.id, 'SHIPPED')}>Ship Order</Button>
+                                )}
+                                <Button variant="secondary" onClick={() => setSelectedOrder(null)}>Close</Button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    // ... (Keep existing Product, Category, Coupon renderers) ...
     const renderProducts = () => {
         const filtered = products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
         return (
@@ -281,279 +499,149 @@ const Kulakan = () => {
         );
     };
 
-    const renderCategories = () => {
-        return (
-            <div>
-                <div className="flex justify-end items-center mb-4">
-                    <Button onClick={() => openModal('category')} className="bg-indigo-600 text-white"><Plus size={18} className="mr-2" /> Add Category</Button>
-                </div>
-                <div className="overflow-x-auto bg-white border rounded-lg">
-                    <table className="w-full text-left">
-                        <thead className="bg-slate-50 border-b">
-                            <tr>
-                                <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Category Name</th>
-                                <th className="px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Status</th>
-                                <th className="px-6 py-3 text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y">
-                            {categories.map(c => (
-                                <tr key={c.id} className="hover:bg-slate-50">
-                                    <td className="px-6 py-4 font-medium">{c.name}</td>
-                                    <td className="px-6 py-4"><Badge variant={c.isActive ? "success" : "secondary"}>{c.isActive ? "Active" : "Inactive"}</Badge></td>
-                                    <td className="px-6 py-4 text-right">
-                                        <div className="flex justify-end gap-2">
-                                            <Button variant="ghost" size="sm" onClick={() => openModal('category', c)}><Edit size={16} /></Button>
-                                            <Button variant="ghost" size="sm" className="text-red-500" onClick={() => deleteCategory(c.id)}><Trash2 size={16} /></Button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        )
-    };
+    const renderCategories = () => (
+         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+             <div className="col-span-1 md:col-span-3 flex justify-end">
+                <Button onClick={() => openModal('category')} className="bg-indigo-600 text-white"><Plus size={18} className="mr-2" /> Add Category</Button>
+             </div>
+             {categories.map(c => (
+                 <div key={c.id} className="bg-white p-4 rounded border flex justify-between items-center">
+                     <span className="font-medium">{c.name}</span>
+                     <div className="flex gap-2">
+                         <Button variant="ghost" size="sm" onClick={() => openModal('category', c)}><Edit size={16}/></Button>
+                         <Button variant="ghost" size="sm" className="text-red-500" onClick={() => deleteCategory(c.id)}><Trash2 size={16}/></Button>
+                     </div>
+                 </div>
+             ))}
+         </div>
+    );
 
-    const renderCoupons = () => {
-        return (
-            <div>
-                <div className="flex justify-end items-center mb-4"><Button onClick={() => openModal('coupon')} className="bg-indigo-600 text-white"><Plus size={18} className="mr-2" /> Add Coupon</Button></div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {coupons.map(c => (
-                        <Card key={c.id} className="p-4 relative hover:border-indigo-500 cursor-pointer transition border border-transparent" onClick={() => openModal('coupon', c)}>
-                            <div className="flex justify-between items-start mb-2">
-                                <div>
-                                    <div className="font-bold text-lg text-indigo-600">{c.code}</div>
-                                    <div className="text-sm text-slate-500">{c.type}</div>
-                                </div>
-                                <Badge variant={c.isActive ? 'success' : 'secondary'} className="cursor-pointer" onClick={(e) => toggleCoupon(c.id, c.isActive, e)}>
-                                    {c.isActive ? 'Active' : 'Inactive'}
-                                </Badge>
-                            </div>
-                            <div className="space-y-1 text-sm text-slate-600 mb-4">
-                                <div>Value: <span className="font-medium">{c.type === 'PERCENTAGE' ? `${c.value}%` : `Rp ${c.value.toLocaleString('id-ID')}`}</span></div>
-                                <div>Min Order: Rp {c.minOrder.toLocaleString('id-ID')}</div>
-                            </div>
-                            <div className="absolute bottom-4 right-4">
-                                <Button variant="ghost" size="sm" className="text-red-500" onClick={(e) => deleteCoupon(c.id, e)}><Trash2 size={16} /></Button>
-                            </div>
-                        </Card>
-                    ))}
-                </div>
-            </div>
-        );
+    const renderCoupons = () => (
+        <div className="space-y-4">
+             <div className="flex justify-end">
+                <Button onClick={() => openModal('coupon')} className="bg-indigo-600 text-white"><Plus size={18} className="mr-2" /> Add Coupon</Button>
+             </div>
+             {coupons.map(c => (
+                 <div key={c.id} className="bg-white p-4 rounded border flex justify-between items-center">
+                     <div>
+                         <div className="font-bold text-lg">{c.code}</div>
+                         <div className="text-sm text-slate-500">Value: {c.value} ({c.type})</div>
+                     </div>
+                     <div className="flex gap-2 items-center">
+                        <Badge variant={c.isActive ? 'success' : 'secondary'}>{c.isActive ? 'Active' : 'Inactive'}</Badge>
+                         <Button variant="ghost" size="sm" onClick={() => openModal('coupon', c)}><Edit size={16}/></Button>
+                         <Button variant="ghost" size="sm" className="text-red-500" onClick={(e) => deleteCoupon(c.id, e)}><Trash2 size={16}/></Button>
+                     </div>
+                 </div>
+             ))}
+        </div>
+    );
 
-    }
-
-    const renderBanners = () => {
-        return (
-            <div>
-                <div className="flex justify-end items-center mb-4"><Button onClick={() => openModal('banner')} className="bg-indigo-600 text-white"><Plus size={18} className="mr-2" /> Add Banner</Button></div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {banners.map(b => (
-                        <Card key={b.id} className="overflow-hidden relative group hover:border-indigo-500 transition border border-transparent">
-                            <div className="h-32 bg-slate-100 relative cursor-pointer" onClick={() => openModal('banner', b)}>
-                                <img src={b.imageUrl} alt={b.title} className="w-full h-full object-cover" />
-                                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                    <Button variant="ghost" size="sm" className="text-white hover:text-red-300" onClick={(e) => deleteBanner(b.id, e)}><Trash2 size={24} /></Button>
-                                </div>
-                            </div>
-                            <div className="p-4">
-                                <div className="font-bold text-lg">{b.title}</div>
-                                <div className="text-sm text-slate-500">{b.description || 'No description'}</div>
-                            </div>
-                        </Card>
-                    ))}
-                </div>
-            </div>
-        );
-    };
-
-    const renderOrders = () => {
-        return (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 space-y-4">
-                    {orders.map(order => (
-                        <div key={order.id} className={`bg-white border rounded-lg p-4 cursor-pointer hover:border-indigo-500 transition ${selectedOrder?.id === order.id ? 'border-indigo-500 ring-1 ring-indigo-500' : ''}`} onClick={() => setSelectedOrder(order)}>
-                            <div className="flex justify-between items-start mb-2">
-                                <div>
-                                    <div className="font-bold text-slate-900">{order.tenant?.name || 'Unknown Merchant'}</div>
-                                    <div className="text-xs text-slate-500">{new Date(order.createdAt).toLocaleString()}</div>
-                                </div>
-                                <Badge variant={order.status === 'PENDING' ? 'warning' : order.status === 'DELIVERED' ? 'success' : 'default'}>{order.status}</Badge>
-                            </div>
-                            <div className="flex justify-between items-center text-sm">
-                                <div>Total: <span className="font-semibold">Rp {order.totalAmount.toLocaleString('id-ID')}</span></div>
-                                <div className="text-slate-500">{order.items.length} Items</div>
-                            </div>
-                        </div>
-                    ))}
-                    {orders.length === 0 && <div className="p-8 text-center text-slate-500 bg-white rounded border">No orders found.</div>}
-                </div>
-
-                {/* Order Detail View */}
-                <div className="bg-white border rounded-lg p-6 h-fit sticky top-4">
-                    {selectedOrder ? (
-                        <div className="space-y-6">
-                            <div>
-                                <h3 className="text-lg font-bold mb-1">Order Details</h3>
-                                <div className="text-sm text-slate-500">ID: {selectedOrder.id}</div>
-                            </div>
-
-                            <div className="space-y-4">
-                                <div className="bg-slate-50 p-3 rounded text-sm space-y-2">
-                                    <div className="flex justify-between"><span>Status</span> <span className="font-medium">{selectedOrder.status}</span></div>
-                                    <div className="flex justify-between"><span>Payment</span> <span className="font-medium">{selectedOrder.paymentMethod}</span></div>
-                                    {selectedOrder.couponCode && <div className="flex justify-between text-green-600"><span>Coupon ({selectedOrder.couponCode})</span> <span>-Rp {selectedOrder.discountAmount.toLocaleString('id-ID')}</span></div>}
-                                    <div className="flex justify-between"><span>Shipping</span> <span className="font-medium">Rp {selectedOrder.shippingCost?.toLocaleString('id-ID')}</span></div>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <div className="font-medium text-sm">Update Status</div>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        {['PENDING', 'PAID', 'PROCESSED', 'SHIPPED', 'DELIVERED', 'CANCELLED'].map(s => (
-                                            <Button key={s} size="sm" variant={selectedOrder.status === s ? 'default' : 'outline'}
-                                                onClick={() => updateOrderStatus(selectedOrder.id, s)}
-                                                className={`text-xs ${selectedOrder.status === s ? 'bg-indigo-600 text-white' : ''}`}
-                                            >
-                                                {s}
-                                            </Button>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="border-t pt-4">
-                                <h4 className="font-medium mb-3">Items</h4>
-                                <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
-                                    {selectedOrder.items.map((item, idx) => (
-                                        <div key={idx} className="flex justify-between text-sm">
-                                            <div>
-                                                <div className="font-medium">{item.product?.name}</div>
-                                                <div className="text-xs text-slate-500">{item.quantity} x Rp {item.price.toLocaleString('id-ID')}</div>
-                                            </div>
-                                            <div className="font-medium">Rp {(item.quantity * item.price).toLocaleString('id-ID')}</div>
-                                        </div>
-                                    ))}
-                                </div>
-                                <div className="border-t mt-3 pt-3 flex justify-between font-bold">
-                                    <span>Total</span>
-                                    <span>Rp {selectedOrder.totalAmount.toLocaleString('id-ID')}</span>
-                                </div>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="text-center text-slate-400 py-12">Select an order to view details</div>
-                    )}
-                </div>
-            </div>
-        );
-    }
+     const renderBanners = () => (
+        <div className="space-y-4">
+             <div className="flex justify-end">
+                <Button onClick={() => openModal('banner')} className="bg-indigo-600 text-white"><Plus size={18} className="mr-2" /> Add Banner</Button>
+             </div>
+             {banners.map(b => (
+                 <div key={b.id} className="bg-white p-4 rounded border flex justify-between items-center">
+                     <div className="flex items-center gap-4">
+                         <img src={b.imageUrl} className="w-24 h-12 object-cover rounded" />
+                         <div className="font-medium">{b.title}</div>
+                     </div>
+                     <div className="flex gap-2 items-center">
+                         <Button variant="ghost" size="sm" onClick={() => openModal('banner', b)}><Edit size={16}/></Button>
+                         <Button variant="ghost" size="sm" className="text-red-500" onClick={(e) => deleteBanner(b.id, e)}><Trash2 size={16}/></Button>
+                     </div>
+                 </div>
+             ))}
+        </div>
+    );
 
     return (
-        <AdminLayout>
-            <div className="flex items-center justify-between mb-8">
-                <div>
-                    <h1 className="text-2xl font-semibold text-slate-900">Marketplace Management</h1>
-                    <p className="text-slate-500 mt-1">Manage wholesale products, categories, orders, and promotions.</p>
-                </div>
-            </div>
-
-            {/* Tabs */}
-            <div className="flex gap-1 mb-6 border-b">
-                {['products', 'categories', 'promotions', 'banners', 'orders'].map(tab => (
+        <AdminLayout title="Wholesale Management">
+            <div className="flex gap-4 mb-6 border-b">
+                {['orders', 'products', 'categories', 'promotions', 'banners'].map(tab => (
                     <button
                         key={tab}
                         onClick={() => setActiveTab(tab)}
-                        className={`px-6 py-2 border-b-2 font-medium transition-colors ${activeTab === tab ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+                        className={`pb-2 px-4 capitalize font-medium ${activeTab === tab ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-slate-500'}`}
                     >
-                        {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                        {tab}
                     </button>
                 ))}
             </div>
 
-            {activeTab === 'products' && renderProducts()}
-            {activeTab === 'categories' && renderCategories()}
-            {activeTab === 'promotions' && renderCoupons()}
-            {activeTab === 'banners' && renderBanners()}
-            {activeTab === 'orders' && renderOrders()}
+            {loading ? <div className="text-center py-12">Loading...</div> : (
+                <>
+                    {activeTab === 'orders' && renderOrders()}
+                    {activeTab === 'products' && renderProducts()}
+                    {activeTab === 'categories' && renderCategories()}
+                    {activeTab === 'promotions' && renderCoupons()}
+                    {activeTab === 'banners' && renderBanners()}
+                </>
+            )}
 
-            {/* PRODUCT / CATEGORY / COUPON MODAL */}
+            {/* MODALS */}
             {isModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
-                    <div className="bg-white rounded-lg shadow-xl w-full max-w-lg overflow-hidden">
-                        <div className="flex justify-between items-center p-6 border-b">
-                            <h3 className="text-lg font-semibold">{selectedItem && modalType !== 'coupon' ? `Edit ${modalType}` : `Add New ${modalType}`}</h3>
-                            <button onClick={closeModal}><X size={20} className="text-slate-400" /></button>
-                        </div>
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+                        <h3 className="text-xl font-bold mb-4 capitalize">{selectedItem ? 'Edit' : 'Add'} {modalType}</h3>
+                        
+                        <div className="space-y-4">
+                            {modalType === 'product' && (
+                                <>
+                                    <Input label="Product Name" value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} />
+                                    <Input label="Price" type="number" value={productForm.price} onChange={e => setProductForm({...productForm, price: e.target.value})} />
+                                    <Input label="Stock" type="number" value={productForm.stock} onChange={e => setProductForm({...productForm, stock: e.target.value})} />
+                                    <Input label="Supplier" value={productForm.supplierName} onChange={e => setProductForm({...productForm, supplierName: e.target.value})} />
+                                    <Input label="Image URL" value={productForm.imageUrl} onChange={e => setProductForm({...productForm, imageUrl: e.target.value})} />
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Category</label>
+                                        <select 
+                                            className="w-full border rounded p-2"
+                                            value={productForm.categoryId}
+                                            onChange={e => setProductForm({...productForm, categoryId: e.target.value})}
+                                        >
+                                            <option value="">Select Category</option>
+                                            {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                        </select>
+                                    </div>
+                                </>
+                            )}
+                            
+                            {modalType === 'category' && (
+                                <Input label="Category Name" value={categoryForm.name} onChange={e => setCategoryForm({...categoryForm, name: e.target.value})} />
+                            )}
 
-                        <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
-                            {modalType === 'product' ? (
+                             {modalType === 'coupon' && (
                                 <>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium">Name</label>
-                                        <Input value={productForm.name} onChange={e => setProductForm({ ...productForm, name: e.target.value })} placeholder="Product Name" />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium">Category</label>
-                                            <select className="flex h-10 w-full rounded-md border bg-white px-3 py-2 text-sm"
-                                                value={productForm.categoryId} onChange={e => setProductForm({ ...productForm, categoryId: e.target.value })}>
-                                                <option value="" disabled>Select Category</option>
-                                                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                            </select>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium">Price</label>
-                                            <Input type="number" value={productForm.price} onChange={e => setProductForm({ ...productForm, price: e.target.value })} placeholder="0" />
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium">Stock</label>
-                                            <Input type="number" value={productForm.stock} onChange={e => setProductForm({ ...productForm, stock: e.target.value })} placeholder="0" />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium">Supplier</label>
-                                            <Input value={productForm.supplierName} onChange={e => setProductForm({ ...productForm, supplierName: e.target.value })} placeholder="Supplier Name" />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium">Image URL</label>
-                                        <Input value={productForm.imageUrl} onChange={e => setProductForm({ ...productForm, imageUrl: e.target.value })} placeholder="https://..." />
-                                    </div>
+                                    <Input label="Code" value={couponForm.code} onChange={e => setCouponForm({...couponForm, code: e.target.value})} />
+                                    <Input label="Value" type="number" value={couponForm.value} onChange={e => setCouponForm({...couponForm, value: e.target.value})} />
+                                    <select className="w-full border rounded p-2" value={couponForm.type} onChange={e => setCouponForm({...couponForm, type: e.target.value})}>
+                                        <option value="FIXED">Fixed Amount</option>
+                                        <option value="PERCENTAGE">Percentage</option>
+                                    </select>
                                 </>
-                            ) : modalType === 'category' ? (
-                                <div className="space-y-2">
-                                    <label className="text-sm font-medium">Category Name</label>
-                                    <Input value={categoryForm.name} onChange={e => setCategoryForm({ ...categoryForm, name: e.target.value })} placeholder="Category Name" />
-                                </div>
-                            ) : modalType === 'coupon' ? (
+                            )}
+
+                             {modalType === 'banner' && (
                                 <>
-                                    <div className="space-y-2"><label className="text-sm font-medium">Coupon Code</label><Input value={couponForm.code} onChange={e => setCouponForm({ ...couponForm, code: e.target.value.toUpperCase() })} placeholder="e.g. DISKON50" /></div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2"><label className="text-sm font-medium">Type</label><select className="flex h-10 w-full rounded-md border bg-white px-3 py-2 text-sm" value={couponForm.type} onChange={e => setCouponForm({ ...couponForm, type: e.target.value })}><option value="FIXED">Fixed Amount (Rp)</option><option value="PERCENTAGE">Percentage (%)</option><option value="FREE_SHIPPING">Free Shipping</option></select></div>
-                                        <div className="space-y-2"><label className="text-sm font-medium">Value</label><Input type="number" value={couponForm.value} onChange={e => setCouponForm({ ...couponForm, value: e.target.value })} placeholder={couponForm.type === 'PERCENTAGE' ? '50' : '10000'} disabled={couponForm.type === 'FREE_SHIPPING'} /></div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2"><label className="text-sm font-medium">Min Order</label><Input type="number" value={couponForm.minOrder} onChange={e => setCouponForm({ ...couponForm, minOrder: e.target.value })} placeholder="0" /></div>
-                                        <div className="space-y-2"><label className="text-sm font-medium">Max Discount</label><Input type="number" value={couponForm.maxDiscount} onChange={e => setCouponForm({ ...couponForm, maxDiscount: e.target.value })} placeholder="Optional for %" /></div>
-                                    </div>
-                                </>
-                            ) : (
-                                <>
-                                    <div className="space-y-2"><label className="text-sm font-medium">Title</label><Input value={bannerForm.title} onChange={e => setBannerForm({ ...bannerForm, title: e.target.value })} placeholder="Banner Title" /></div>
-                                    <div className="space-y-2"><label className="text-sm font-medium">Image URL</label><Input value={bannerForm.imageUrl} onChange={e => setBannerForm({ ...bannerForm, imageUrl: e.target.value })} placeholder="https://..." /></div>
-                                    <div className="space-y-2"><label className="text-sm font-medium">Description</label><Input value={bannerForm.description} onChange={e => setBannerForm({ ...bannerForm, description: e.target.value })} placeholder="Optional description" /></div>
+                                    <Input label="Title" value={bannerForm.title} onChange={e => setBannerForm({...bannerForm, title: e.target.value})} />
+                                    <Input label="Image URL" value={bannerForm.imageUrl} onChange={e => setBannerForm({...bannerForm, imageUrl: e.target.value})} />
                                 </>
                             )}
                         </div>
 
-                        <div className="p-6 border-t bg-slate-50 flex justify-end gap-2">
-                            <Button variant="outline" onClick={closeModal}>Cancel</Button>
-                            <Button className="bg-indigo-600 text-white" onClick={modalType === 'product' ? handleProductSubmit : modalType === 'category' ? handleCategorySubmit : modalType === 'coupon' ? handleCouponSubmit : handleBannerSubmit}>Save</Button>
+                        <div className="flex justify-end gap-2 mt-6">
+                            <Button variant="secondary" onClick={closeModal}>Cancel</Button>
+                            <Button 
+                                onClick={
+                                    modalType === 'product' ? handleProductSubmit : 
+                                    modalType === 'category' ? handleCategorySubmit : 
+                                    modalType === 'coupon' ? handleCouponSubmit :
+                                    handleBannerSubmit
+                                }
+                            >Save</Button>
                         </div>
                     </div>
                 </div>

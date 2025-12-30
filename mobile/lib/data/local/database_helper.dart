@@ -408,6 +408,67 @@ class DatabaseHelper {
     ''', [limit]);
   }
 
+  Future<List<Map<String, dynamic>>> getTopSellingProductsDetailed({
+    int limit = 5,
+    DateTime? start,
+    DateTime? end,
+  }) async {
+    final db = await instance.database;
+    final startDate = start ?? DateTime.now().subtract(const Duration(days: 30));
+    final endDate = end ?? DateTime.now();
+
+    return await db.rawQuery('''
+      SELECT
+        p.id as productId,
+        p.name as name,
+        p.stock as stock,
+        p.sellingPrice as sellingPrice,
+        SUM(ti.quantity) as totalQty,
+        SUM(ti.price * ti.quantity) as totalRevenue
+      FROM transaction_items ti
+      JOIN transactions t ON ti.transactionOfflineId = t.offlineId
+      JOIN products p ON ti.productId = p.id
+      WHERE t.occurredAt BETWEEN ? AND ?
+      GROUP BY p.id, p.name, p.stock, p.sellingPrice
+      ORDER BY totalQty DESC
+      LIMIT ?
+    ''', [startDate.toIso8601String(), endDate.toIso8601String(), limit]);
+  }
+
+  Future<List<Map<String, dynamic>>> getUnsoldProducts({
+    int limit = 10,
+    DateTime? start,
+    DateTime? end,
+    int minStock = 1,
+  }) async {
+    final db = await instance.database;
+    final startDate = start ?? DateTime.now().subtract(const Duration(days: 30));
+    final endDate = end ?? DateTime.now();
+
+    return await db.rawQuery('''
+      SELECT
+        p.id as productId,
+        p.name as name,
+        p.stock as stock,
+        p.sellingPrice as sellingPrice,
+        p.promoEndsAt as promoEndsAt
+      FROM products p
+      LEFT JOIN (
+        SELECT
+          ti.productId as productId,
+          SUM(ti.quantity) as qty
+        FROM transaction_items ti
+        JOIN transactions t ON ti.transactionOfflineId = t.offlineId
+        WHERE t.occurredAt BETWEEN ? AND ?
+        GROUP BY ti.productId
+      ) s ON s.productId = p.id
+      WHERE (s.qty IS NULL OR s.qty = 0)
+        AND p.stock >= ?
+      ORDER BY p.stock DESC, p.name ASC
+      LIMIT ?
+    ''', [startDate.toIso8601String(), endDate.toIso8601String(), minStock, limit]);
+  }
+
   // [NEW] Category Breakdown
   Future<List<Map<String, dynamic>>> getSalesByCategory(
       {DateTime? start, DateTime? end}) async {

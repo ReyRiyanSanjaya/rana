@@ -41,8 +41,13 @@ class AuthProvider with ChangeNotifier {
   Future<void> login(String email, String password) async {
     try {
       final data = await MarketApiService().login(email, password);
-      _token = data['token'];
-      _user = data['user'];
+      final token = data['token'];
+      if (token is! String || token.trim().isEmpty) {
+        throw Exception('Token tidak ditemukan');
+      }
+      _token = token;
+      final user = data['user'];
+      _user = user is Map<String, dynamic> ? user : (user is Map ? Map<String, dynamic>.from(user) : null);
       
       MarketApiService().setToken(_token);
       
@@ -61,15 +66,19 @@ class AuthProvider with ChangeNotifier {
   Future<void> register(String name, String email, String phone, String password) async {
      try {
       final data = await MarketApiService().register(name, email, phone, password);
-      _token = data['token'];
-      _user = data['user'];
-      
-      MarketApiService().setToken(_token);
-      
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('token', _token!);
-      if (_user != null) {
-        await prefs.setString('user', jsonEncode(_user));
+      final token = data['token'];
+      if (token is String && token.trim().isNotEmpty) {
+        _token = token;
+        final user = data['user'];
+        _user = user is Map<String, dynamic> ? user : (user is Map ? Map<String, dynamic>.from(user) : null);
+
+        MarketApiService().setToken(_token);
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('token', _token!);
+        if (_user != null) {
+          await prefs.setString('user', jsonEncode(_user));
+        }
       }
       
       notifyListeners();

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:rana_market/screens/main_screen.dart'; // [NEW]
-import 'package:rana_market/screens/login_screen.dart';
 import 'package:rana_market/services/notification_service.dart';
 
 import 'package:provider/provider.dart';
@@ -46,25 +45,28 @@ class RanaMarketApp extends StatelessWidget {
           scaffoldBackgroundColor: const Color(0xFFF9FAFB),
           textTheme: GoogleFonts.poppinsTextTheme(), // Friendly consumer font
           appBarTheme: const AppBarTheme(
-            backgroundColor: Colors.white,
-            elevation: 0,
-            centerTitle: false,
-            titleTextStyle: TextStyle(color: Colors.black, fontSize: 20, fontWeight: FontWeight.bold)
-          ),
+              backgroundColor: Colors.white,
+              elevation: 0,
+              centerTitle: false,
+              titleTextStyle: TextStyle(
+                  color: Colors.black,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold)),
           cardTheme: CardThemeData(
             elevation: 0,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: BorderSide(color: Colors.grey.shade200)
-            ),
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: Colors.grey.shade200)),
             color: Colors.white,
           ),
         ),
         home: Consumer<AuthProvider>(
           builder: (context, auth, _) {
-            if (auth.isLoading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
-            if (auth.isAuthenticated) return const MainScreen();
-            return const LoginScreen();
+            if (auth.isLoading) {
+              return const Scaffold(
+                  body: Center(child: CircularProgressIndicator()));
+            }
+            return const MainScreen();
           },
         ),
       ),
