@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:rana_merchant/data/remote/api_service.dart';
-import 'package:provider/provider.dart'; // Ensure provider is available if needed, though we use FutureBuilder here
 import 'package:rana_merchant/screens/wholesale_scan_screen.dart'; // Reuse scan screen
 
 import 'package:rana_merchant/data/local/database_helper.dart';
@@ -33,14 +32,13 @@ class _WholesaleOrderListScreenState extends State<WholesaleOrderListScreen> {
 
   Future<List<dynamic>> _fetchOrders() async {
     String id = widget.tenantId ?? '';
-    if (id.isEmpty || id == 'demo-tenant-id') {
+    if (id.isEmpty) {
       final db = DatabaseHelper.instance;
       final tenant = await db.getTenantInfo();
       if (tenant != null) {
         id = tenant['id'];
       }
     }
-    // If still empty/demo, fallback to demo or handle error
     if (id.isEmpty) return [];
 
     return ApiService().getMyWholesaleOrders(id);
@@ -75,7 +73,7 @@ class _WholesaleOrderListScreenState extends State<WholesaleOrderListScreen> {
         title: Text('Pesanan Kulakan',
             style: GoogleFonts.poppins(
                 fontWeight: FontWeight.bold, color: Colors.white)),
-        backgroundColor: Colors.blue.shade800,
+        backgroundColor: const Color(0xFFD70677),
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(
@@ -173,7 +171,8 @@ class _WholesaleOrderListScreenState extends State<WholesaleOrderListScreen> {
                                   horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
                                   color:
-                                      _getStatusColor(status).withOpacity(0.1),
+                                      _getStatusColor(status)
+                                          .withValues(alpha: 26),
                                   borderRadius: BorderRadius.circular(4),
                                   border: Border.all(
                                       color: _getStatusColor(status))),

@@ -10,7 +10,7 @@ class WholesaleScanScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text('Scan Terima Barang', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.blue.shade800,
+        backgroundColor: const Color(0xFFD70677),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: MobileScanner(

@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart'; // Add url_launcher to pubspec
 
@@ -101,7 +102,7 @@ class DigitalReceiptService {
       await launchUrl(url);
       await _upsertPromoContact(phone: cleanPhone, name: txn['customerName']?.toString());
     } else {
-      print('Could not launch WhatsApp');
+      debugPrint('Could not launch WhatsApp');
       // Fallback: try https link
       final webUrl = Uri.parse("https://wa.me/$cleanPhone?text=${Uri.encodeComponent(sb.toString())}");
       if(await canLaunchUrl(webUrl)) {

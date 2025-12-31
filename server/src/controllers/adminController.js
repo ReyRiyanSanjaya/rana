@@ -3,6 +3,101 @@ const prisma = new PrismaClient();
 const bcrypt = require('bcrypt'); // [NEW]
 const crypto = require('crypto');
 const { successResponse, errorResponse } = require('../utils/response');
+const https = require('https');
+
+const normalizePhone = (value) => {
+    let digits = (value || '').toString().replace(/[^\d]/g, '');
+    if (!digits) return '';
+    if (digits.startsWith('0')) digits = `62${digits.slice(1)}`;
+    if (digits.startsWith('8')) digits = `62${digits}`;
+    if (digits.startsWith('620')) digits = `62${digits.slice(3)}`;
+    return digits;
+};
+
+const isLikelyPhoneNumber = (value) => {
+    const digits = normalizePhone(value);
+    if (!digits) return false;
+    if (!digits.startsWith('62')) return false;
+    if (digits.length < 10 || digits.length > 15) return false;
+    return true;
+};
+
+const buildPhoneCandidates = (rawValue) => {
+    const raw = (rawValue || '').toString().trim();
+    const normalized = normalizePhone(raw);
+    const candidates = new Set();
+    if (raw) candidates.add(raw);
+    if (normalized) {
+        candidates.add(normalized);
+        candidates.add(`+${normalized}`);
+        if (normalized.startsWith('62')) candidates.add(`0${normalized.slice(2)}`);
+    }
+    return Array.from(candidates);
+};
+
+const getUrlText = (url, { timeoutMs = 5000, maxBytes = 64 * 1024, redirectsLeft = 5 } = {}) => {
+    return new Promise((resolve, reject) => {
+        const req = https.get(
+            url,
+            { headers: { 'user-agent': 'RanaPOS/1.0' } },
+            (res) => {
+                const statusCode = res.statusCode || 0;
+                const location = res.headers.location;
+                if ([301, 302, 303, 307, 308].includes(statusCode) && location && redirectsLeft > 0) {
+                    res.resume();
+                    const nextUrl = new URL(location, url).toString();
+                    getUrlText(nextUrl, { timeoutMs, maxBytes, redirectsLeft: redirectsLeft - 1 })
+                        .then(resolve)
+                        .catch(reject);
+                    return;
+                }
+
+                let size = 0;
+                const chunks = [];
+
+                res.on('data', (chunk) => {
+                    size += chunk.length;
+                    if (size > maxBytes) {
+                        req.destroy(new Error('Response too large'));
+                        return;
+                    }
+                    chunks.push(chunk);
+                });
+
+                res.on('end', () => {
+                    resolve({
+                        statusCode,
+                        body: Buffer.concat(chunks).toString('utf8'),
+                        finalUrl: url
+                    });
+                });
+            }
+        );
+
+        req.on('error', reject);
+        req.setTimeout(timeoutMs, () => req.destroy(new Error('Request timeout')));
+    });
+};
+
+const verifyWhatsAppNumberWithoutOtp = async (value) => {
+    const digits = normalizePhone(value);
+    if (!digits) return false;
+    try {
+        const { statusCode, body } = await getUrlText(`https://wa.me/${digits}`, { timeoutMs: 5000 });
+        if (!statusCode || statusCode >= 400) return false;
+        const text = (body || '').toLowerCase();
+        const invalidMarkers = [
+            'phone number shared via url is invalid',
+            'shared via url is invalid',
+            'invalid phone number',
+            'nomor telepon yang dibagikan'
+        ];
+        if (invalidMarkers.some((m) => text.includes(m))) return false;
+        return true;
+    } catch (_) {
+        return false;
+    }
+};
 
 // Get Withdrawals with filtering
 const getWithdrawals = async (req, res) => {
@@ -550,6 +645,19 @@ const createMerchant = async (req, res) => {
         // Validation
         const existingUser = await prisma.user.findUnique({ where: { email } });
         if (existingUser) return errorResponse(res, "Email already registered", 400);
+        if (!phone) return errorResponse(res, "Nomor WhatsApp wajib diisi", 400);
+        if (!isLikelyPhoneNumber(phone)) return errorResponse(res, "Nomor WhatsApp tidak valid", 400);
+
+        const normalizedPhone = normalizePhone(phone);
+        const existingStore = await prisma.store.findFirst({
+            where: { waNumber: { in: buildPhoneCandidates(normalizedPhone) } }
+        });
+        if (existingStore) return errorResponse(res, "Nomor WhatsApp sudah digunakan", 400);
+
+        const isWaValid = await verifyWhatsAppNumberWithoutOtp(normalizedPhone);
+        if (!isWaValid) return errorResponse(res, "Nomor WhatsApp tidak valid", 400);
+
+        const hashedPassword = await bcrypt.hash(password, 10);
 
         // Transactional Creation
         const result = await prisma.$transaction(async (tx) => {
@@ -559,7 +667,7 @@ const createMerchant = async (req, res) => {
                     name: businessName,
                     plan: 'FREE', // Default plan
                     subscriptionStatus: 'TRIAL',
-                    trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) // 14 Days Trial
+                    trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
                 }
             });
 
@@ -569,7 +677,7 @@ const createMerchant = async (req, res) => {
                     tenantId: tenant.id,
                     name: businessName, // Default store name same as business (can change later)
                     location: address,
-                    waNumber: phone
+                    waNumber: normalizedPhone
                 }
             });
 
@@ -583,7 +691,7 @@ const createMerchant = async (req, res) => {
                     storeId: store.id,
                     name: ownerName,
                     email,
-                    passwordHash: password, // TODO: Hash this!
+                    passwordHash: hashedPassword,
                     role: 'OWNER'
                 }
             });
@@ -984,6 +1092,15 @@ const getBusinessAnalytics = async (req, res) => {
             _sum: { amount: true }
         });
 
+        const getRevenueSum = (source) => {
+            const match = revenueBySource.find((r) => r.source === source);
+            return match?._sum?.amount || 0;
+        };
+
+        const totalSubscriptionRevenue = getRevenueSum('SUBSCRIPTION');
+        const totalTxnFees = getRevenueSum('TRANSACTION_FEE');
+        const totalWholesaleFees = getRevenueSum('WHOLESALE_FEE');
+
         // 3. Monthly Revenue (Last 6 Months)
         const sixMonthsAgo = new Date();
         sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
@@ -1104,7 +1221,7 @@ const getBusinessAnalytics = async (req, res) => {
             totalSubscriptionRevenue, // [NEW]
             totalTxnFees, // [NEW]
             totalWholesaleFees, // [NEW]
-            revenueBySource: revenueSources, // [UPDATED]
+            revenueBySource, // [UPDATED]
             revenueChart,
             growthChart,
             activeSubscribers,

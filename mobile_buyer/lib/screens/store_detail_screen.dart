@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:rana_market/data/market_api_service.dart';
 import 'package:rana_market/providers/favorites_provider.dart';
 import 'package:rana_market/screens/product_detail_screen.dart';
 import 'package:rana_market/providers/reviews_provider.dart';
@@ -44,8 +45,8 @@ class StoreDetailScreen extends StatelessWidget {
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(color: Colors.indigo.shade50, borderRadius: BorderRadius.circular(4)),
-                  child: Text(store['category'] ?? '-', style: TextStyle(color: Colors.indigo.shade800, fontWeight: FontWeight.bold)),
+                  decoration: BoxDecoration(color: const Color(0xFFFFF5EC), borderRadius: BorderRadius.circular(4)),
+                  child: Text(store['category'] ?? '-', style: const TextStyle(color: Color(0xFFD70677), fontWeight: FontWeight.bold)),
                 )
               ],
             ),
@@ -70,6 +71,8 @@ class StoreDetailScreen extends StatelessWidget {
                   builder: (context, fav, rev, _) {
                     final isFav = fav.isFavorite(p['id']);
                     final avg = rev.getAverage(p['id']);
+                    final imageUrl = MarketApiService()
+                        .resolveFileUrl(p['imageUrl'] ?? p['image']);
                     return GestureDetector(
                       onTap: () {
                         Navigator.push(
@@ -96,12 +99,31 @@ class StoreDetailScreen extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Expanded(
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      color: Colors.grey.shade200,
-                                      borderRadius: const BorderRadius.vertical(top: Radius.circular(12))
-                                    ),
-                                    child: const Center(child: Icon(Icons.fastfood, size: 40, color: Colors.grey)),
+                                  child: ClipRRect(
+                                    borderRadius: const BorderRadius.vertical(
+                                        top: Radius.circular(12)),
+                                    child: imageUrl.isEmpty
+                                        ? Container(
+                                            color: Colors.grey.shade200,
+                                            child: const Center(
+                                                child: Icon(Icons.fastfood,
+                                                    size: 40,
+                                                    color: Colors.grey)),
+                                          )
+                                        : Image.network(
+                                            imageUrl,
+                                            fit: BoxFit.cover,
+                                            errorBuilder:
+                                                (context, error, stackTrace) {
+                                              return Container(
+                                                color: Colors.grey.shade200,
+                                                child: const Center(
+                                                    child: Icon(Icons.fastfood,
+                                                        size: 40,
+                                                        color: Colors.grey)),
+                                              );
+                                            },
+                                          ),
                                   ),
                                 ),
                                 Padding(

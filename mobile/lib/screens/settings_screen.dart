@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/services.dart'; // [NEW] Clipboard
 import 'package:provider/provider.dart';
@@ -49,7 +50,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         slivers: [
           SliverAppBar(
             pinned: true,
-            backgroundColor: const Color(0xFFBF092F),
+            backgroundColor: const Color(0xFFD70677),
             iconTheme: const IconThemeData(color: Colors.white),
             title: const Text('Pengaturan', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
             centerTitle: true,
@@ -57,7 +58,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               background: Container(
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [Color(0xFF9F0013), Color(0xFFBF092F), Color(0xFFE11D48)],
+                    colors: [Color(0xFF9F0013), Color(0xFFD70677), Color(0xFFE11D48)],
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter
                   )
@@ -108,7 +109,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   leading: const Icon(Icons.account_balance),
                   title: Text(bankInfo['BANK_NAME'] ?? 'Bank'),
                   subtitle: Text('${bankInfo['BANK_ACCOUNT_NUMBER'] ?? '-'} a.n ${bankInfo['BANK_ACCOUNT_NAME'] ?? '-'}'),
-                  trailing: IconButton(onPressed: (){}, icon: const Icon(Icons.copy, size: 16)), // Copy logic TODO
+                  trailing: IconButton(
+                    onPressed: () async {
+                      final bankName = bankInfo['BANK_NAME'] ?? '';
+                      final accNo = bankInfo['BANK_ACCOUNT_NUMBER'] ?? '';
+                      final accName = bankInfo['BANK_ACCOUNT_NAME'] ?? '';
+                      final text = [
+                        if (bankName.trim().isNotEmpty) bankName.trim(),
+                        if (accNo.trim().isNotEmpty) accNo.trim(),
+                        if (accName.trim().isNotEmpty) 'a.n ${accName.trim()}',
+                      ].join(' ');
+                      if (text.trim().isEmpty) return;
+                      await Clipboard.setData(ClipboardData(text: text));
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Info bank disalin')),
+                      );
+                    },
+                    icon: const Icon(Icons.copy, size: 16),
+                  ),
                 ),
                  ListTile(
                   leading: const Icon(Icons.percent),
@@ -132,10 +151,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               // [NEW] Display Merchant ID
 
-              if (userProfile.isNotEmpty)
-                ListTile(
-                  leading: const Icon(Icons.fingerprint, color: Color(0xFFBF092F)),
-                  title: const Text('ID Merchant (Store ID)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFBF092F))),
+          if (userProfile.isNotEmpty)
+            ListTile(
+              leading: const Icon(Icons.fingerprint, color: Color(0xFFD70677)),
+              title: const Text('ID Merchant (Store ID)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFD70677))),
                   subtitle: Text(userProfile['store']?['id'] ?? userProfile['tenant']?['id'] ?? 'Belum ada ID'),
                   trailing: IconButton(
                     icon: const Icon(Icons.copy, size: 20),
@@ -218,35 +237,51 @@ class _SettingsScreenState extends State<SettingsScreen> {
                      }
                   },
                 ),
-                const Divider(),
-                 // DEBUG SECTION
-                 const Padding(
-                   padding: EdgeInsets.all(16.0),
-                   child: Text('Debug Menu', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
-                 ),
-                 ListTile(
-                   leading: const Icon(Icons.bug_report, color: Colors.red),
-                   title: const Text('Cek Status Langganan Manual'),
-                   onTap: () async {
-                      final sub = Provider.of<SubscriptionProvider>(context, listen: false);
+                if (kDebugMode) ...[
+                  const Divider(),
+                  const Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Text('Debug Menu',
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, color: Colors.red)),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.bug_report, color: Colors.red),
+                    title: const Text('Cek Status Langganan Manual'),
+                    onTap: () async {
+                      final sub = Provider.of<SubscriptionProvider>(context,
+                          listen: false);
                       try {
                         await sub.codeCheckSubscription();
-                        // ignore: use_build_context_synchronously
+                        if (!context.mounted) return;
                         showDialog(
-                          context: context, 
+                          context: context,
                           builder: (_) => AlertDialog(
                             title: const Text("Hasil Debug"),
-                            content: Text("Status: ${sub.status}\nIsLocked: ${sub.isLocked}\nPackages: ${sub.packages.length}"),
-                            actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text("OK"))],
-                          )
+                            content: Text(
+                                "Status: ${sub.status}\nIsLocked: ${sub.isLocked}\nPackages: ${sub.packages.length}"),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text("OK"),
+                              )
+                            ],
+                          ),
                         );
                       } catch (e) {
-                         // ignore: use_build_context_synchronously
-                         showDialog(context: context, builder: (_) => AlertDialog(title: const Text("Error"), content: Text(e.toString())));
+                        if (!context.mounted) return;
+                        showDialog(
+                          context: context,
+                          builder: (_) => AlertDialog(
+                            title: const Text("Error"),
+                            content: Text(e.toString()),
+                          ),
+                        );
                       }
-                   },
-                 ),
-                const Divider(),
+                    },
+                  ),
+                  const Divider(),
+                ],
             ]),
           ),
         ],

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:rana_market/data/market_api_service.dart';
 import 'package:rana_market/providers/market_cart_provider.dart';
 import 'package:rana_market/providers/reviews_provider.dart';
 import 'package:rana_market/providers/auth_provider.dart';
@@ -65,6 +66,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final price = (widget.product['sellingPrice'] as num).toDouble();
+    final imageUrl = MarketApiService().resolveFileUrl(
+      widget.product['imageUrl'] ?? widget.product['image'],
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -84,13 +88,26 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Image Placeholder
-                  Container(
+                  SizedBox(
                     height: 250,
                     width: double.infinity,
-                    color: Colors.grey.shade200,
-                    child:
-                        const Icon(Icons.image, size: 100, color: Colors.grey),
+                    child: imageUrl.isEmpty
+                        ? Container(
+                            color: Colors.grey.shade200,
+                            child: const Icon(Icons.image,
+                                size: 100, color: Colors.grey),
+                          )
+                        : Image.network(
+                            imageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                color: Colors.grey.shade200,
+                                child: const Icon(Icons.image,
+                                    size: 100, color: Colors.grey),
+                              );
+                            },
+                          ),
                   ),
 
                   Padding(
@@ -109,7 +126,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           style: const TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
-                              color: Colors.indigo),
+                              color: Color(0xFFD70677)),
                         ),
                         const SizedBox(height: 8),
                         Consumer<ReviewsProvider>(

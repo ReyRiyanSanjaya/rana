@@ -13,15 +13,15 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _emailCtrl = TextEditingController(text: 'cashier@rana.com');
-  final _passCtrl = TextEditingController(text: 'password');
+  final _phoneCtrl = TextEditingController();
+  final _passCtrl = TextEditingController();
   bool _isLoading = false;
 
   void _login() async {
     setState(() => _isLoading = true);
     try {
       await Provider.of<AuthProvider>(context, listen: false)
-          .login(_emailCtrl.text, _passCtrl.text);
+          .login(_phoneCtrl.text, _passCtrl.text);
       if (mounted) {
          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomeScreen()));
       }
@@ -46,8 +46,9 @@ class _LoginScreenState extends State<LoginScreen> {
               Text('Rana POS', style: Theme.of(context).textTheme.headlineMedium).animate().fadeIn(delay: 300.ms).slideY(begin: 0.3),
               const SizedBox(height: 32),
               TextField(
-                controller: _emailCtrl,
-                decoration: const InputDecoration(labelText: 'Email', border: OutlineInputBorder()),
+                controller: _phoneCtrl,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(labelText: 'Nomor HP / WhatsApp', border: OutlineInputBorder()),
               ),
               const SizedBox(height: 16),
               TextField(

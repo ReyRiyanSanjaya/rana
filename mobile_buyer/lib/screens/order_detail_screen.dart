@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:rana_market/data/market_api_service.dart';
+import 'package:rana_market/providers/auth_provider.dart';
 import 'package:rana_market/services/realtime_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class OrderDetailScreen extends StatefulWidget {
@@ -55,7 +58,16 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     if (_refreshing) return;
     setState(() => _refreshing = true);
     try {
-      final list = await MarketApiService().getMyOrders();
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      final fromUser = (auth.user?['phone'] ?? auth.user?['phoneNumber'])?.toString().trim();
+      String? phone = (fromUser != null && fromUser.isNotEmpty) ? fromUser : null;
+      if (phone == null) {
+        final prefs = await SharedPreferences.getInstance();
+        final p = (prefs.getString('buyer_phone') ?? '').trim();
+        if (p.isNotEmpty) phone = p;
+      }
+      if (phone == null) return;
+      final list = await MarketApiService().getMyOrders(phone: phone);
       final id = _order['id'];
       final found = list.whereType<Map>().cast<Map>().firstWhere(
             (e) => e['id'] == id,
@@ -103,7 +115,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               Card(
                 color: status == 'COMPLETED'
                     ? Colors.green.shade50
-                    : Colors.indigo.shade50,
+                    : const Color(0xFFFFF5EC),
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
@@ -115,7 +127,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                           size: 48,
                           color: status == 'COMPLETED'
                               ? Colors.green
-                              : Colors.indigo),
+                              : const Color(0xFFD70677)),
                       const SizedBox(height: 8),
                       Text(status,
                           style: const TextStyle(

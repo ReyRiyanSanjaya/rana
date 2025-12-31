@@ -8,6 +8,9 @@ import 'package:image_picker/image_picker.dart';
 import 'package:rana_merchant/providers/wallet_provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:rana_merchant/screens/scan_screen.dart'; // Ensure this exists
+import 'package:rana_merchant/data/remote/api_service.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:rana_merchant/screens/support_screen.dart';
 
 class WalletScreen extends StatefulWidget {
   const WalletScreen({super.key});
@@ -36,7 +39,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC), 
+      backgroundColor: const Color(0xFFFFF5EC), 
       appBar: AppBar(
         title: Text('Dompet Merchant', style: GoogleFonts.outfit(fontWeight: FontWeight.w600, color: const Color(0xFF1E293B))),
         backgroundColor: Colors.white,
@@ -46,7 +49,10 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
         actions: [
           IconButton(
             icon: const Icon(Icons.help_outline),
-            onPressed: () {}, // TODO: Help
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SupportScreen()),
+            ),
           )
         ],
       ),
@@ -54,7 +60,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
         builder: (context, provider, child) {
           return RefreshIndicator(
             onRefresh: () => provider.loadData(),
-            color: const Color(0xFFBF092F),
+            color: const Color(0xFFD70677),
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
               physics: const AlwaysScrollableScrollPhysics(),
@@ -106,13 +112,13 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFFBF092F), Color(0xFFE11D48)], // Red Brand Gradient
+          colors: [Color(0xFFD70677), Color(0xFFE11D48)], // Red Brand Gradient
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(color: const Color(0xFFBF092F).withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10)),
+          BoxShadow(color: const Color(0xFFD70677).withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10)),
           const BoxShadow(color: Colors.white10, blurRadius: 0, offset: Offset(0, 0), spreadRadius: 1) // Inner stroke hint
         ],
       ),
@@ -160,7 +166,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
-                  child: Text('Active', style: GoogleFonts.outfit(color: const Color(0xFFBF092F), fontSize: 10, fontWeight: FontWeight.bold)),
+                  child: Text('Active', style: GoogleFonts.outfit(color: const Color(0xFFD70677), fontSize: 10, fontWeight: FontWeight.bold)),
                 )
              ],
            )
@@ -174,7 +180,7 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
       {'icon': Icons.add, 'label': 'Top Up', 'color': Colors.blue, 'onTap': () => _showTopUpDialog(context)},
       {'icon': Icons.arrow_upward, 'label': 'Tarik', 'color': Colors.orange, 'onTap': () => _showWithdrawDialog(context)},
       {'icon': Icons.swap_horiz, 'label': 'Kirim', 'color': Colors.purple, 'onTap': () => _showTransferDialog(context)},
-      {'icon': Icons.qr_code_scanner, 'label': 'Scan', 'color': const Color(0xFFBF092F), 'onTap': () => _scanQr(context)},
+      {'icon': Icons.qr_code_scanner, 'label': 'Scan', 'color': const Color(0xFFD70677), 'onTap': () => _scanQr(context)},
       {'icon': Icons.qr_code, 'label': 'Minta', 'color': Colors.teal, 'onTap': () => _showReceiveDialog(context)},
       {'icon': Icons.more_horiz, 'label': 'Lainnya', 'color': Colors.grey, 'onTap': () {}},
     ];
@@ -236,9 +242,9 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
              indicator: BoxDecoration(
                color: const Color(0xFFFFF1F2),
                borderRadius: BorderRadius.circular(12),
-               border: Border.all(color: const Color(0xFFBF092F).withOpacity(0.3))
+               border: Border.all(color: const Color(0xFFD70677).withOpacity(0.3))
              ),
-             labelColor: const Color(0xFFBF092F),
+             labelColor: const Color(0xFFD70677),
              unselectedLabelColor: Colors.grey[500],
              labelStyle: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 13),
              dividerColor: Colors.transparent,
@@ -378,38 +384,87 @@ class _WalletScreenState extends State<WalletScreen> with SingleTickerProviderSt
   }
 
   void _showReceiveDialog(BuildContext context) {
-    // Show QR Code needed for others to scan (Mockup)
     showDialog(
       context: context,
       builder: (_) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         child: Padding(
           padding: const EdgeInsets.all(24),
-          child: Column(
-             mainAxisSize: MainAxisSize.min,
-             children: [
-               Text('Terima Pembayaran', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold)),
-               const SizedBox(height: 24),
-               Container(
-                 width: 200, height: 200,
-                 color: Colors.grey[200],
-                 child: Center(
-                   child: Icon(Icons.qr_code_2, size: 150, color: Colors.black), // Placeholder for real QR
-                 ),
-               ),
-               const SizedBox(height: 16),
-               Text('Scan QR ini untuk membayar ke toko ini', textAlign: TextAlign.center, style: GoogleFonts.outfit(color: Colors.grey)),
-               const SizedBox(height: 24),
-               FilledButton.icon(
-                 onPressed: () => Navigator.pop(context),
-                 icon: const Icon(Icons.share),
-                 label: const Text('Bagikan QR'),
-                 style: FilledButton.styleFrom(
-                   backgroundColor: const Color(0xFFBF092F),
-                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
-                 ),
-               )
-             ],
+          child: FutureBuilder<Map<String, String>>(
+            future: ApiService().getSystemSettings(),
+            builder: (context, snapshot) {
+              final settings = snapshot.data ?? {};
+              final qrisUrl = (settings['PLATFORM_QRIS_URL'] ?? '').trim();
+
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('Terima Pembayaran',
+                      style: GoogleFonts.outfit(
+                          fontSize: 18, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 24),
+                  if (snapshot.connectionState == ConnectionState.waiting)
+                    const SizedBox(
+                      width: 200,
+                      height: 200,
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  else if (qrisUrl.isNotEmpty)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.network(
+                        qrisUrl,
+                        width: 200,
+                        height: 200,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          width: 200,
+                          height: 200,
+                          color: Colors.grey[200],
+                          child: const Center(
+                            child: Icon(Icons.qr_code_2,
+                                size: 150, color: Colors.black),
+                          ),
+                        ),
+                      ),
+                    )
+                  else
+                    Container(
+                      width: 200,
+                      height: 200,
+                      color: Colors.grey[200],
+                      child: const Center(
+                        child:
+                            Icon(Icons.qr_code_2, size: 150, color: Colors.black),
+                      ),
+                    ),
+                  const SizedBox(height: 16),
+                  Text(
+                    qrisUrl.isNotEmpty
+                        ? 'Scan QRIS ini untuk membayar'
+                        : 'QRIS belum tersedia. Hubungi admin.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.outfit(color: Colors.grey),
+                  ),
+                  const SizedBox(height: 24),
+                  FilledButton.icon(
+                    onPressed: () async {
+                      if (qrisUrl.isNotEmpty) {
+                        await Share.share(qrisUrl);
+                      }
+                      if (context.mounted) Navigator.pop(context);
+                    },
+                    icon: const Icon(Icons.share),
+                    label: const Text('Bagikan'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFFD70677),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ),
+                  )
+                ],
+              );
+            },
           ),
         ),
       )
@@ -474,10 +529,14 @@ class __TopUpSheetState extends State<_TopUpSheet> {
     if (_amountCtrl.text.isEmpty || _imageFile == null) return;
     setState(() => _isSubmitting = true);
     try {
-      await Provider.of<WalletProvider>(context, listen: false).topUp(double.parse(_amountCtrl.text), _imageFile!);
+      await Provider.of<WalletProvider>(context, listen: false)
+          .topUp(double.parse(_amountCtrl.text), _imageFile!);
+      if (!context.mounted) return;
       Navigator.pop(context);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal: $e')));
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Gagal: $e')));
     } finally {
       if(mounted) setState(() => _isSubmitting = false);
     }
@@ -498,7 +557,7 @@ class __TopUpSheetState extends State<_TopUpSheet> {
             decoration: BoxDecoration(color: const Color(0xFFFFF1F2), borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFFFECDD3))),
             child: Row(
                children: [
-                 const CircleAvatar(backgroundColor: Color(0xFFBF092F), child: Icon(Icons.account_balance, color: Colors.white)),
+                 const CircleAvatar(backgroundColor: Color(0xFFD70677), child: Icon(Icons.account_balance, color: Colors.white)),
                  const SizedBox(width: 16),
                  Expanded(
                    child: Column(
@@ -509,7 +568,7 @@ class __TopUpSheetState extends State<_TopUpSheet> {
                      ],
                    ),
                  ),
-                 IconButton(icon: const Icon(Icons.copy, color: Color(0xFFBF092F)), onPressed: (){})
+                 IconButton(icon: const Icon(Icons.copy, color: Color(0xFFD70677)), onPressed: (){})
                ],
             ),
           ),
@@ -535,7 +594,7 @@ class __TopUpSheetState extends State<_TopUpSheet> {
             ),
           ),
           const SizedBox(height: 24),
-          SizedBox(width: double.infinity, child: FilledButton(onPressed: _isSubmitting ? null : _submit, style: FilledButton.styleFrom(backgroundColor: const Color(0xFFBF092F), padding: const EdgeInsets.all(16)), child: _isSubmitting ? const CircularProgressIndicator(color: Colors.white) : const Text('Kirim Pengajuan'))),
+          SizedBox(width: double.infinity, child: FilledButton(onPressed: _isSubmitting ? null : _submit, style: FilledButton.styleFrom(backgroundColor: const Color(0xFFD70677), padding: const EdgeInsets.all(16)), child: _isSubmitting ? const CircularProgressIndicator(color: Colors.white) : const Text('Kirim Pengajuan'))),
           const SizedBox(height: 24),
         ],
       ),
@@ -559,9 +618,12 @@ class __TransferSheetState extends State<_TransferSheet> {
       if (_amountCtrl.text.isEmpty || _storeIdCtrl.text.isEmpty) return;
       setState(() => _isSubmitting = true);
       try {
-        await Provider.of<WalletProvider>(context, listen: false).transfer(_storeIdCtrl.text, double.parse(_amountCtrl.text), _noteCtrl.text);
+        await Provider.of<WalletProvider>(context, listen: false).transfer(
+            _storeIdCtrl.text, double.parse(_amountCtrl.text), _noteCtrl.text);
+        if (!context.mounted) return;
         Navigator.pop(context); // Close sheet on success
       } catch (e) {
+        if (!context.mounted) return;
         // Show Modal Error as requested
         showDialog(
           context: context, 
@@ -570,7 +632,7 @@ class __TransferSheetState extends State<_TransferSheet> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             title: Row(
               children: [
-                const Icon(Icons.error_outline, color: Color(0xFFBF092F)),
+                const Icon(Icons.error_outline, color: Color(0xFFD70677)),
                 const SizedBox(width: 10),
                 Text('Transer Gagal', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 18))
               ],
@@ -582,7 +644,7 @@ class __TransferSheetState extends State<_TransferSheet> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx), 
-                child: Text('OK', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: const Color(0xFFBF092F)))
+                child: Text('OK', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: const Color(0xFFD70677)))
               )
             ],
           )
@@ -608,7 +670,7 @@ class __TransferSheetState extends State<_TransferSheet> {
              const SizedBox(height: 16),
              TextField(controller: _noteCtrl, decoration: const InputDecoration(labelText: 'Catatan')),
              const SizedBox(height: 24),
-             SizedBox(width: double.infinity, child: FilledButton(onPressed: _isSubmitting ? null : _submit, style: FilledButton.styleFrom(backgroundColor: const Color(0xFFBF092F), padding: const EdgeInsets.all(16)), child: _isSubmitting ? const CircularProgressIndicator(color: Colors.white) : const Text('Transfer Sekarang'))),
+             SizedBox(width: double.infinity, child: FilledButton(onPressed: _isSubmitting ? null : _submit, style: FilledButton.styleFrom(backgroundColor: const Color(0xFFD70677), padding: const EdgeInsets.all(16)), child: _isSubmitting ? const CircularProgressIndicator(color: Colors.white) : const Text('Transfer Sekarang'))),
              const SizedBox(height: 24)
           ],
         ),
@@ -632,10 +694,14 @@ class __WithdrawSheetState extends State<_WithdrawSheet> {
     if (_amountCtrl.text.isEmpty) return;
     setState(() => _isSubmitting = true);
     try {
-      await Provider.of<WalletProvider>(context, listen: false).withdraw(double.parse(_amountCtrl.text), _bankCtrl.text, _accountCtrl.text);
+      await Provider.of<WalletProvider>(context, listen: false).withdraw(
+          double.parse(_amountCtrl.text), _bankCtrl.text, _accountCtrl.text);
+      if (!context.mounted) return;
       Navigator.pop(context);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal: $e')));
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Gagal: $e')));
     } finally {
       if(mounted) setState(() => _isSubmitting = false);
     }
@@ -657,7 +723,7 @@ class __WithdrawSheetState extends State<_WithdrawSheet> {
             const SizedBox(height: 16),
             TextField(controller: _accountCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Nomor Rekening')),
             const SizedBox(height: 24),
-            SizedBox(width: double.infinity, child: FilledButton(onPressed: _isSubmitting ? null : _submit, style: FilledButton.styleFrom(backgroundColor: const Color(0xFFBF092F), padding: const EdgeInsets.all(16)), child: _isSubmitting ? const CircularProgressIndicator() : const Text('Ajukan Penarikan'))),
+            SizedBox(width: double.infinity, child: FilledButton(onPressed: _isSubmitting ? null : _submit, style: FilledButton.styleFrom(backgroundColor: const Color(0xFFD70677), padding: const EdgeInsets.all(16)), child: _isSubmitting ? const CircularProgressIndicator() : const Text('Ajukan Penarikan'))),
             const SizedBox(height: 24),
         ],
       ),

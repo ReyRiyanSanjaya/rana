@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:rana_market/data/market_api_service.dart';
-import 'package:rana_market/providers/auth_provider.dart';
-import 'package:rana_market/screens/login_screen.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -13,80 +10,59 @@ class NotificationsScreen extends StatefulWidget {
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
   bool _loading = true;
-  List<dynamic> _items = [];
+  List<Map<String, dynamic>> _items = [];
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final auth = Provider.of<AuthProvider>(context, listen: false);
-      if (auth.isAuthenticated) _load();
-      if (!auth.isAuthenticated && mounted) setState(() => _loading = false);
-    });
+    _load();
   }
 
   Future<void> _load() async {
-    final list = await MarketApiService().getNotifications();
-    if (mounted) {
-      setState(() {
-        _items = list;
-        _loading = false;
+    setState(() => _loading = true);
+    final api = MarketApiService();
+    final anns = await api.getAnnouncements();
+    final notifs = await api.getNotifications();
+
+    final merged = <Map<String, dynamic>>[];
+    for (final a in anns.whereType<Map>()) {
+      final m = Map<String, dynamic>.from(a);
+      merged.add({
+        'title': m['title'] ?? '-',
+        'message': m['content'] ?? m['message'] ?? '',
+        'createdAt': m['createdAt'],
+        'source': 'ANNOUNCEMENT',
       });
     }
+    for (final n in notifs.whereType<Map>()) {
+      final m = Map<String, dynamic>.from(n);
+      merged.add({
+        'title': m['title'] ?? '-',
+        'message': m['message'] ?? m['body'] ?? '',
+        'createdAt': m['createdAt'],
+        'source': 'NOTIFICATION',
+      });
+    }
+
+    merged.sort((a, b) {
+      final ad = a['createdAt'];
+      final bd = b['createdAt'];
+      final at = (ad is String) ? DateTime.tryParse(ad) : (ad is DateTime ? ad : null);
+      final bt = (bd is String) ? DateTime.tryParse(bd) : (bd is DateTime ? bd : null);
+      final av = at?.millisecondsSinceEpoch ?? 0;
+      final bv = bt?.millisecondsSinceEpoch ?? 0;
+      return bv.compareTo(av);
+    });
+
+    if (!mounted) return;
+    setState(() {
+      _items = merged;
+      _loading = false;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final auth = Provider.of<AuthProvider>(context);
-    if (!auth.isAuthenticated) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Notifikasi')),
-        body: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.notifications, size: 72, color: Colors.grey),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Masuk untuk melihat notifikasi',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Notifikasi transaksi dan promo tersimpan di akun kamu.',
-                    style: TextStyle(color: Colors.grey),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 24),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: () async {
-                        final ok = await Navigator.push<bool>(
-                          context,
-                          MaterialPageRoute(builder: (_) => const LoginScreen()),
-                        );
-                        if (ok == true && context.mounted) {
-                          setState(() => _loading = true);
-                          await _load();
-                        }
-                      },
-                      child: const Text('Masuk'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
     return Scaffold(
       appBar: AppBar(title: const Text('Notifikasi')),
       body: RefreshIndicator(
@@ -110,8 +86,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12)),
                         tileColor: Colors.white,
-                        title: Text(n['title'] ?? '-'),
-                        subtitle: Text(n['message'] ?? ''),
+                        title: Text((n['title'] ?? '-').toString()),
+                        subtitle: Text((n['message'] ?? '').toString()),
                       );
                     },
                   ),

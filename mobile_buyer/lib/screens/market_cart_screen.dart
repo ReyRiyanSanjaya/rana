@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:rana_market/providers/market_cart_provider.dart';
 import 'package:rana_market/screens/payment_screen.dart'; // [NEW]
 import 'package:rana_market/providers/orders_provider.dart';
-import 'package:rana_market/providers/auth_provider.dart';
-import 'package:rana_market/screens/login_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class MarketCartScreen extends StatefulWidget {
@@ -18,6 +17,29 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
   final _nameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedContact();
+  }
+
+  Future<void> _loadSavedContact() async {
+    final prefs = await SharedPreferences.getInstance();
+    final name = prefs.getString('buyer_name') ?? '';
+    final phone = prefs.getString('buyer_phone') ?? '';
+    if (!mounted) return;
+    if (_nameCtrl.text.isEmpty && name.trim().isNotEmpty) _nameCtrl.text = name;
+    if (_phoneCtrl.text.isEmpty && phone.trim().isNotEmpty) {
+      _phoneCtrl.text = phone;
+    }
+  }
+
+  Future<void> _saveContact({required String name, required String phone}) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('buyer_name', name);
+    await prefs.setString('buyer_phone', phone);
+  }
 
   Future<void> _openStoreMaps(MarketCartProvider cart) async {
     final lat = cart.activeStoreLat;
@@ -153,30 +175,6 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
                           onPressed: _isLoading
                               ? null
                               : () async {
-                                  final auth = Provider.of<AuthProvider>(
-                                      context,
-                                      listen: false);
-                                  if (!auth.isAuthenticated) {
-                                    final ok = await Navigator.push<bool>(
-                                      context,
-                                      MaterialPageRoute(
-                                          builder: (_) => const LoginScreen()),
-                                    );
-                                    if (ok != true || !context.mounted) return;
-                                    final refreshedAuth =
-                                        Provider.of<AuthProvider>(context,
-                                            listen: false);
-                                    if (_nameCtrl.text.isEmpty) {
-                                      _nameCtrl.text =
-                                          (refreshedAuth.user?['name'] ?? '')
-                                              .toString();
-                                    }
-                                    if (_phoneCtrl.text.isEmpty) {
-                                      _phoneCtrl.text =
-                                          (refreshedAuth.user?['phone'] ?? '')
-                                              .toString();
-                                    }
-                                  }
                                   // Validation
                                   if (_nameCtrl.text.isEmpty ||
                                       _phoneCtrl.text.isEmpty) {
@@ -189,6 +187,10 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
 
                                   setState(() => _isLoading = true);
                                   try {
+                                    await _saveContact(
+                                      name: _nameCtrl.text.trim(),
+                                      phone: _phoneCtrl.text.trim(),
+                                    );
                                     final storeName = cart.activeStoreName;
                                     final storeAddress =
                                         cart.activeStoreAddress;

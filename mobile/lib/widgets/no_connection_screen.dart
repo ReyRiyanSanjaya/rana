@@ -17,17 +17,9 @@ class NoConnectionScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Lottie Animation for No Connection
-              // Using a network URL as placeholder. If offline, it might fail, so we wrap.
-              // Ideally this involves a local asset like 'assets/lottie/no_internet.json'
               SizedBox(
                 height: 200,
-                child: Lottie.network(
-                  'https://lottie.host/99037c86-1383-42e7-9c60-8f96e8d25d1e/8xZ8X9X9.json', // Example placeholder URL
-                  errorBuilder: (context, error, stackTrace) {
-                    return const Icon(Icons.wifi_off, size: 100, color: Colors.indigo);
-                  },
-                ),
+                child: Lottie.asset('assets/lottie/empty_store.json'),
               ),
               const SizedBox(height: 24),
               Text(

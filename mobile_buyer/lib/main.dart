@@ -11,6 +11,9 @@ import 'package:rana_market/providers/favorites_provider.dart';
 import 'package:rana_market/providers/search_history_provider.dart';
 import 'package:rana_market/providers/reviews_provider.dart';
 
+const Color kBrandColor = Color(0xFFD70677);
+const Color kBeigeBackground = Color(0xFFFFF5EC);
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await NotificationService().init();
@@ -37,27 +40,48 @@ class RanaMarketApp extends StatelessWidget {
         theme: ThemeData(
           useMaterial3: true,
           colorScheme: ColorScheme.fromSeed(
-            seedColor: const Color(0xFF10B981), // Emerald Green (GoFood-like)
-            primary: const Color(0xFF059669),
-            secondary: const Color(0xFFF59E0B), // Orange Accent
+            seedColor: kBrandColor,
+            primary: kBrandColor,
+            onPrimary: Colors.white,
+            secondary: kBrandColor,
             surface: Colors.white,
           ),
-          scaffoldBackgroundColor: const Color(0xFFF9FAFB),
-          textTheme: GoogleFonts.poppinsTextTheme(), // Friendly consumer font
+          scaffoldBackgroundColor: kBeigeBackground,
+          textTheme: GoogleFonts.poppinsTextTheme(),
           appBarTheme: const AppBarTheme(
-              backgroundColor: Colors.white,
-              elevation: 0,
-              centerTitle: false,
-              titleTextStyle: TextStyle(
-                  color: Colors.black,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold)),
+            backgroundColor: kBrandColor,
+            elevation: 0,
+            centerTitle: false,
+            foregroundColor: Colors.white,
+            iconTheme: IconThemeData(color: Colors.white),
+            titleTextStyle: TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           cardTheme: CardThemeData(
             elevation: 0,
             shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: BorderSide(color: Colors.grey.shade200)),
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: kBrandColor.withOpacity(0.1)),
+            ),
             color: Colors.white,
+          ),
+          navigationBarTheme: const NavigationBarThemeData(
+            backgroundColor: Colors.white,
+            indicatorColor: kBrandColor,
+            iconTheme: WidgetStatePropertyAll(
+              IconThemeData(color: kBrandColor),
+            ),
+            labelTextStyle: WidgetStatePropertyAll(
+              TextStyle(color: kBrandColor, fontWeight: FontWeight.w600),
+            ),
+          ),
+          dividerColor: kBrandColor,
+          dividerTheme: const DividerThemeData(
+            color: kBrandColor,
+            thickness: 1,
           ),
         ),
         home: Consumer<AuthProvider>(

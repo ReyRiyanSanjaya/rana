@@ -22,7 +22,7 @@ const getNearbyStores = async (req, res) => {
         // Note: Prisma returns BigInt for some counts, handled by JSON.stringify usually.
         // We select stores and distance
         const stores = await prisma.$queryRaw`
-            SELECT id, name, address, "category", "latitude", "longitude",
+            SELECT id, name, "location" AS address, "category", "latitude", "longitude", "imageUrl",
             (
                 6371 * acos(
                     cos(radians(${userLat})) * cos(radians("latitude")) *
@@ -49,9 +49,9 @@ const getNearbyStores = async (req, res) => {
         const result = [];
         for (const store of stores) {
             const products = await prisma.product.findMany({
-                where: { storeId: store.id, isDeleted: false },
+                where: { storeId: store.id, isActive: true },
                 take: 3,
-                select: { id: true, name: true, sellingPrice: true }
+                select: { id: true, name: true, sellingPrice: true, imageUrl: true, description: true }
             });
             result.push({
                 ...store,

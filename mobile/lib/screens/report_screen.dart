@@ -153,7 +153,7 @@ class _ReportScreenState extends State<ReportScreen> {
                 slivers: [
                   SliverAppBar(
                     pinned: true,
-                    backgroundColor: const Color(0xFFBF092F), // Red Brand
+                    backgroundColor: const Color(0xFFD70677),
                     iconTheme: const IconThemeData(color: Colors.white),
                     title: const Text('Laporan Bisnis', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
                     actions: [
@@ -190,7 +190,7 @@ class _ReportScreenState extends State<ReportScreen> {
                        background: Container(
                          decoration: const BoxDecoration(
                            gradient: LinearGradient(
-                             colors: [Color(0xFF9F0013), Color(0xFFBF092F), Color(0xFFE11D48)],
+                             colors: [Color(0xFF9F0013), Color(0xFFD70677), Color(0xFFE11D48)],
                              begin: Alignment.topCenter,
                              end: Alignment.bottomCenter
                            )

@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:rana_market/data/market_api_service.dart';
-import 'package:rana_market/providers/auth_provider.dart';
-import 'package:rana_market/screens/login_screen.dart';
 import 'package:rana_market/screens/order_detail_screen.dart';
 
 class PaymentScreen extends StatefulWidget {
@@ -44,14 +41,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   Future<void> _confirmPayment() async {
-    final auth = Provider.of<AuthProvider>(context, listen: false);
-    if (!auth.isAuthenticated) {
-      final ok = await Navigator.push<bool>(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-      );
-      if (ok != true || !context.mounted) return;
-    }
     setState(() => _isLoading = true);
     try {
       // Logic for File Upload would go here.

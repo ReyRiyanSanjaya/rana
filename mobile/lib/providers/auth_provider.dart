@@ -15,9 +15,9 @@ class AuthProvider extends ChangeNotifier {
   String? _token;
   String? get token => _token;
 
-  Future<void> login(String email, String password) async {
+  Future<void> login(String phone, String password) async {
     try {
-      final response = await _api.login(email: email, password: password);
+      final response = await _api.login(phone: phone, password: password);
       // Backend returns { token, user: {...} }
       // We also now expect user to have storeId
       if (response['status'] == 'success') { 
@@ -49,6 +49,22 @@ class AuthProvider extends ChangeNotifier {
       } catch (e) {
          debugPrint('Initial Sync Warning: $e');
       }
+
+      try {
+        final profile = await _api.getProfile();
+        _currentUser = profile;
+        final tenantId = (profile['tenantId'] ?? profile['id'])?.toString();
+        if (tenantId != null && tenantId.isNotEmpty) {
+          await DatabaseHelper.instance.upsertTenant({
+            'id': tenantId,
+            'businessName': profile['businessName']?.toString(),
+            'email': profile['email']?.toString(),
+            'phone': (profile['waNumber'] ?? profile['phone'])?.toString(),
+            'address': profile['address']?.toString(),
+          });
+        }
+        notifyListeners();
+      } catch (_) {}
     } catch (e) {
       rethrow;
     }
@@ -64,6 +80,16 @@ class AuthProvider extends ChangeNotifier {
           try {
              final profile = await _api.getProfile();
              _currentUser = profile;
+             final tenantId = (profile['tenantId'] ?? profile['id'])?.toString();
+             if (tenantId != null && tenantId.isNotEmpty) {
+               await DatabaseHelper.instance.upsertTenant({
+                 'id': tenantId,
+                 'businessName': profile['businessName']?.toString(),
+                 'email': profile['email']?.toString(),
+                 'phone': (profile['waNumber'] ?? profile['phone'])?.toString(),
+                 'address': profile['address']?.toString(),
+               });
+             }
              _isAuthenticated = true;
              notifyListeners();
              await _api.syncAllData(); // background sync
@@ -74,7 +100,7 @@ class AuthProvider extends ChangeNotifier {
       }
   }
 
-  void logout() async {
+  Future<void> logout() async {
     _isAuthenticated = false;
     _currentUser = null;
     _token = null;

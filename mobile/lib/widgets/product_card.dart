@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_animate/flutter_animate.dart'; // [NEW]
 import 'package:rana_merchant/constants.dart';
@@ -36,171 +37,77 @@ class ProductCard extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(24), // Softer corners
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF64748B)
-                  .withValues(alpha: 20), // Softer shadow color
-              blurRadius: 16,
-              offset: const Offset(0, 8),
-            ),
-          ],
+          borderRadius: BorderRadius.circular(20), // Slightly reduced for stroke look
           border: Border.all(
-              color: quantity > 0
-                  ? const Color(0xFFBF092F)
-                  : Colors.transparent, // Only show border if selected
-              width: 2),
+            color: quantity > 0 
+              ? const Color(0xFF4F46E5) // Primary Indigo
+              : Colors.grey.shade200, // Soft Grey Stroke
+            width: quantity > 0 ? 2 : 1.5,
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image / Placeholder Area
             Expanded(
               flex: 4,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
                   Container(
-                    decoration: const BoxDecoration(
-                      borderRadius:
-                          BorderRadius.vertical(top: Radius.circular(24)),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(18)), // Match outer - border width
                     ),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        Container(
-                          decoration: const BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [Color(0xFFF1F5F9), Color(0xFFE2E8F0)],
-                            ),
-                            borderRadius:
-                                BorderRadius.vertical(top: Radius.circular(24)),
-                          ),
-                        ),
-                        if (imageUrl != null)
-                          ClipRRect(
-                            borderRadius: const BorderRadius.vertical(
-                                top: Radius.circular(24)),
-                            child: Image.network(
-                              imageUrl,
+                    child: hasImage 
+                      ? ClipRRect(
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+                          child: Image.network(
+                              imageUrl!,
                               fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Center(
-                                  child: Text(
-                                    initial,
-                                    style: const TextStyle(
-                                      fontSize: 40,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFFCBD5E1),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          )
-                        else
-                          Center(
-                            child: Text(
-                              initial,
-                              style: const TextStyle(
-                                  fontSize: 40,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFFCBD5E1)),
-                            ),
+                              errorBuilder: (_,__,___) => Center(child: Text(initial, style: GoogleFonts.poppins(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.grey.shade300)))
                           ),
-                      ],
-                    ),
+                        )
+                      : Center(
+                          child: Text(initial, style: GoogleFonts.poppins(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.grey.shade300))
+                        ),
                   ),
-                  // Optional: Simple pattern or noise could go here
-
-                  // Stock Badge
-                  Positioned(
-                    top: 12,
-                    right: 12,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 230),
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                                color: Colors.black.withValues(alpha: 13),
-                                blurRadius: 4)
-                          ]),
-                      child: Text(
-                        'Stok: ${product['stock']}',
-                        style: const TextStyle(
-                            color: Color(0xFF64748B),
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-
-                  // Quantity Indicator (Animated)
                   if (quantity > 0)
                     Positioned(
-                      bottom: 12,
-                      right: 12,
+                      right: 8,
+                      top: 8,
                       child: Container(
-                        width: 32,
-                        height: 32,
-                        decoration: const BoxDecoration(
-                            color: Color(0xFFBF092F), // Red Primary
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                  color: Color(0x66BF092F),
-                                  blurRadius: 8,
-                                  offset: Offset(0, 4))
-                            ]),
-                        child: Center(
-                          child: Text('$quantity',
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold)),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF4F46E5),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                      )
-                          .animate()
-                          .scale(duration: 200.ms, curve: Curves.easeOutBack),
-                    )
+                        child: Text(
+                          "${quantity}x",
+                          style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                        ),
+                      ).animate().scale(duration: 200.ms),
+                    ),
                 ],
               ),
             ),
-
-            // Info Area
             Expanded(
-              flex: 3,
+              flex: 2,
               child: Padding(
-                padding: const EdgeInsets.all(16.0),
+                padding: const EdgeInsets.all(12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.end,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      product['name'],
-                      maxLines: 2,
+                      productName,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontFamily: 'Poppins',
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                        color: Color(0xFF0F172A), // Slate 900
-                        height: 1.2,
-                      ),
+                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 14, color: Colors.grey.shade800),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      currency.format(product['sellingPrice']),
-                      style: const TextStyle(
-                        fontFamily: 'Poppins',
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: Color(0xFFBF092F), // Red 500
-                      ),
+                      currency.format(product['sellingPrice'] ?? 0),
+                      style: GoogleFonts.poppins(color: const Color(0xFF4F46E5), fontWeight: FontWeight.bold, fontSize: 14),
                     ),
                   ],
                 ),
@@ -208,8 +115,7 @@ class ProductCard extends StatelessWidget {
             ),
           ],
         ),
-      ).animate().fadeIn(duration: 400.ms).slideY(
-          begin: 0.1, end: 0, curve: Curves.easeOutQuad), // Entrance Animation
+      ),
     );
   }
 }

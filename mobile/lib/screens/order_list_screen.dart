@@ -51,15 +51,14 @@ class _OrderListScreenState extends State<OrderListScreen> with SingleTickerProv
   }
 
   List<dynamic> _getOrdersByStatus(String tab) {
-    if (tab == 'Baru') {
+    if (tab == 'Masuk') {
       return _orders.where((o) => o['orderStatus'] == 'PENDING').toList();
     }
     if (tab == 'Disiapkan') {
-       // PROCESSED means being prepared
-       return _orders.where((o) => o['orderStatus'] == 'PROCESSED').toList();
+       return _orders.where((o) => o['orderStatus'] == 'ACCEPTED').toList();
     }
     if (tab == 'Siap Ambil') {
-      return _orders.where((o) => o['orderStatus'] == 'READY_TO_PICKUP').toList();
+      return _orders.where((o) => o['orderStatus'] == 'READY').toList();
     }
     if (tab == 'Selesai') {
       return _orders.where((o) => o['orderStatus'] == 'COMPLETED').toList();
@@ -105,6 +104,8 @@ class _OrderListScreenState extends State<OrderListScreen> with SingleTickerProv
     return Scaffold(
       appBar: AppBar(
         title: Text('Daftar Pesanan (Pickup)', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+        backgroundColor: const Color(0xFFD70677),
+        foregroundColor: Colors.white,
         elevation: 0,
         actions: [
           IconButton(
@@ -114,11 +115,11 @@ class _OrderListScreenState extends State<OrderListScreen> with SingleTickerProv
         ],
         bottom: TabBar(
           controller: _tabController,
-          labelColor: Colors.blue.shade900,
+          labelColor: const Color(0xFFD70677),
           unselectedLabelColor: Colors.grey,
           isScrollable: true,
           labelStyle: GoogleFonts.poppins(fontWeight: FontWeight.bold),
-          indicatorColor: Colors.blue.shade900,
+          indicatorColor: const Color(0xFFD70677),
           tabs: const [
             Tab(text: 'Masuk'),
             Tab(text: 'Disiapkan'),
@@ -137,7 +138,7 @@ class _OrderListScreenState extends State<OrderListScreen> with SingleTickerProv
           : TabBarView(
             controller: _tabController,
             children: [
-              _buildOrderList('Baru'),
+              _buildOrderList('Masuk'),
               _buildOrderList('Disiapkan'),
               _buildOrderList('Siap Ambil'),
               _buildOrderList('Selesai'),
@@ -201,8 +202,8 @@ class _OrderCard extends StatelessWidget {
     String displayStatus = status;
 
     if (status == 'PENDING') { statusColor = Colors.blue; displayStatus = 'BARU'; }
-    if (status == 'PROCESSED') { statusColor = Colors.orange; displayStatus = 'DISIPAKAN'; }
-    if (status == 'READY_TO_PICKUP') { statusColor = Colors.green; displayStatus = 'SIAP AMBIL'; }
+    if (status == 'ACCEPTED') { statusColor = Colors.orange; displayStatus = 'DISIAPKAN'; }
+    if (status == 'READY') { statusColor = Colors.green; displayStatus = 'SIAP AMBIL'; }
     if (status == 'COMPLETED') { statusColor = Colors.grey; displayStatus = 'SELESAI'; }
 
     // Safe access to items
@@ -233,7 +234,7 @@ class _OrderCard extends StatelessWidget {
             // Customer
             Row(
               children: [
-                const CircleAvatar(child: Icon(Icons.person, color: Colors.white), radius: 20, backgroundColor: Colors.blueGrey),
+                const CircleAvatar(child: Icon(Icons.person, color: Colors.white), radius: 20, backgroundColor: Color(0xFFD70677)),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -267,10 +268,10 @@ class _OrderCard extends StatelessWidget {
                 );
               }).toList(),
             ),
-            const Divider(),
+            const Divider(color: Color(0xFFD70677)),
             Align(
               alignment: Alignment.centerRight,
-              child: Text("Total: ${fmtPrice.format(order['totalAmount'] ?? 0)}", style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.blue.shade900)),
+              child: Text("Total: ${fmtPrice.format(order['totalAmount'] ?? 0)}", style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFFD70677))),
             ),
             const SizedBox(height: 16),
 
@@ -279,25 +280,25 @@ class _OrderCard extends StatelessWidget {
                SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  onPressed: () => onUpdateStatus('PROCESSED'), 
+                  onPressed: () => onUpdateStatus('ACCEPTED'), 
                   icon: const Icon(Icons.soup_kitchen),
                   label: const Text('Siapkan Pesanan'),
-                  style: FilledButton.styleFrom(backgroundColor: Colors.blue.shade700)
+                  style: FilledButton.styleFrom(backgroundColor: const Color(0xFFD70677))
                 ),
               ),
 
-            if (status == 'PROCESSED')
+            if (status == 'ACCEPTED')
                SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  onPressed: () => onUpdateStatus('READY_TO_PICKUP'), 
+                  onPressed: () => onUpdateStatus('READY'), 
                   icon: const Icon(Icons.check_circle_outline),
                   label: const Text('Selesai Disiapkan'),
                   style: FilledButton.styleFrom(backgroundColor: Colors.orange.shade700)
                 ),
               ),
 
-            if (status == 'READY_TO_PICKUP')
+            if (status == 'READY')
                SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
@@ -308,7 +309,7 @@ class _OrderCard extends StatelessWidget {
                 ),
               ),
             
-            if (status == 'READY_TO_PICKUP')
+            if (status == 'READY')
                Padding(
                  padding: const EdgeInsets.only(top: 8),
                  child: Center(child: Text('Tunggu konsumen datang dan scan QR mereka.', style: TextStyle(color: Colors.grey.shade600, fontSize: 12, fontStyle: FontStyle.italic))),

@@ -45,7 +45,7 @@ class _BlogListScreenState extends State<BlogListScreen> {
         iconTheme: const IconThemeData(color: Color(0xFF1E293B)),
       ),
       body: _isLoading 
-        ? const Center(child: CircularProgressIndicator(color: Color(0xFFBF092F)))
+        ? const Center(child: CircularProgressIndicator(color: Color(0xFFD70677)))
         : _posts.isEmpty
           ? Center(child: Text('Belum ada berita', style: GoogleFonts.poppins(color: Colors.grey)))
           : ListView.separated(
@@ -95,7 +95,7 @@ class _BlogListScreenState extends State<BlogListScreen> {
                        decoration: BoxDecoration(color: Colors.white.withOpacity(0.9), borderRadius: BorderRadius.circular(12)),
                        child: Text(
                          post['tags']?.isNotEmpty == true ? post['tags'][0].toUpperCase() : 'NEWS',
-                         style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: const Color(0xFFBF092F)),
+                         style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: const Color(0xFFD70677)),
                        ),
                      ),
                    )
@@ -129,9 +129,9 @@ class _BlogListScreenState extends State<BlogListScreen> {
                         style: GoogleFonts.inter(fontSize: 12, color: Colors.grey[500], fontWeight: FontWeight.w500)
                       ),
                       const Spacer(),
-                      Text('Baca Selengkapnya', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: const Color(0xFFBF092F))),
+                      Text('Baca Selengkapnya', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: const Color(0xFFD70677))),
                       const SizedBox(width: 4),
-                      const Icon(Icons.arrow_forward, size: 14, color: Color(0xFFBF092F))
+                      const Icon(Icons.arrow_forward, size: 14, color: Color(0xFFD70677))
                     ],
                   )
                 ],

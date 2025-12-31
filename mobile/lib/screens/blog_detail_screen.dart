@@ -33,9 +33,6 @@ class BlogDetailScreen extends StatelessWidget {
                     ),
                   ).animate().fadeIn().slideY(begin: 0.2, end: 0),
                   const SizedBox(height: 24),
-                  // Content Body
-                  // Since we probably get HTML or Markdown, but for now assuming plain text or simple HTML logic could be added later.
-                  // Displaying summary + content if available, or just summary for now as placeholder for full content.
                   Text(
                     post['content'] ?? post['summary'] ?? 'No content available.',
                     style: GoogleFonts.sourceSerif4( // Detailed reading font

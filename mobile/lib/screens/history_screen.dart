@@ -97,7 +97,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   SliverAppBar _buildSliverAppBar() {
     return SliverAppBar(
       pinned: true,
-      backgroundColor: const Color(0xFFBF092F),
+      backgroundColor: const Color(0xFFD70677),
       iconTheme: const IconThemeData(color: Colors.white),
       title: const Text('Riwayat Transaksi', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
       centerTitle: true,
@@ -105,7 +105,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
         background: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [Color(0xFF9F0013), Color(0xFFBF092F), Color(0xFFE11D48)],
+              colors: [Color(0xFF9F0013), Color(0xFFD70677), Color(0xFFE11D48)],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter
             )

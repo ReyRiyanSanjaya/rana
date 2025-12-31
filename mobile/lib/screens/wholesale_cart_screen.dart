@@ -22,7 +22,7 @@ class WholesaleCartScreen extends StatelessWidget {
         title: Text('Keranjang Belanja',
             style: GoogleFonts.poppins(
                 fontWeight: FontWeight.bold, color: Colors.white)),
-        backgroundColor: Colors.blue.shade800,
+        backgroundColor: const Color(0xFFD70677),
         iconTheme: const IconThemeData(color: Colors.white),
         elevation: 0,
         actions: [
@@ -33,8 +33,7 @@ class WholesaleCartScreen extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                    builder: (context) => const WholesaleOrderListScreen(
-                        tenantId: 'demo-tenant-id')),
+                    builder: (context) => const WholesaleOrderListScreen()),
               );
             },
           ),
@@ -98,7 +97,19 @@ class WholesaleCartScreen extends StatelessWidget {
                             decoration: BoxDecoration(
                                 color: Colors.grey.shade200,
                                 borderRadius: BorderRadius.circular(8)),
-                            child: const Icon(Icons.image, color: Colors.grey),
+                            child: item.image.isNotEmpty
+                                ? ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Image.network(
+                                      item.image,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => const Icon(
+                                        Icons.image,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                  )
+                                : const Icon(Icons.image, color: Colors.grey),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
@@ -197,7 +208,7 @@ class WholesaleCartScreen extends StatelessWidget {
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(color: Colors.white, boxShadow: [
                     BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: Colors.black.withValues(alpha: 13),
                         blurRadius: 10,
                         offset: const Offset(0, -5))
                   ]),
@@ -226,7 +237,7 @@ class WholesaleCartScreen extends StatelessWidget {
                                       const WholesaleCheckoutScreen())),
                           style: FilledButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 16),
-                              backgroundColor: Colors.blue.shade800),
+                              backgroundColor: const Color(0xFFD70677)),
                           child: const Text('Lanjut ke Pembayaran',
                               style: TextStyle(fontWeight: FontWeight.bold)),
                         ),

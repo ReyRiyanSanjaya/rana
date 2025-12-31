@@ -218,10 +218,18 @@ class DatabaseHelper {
   // [NEW] Clear ALL data on Logout
   Future<void> clearAllData() async {
     final db = await instance.database;
+    await db.delete('tenants');
     await db.delete('products');
     await db.delete('transactions');
     await db.delete('transaction_items');
     await db.delete('expenses');
+  }
+
+  Future<void> upsertTenant(Map<String, dynamic> data) async {
+    final db = await instance.database;
+    if (!data.containsKey('id') || data['id'] == null) return;
+    await db.insert('tenants', data,
+        conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<List<Map<String, dynamic>>> getAllProducts() async {

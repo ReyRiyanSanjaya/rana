@@ -53,14 +53,14 @@ class _ScanScreenState extends State<ScanScreen> {
       appBar: AppBar(
         title: const Text('Scan QR Pickup',
             style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-        backgroundColor: const Color(0xFFBF092F),
+        backgroundColor: const Color(0xFFD70677),
         iconTheme: const IconThemeData(color: Colors.white),
         centerTitle: true,
         flexibleSpace: Container(
           decoration: const BoxDecoration(
               gradient: LinearGradient(colors: [
             Color(0xFF9F0013),
-            Color(0xFFBF092F),
+            Color(0xFFD70677),
             Color(0xFFE11D48)
           ], begin: Alignment.topCenter, end: Alignment.bottomCenter)),
         ),

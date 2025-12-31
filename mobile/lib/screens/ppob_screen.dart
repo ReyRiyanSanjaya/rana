@@ -19,7 +19,6 @@ class _PpobScreenState extends State<PpobScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
-  // Mock Data
   final List<Map<String, dynamic>> _services = [
     {'icon': Icons.phone_android, 'label': 'Pulsa', 'color': Colors.redAccent},
     {'icon': Icons.wifi, 'label': 'Paket Data', 'color': Colors.blueAccent},
@@ -219,67 +218,6 @@ class _PpobScreenState extends State<PpobScreen>
               );
             },
           ).animate().fade(duration: 600.ms).scale(),
-
-          const SizedBox(height: 24),
-
-          // 3. Promo Banner Carousel (Static for now)
-          Text('Promo Spesial',
-              style: GoogleFonts.poppins(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF1E293B))),
-          const SizedBox(height: 16),
-          SizedBox(
-            height: 140,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: [
-                _buildPromoCard(
-                    Colors.blue, 'Diskon Pulsa', 'Potongan 5rb all operator'),
-                _buildPromoCard(
-                    Colors.orange, 'Token PLN', 'Cashback 2% Token Listrik'),
-                _buildPromoCard(
-                    Colors.green, 'Bayar BPJS', 'Bebas admin bulan ini'),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPromoCard(Color color, String title, String subtitle) {
-    return Container(
-      width: 260,
-      margin: const EdgeInsets.only(right: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.3))),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-                color: color, borderRadius: BorderRadius.circular(8)),
-            child: Text('PROMO',
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold)),
-          ),
-          const SizedBox(height: 8),
-          Text(title,
-              style: GoogleFonts.poppins(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: color.withOpacity(0.8))),
-          Text(subtitle,
-              style:
-                  GoogleFonts.poppins(fontSize: 12, color: Colors.grey[600])),
         ],
       ),
     );

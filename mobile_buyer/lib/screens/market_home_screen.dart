@@ -21,8 +21,11 @@ class MarketHomeScreen extends StatefulWidget {
 class _MarketHomeScreenState extends State<MarketHomeScreen> {
   String _address = 'Mencari Lokasi...';
   List<dynamic> _nearbyStores = [];
+  List<Map<String, dynamic>> _announcements = [];
   bool _isLoading = true;
+  bool _annLoading = true;
   String _selectedCategory = 'All'; 
+  List<String> _categories = const ['All'];
   final TextEditingController _searchCtrl = TextEditingController();
   String _query = '';
   Timer? _debounce;
@@ -30,7 +33,21 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
   @override
   void initState() {
     super.initState();
+    _loadAnnouncements();
     _initLocation();
+  }
+
+  Future<void> _loadAnnouncements() async {
+    final list = await MarketApiService().getAnnouncements();
+    final items = list
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
+    if (!mounted) return;
+    setState(() {
+      _announcements = items;
+      _annLoading = false;
+    });
   }
 
   Future<void> _initLocation() async {
@@ -57,10 +74,24 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
 
   Future<void> _fetchNearby(double lat, double long) async {
     final stores = await MarketApiService().getNearbyStores(lat, long);
+    final cats = _extractCategories(stores);
     setState(() {
       _nearbyStores = stores;
+      _categories = cats;
+      if (!_categories.contains(_selectedCategory)) _selectedCategory = 'All';
       _isLoading = false;
     });
+  }
+
+  List<String> _extractCategories(List<dynamic> stores) {
+    final set = <String>{};
+    for (final s in stores) {
+      if (s is! Map) continue;
+      final c = s['category']?.toString().trim();
+      if (c != null && c.isNotEmpty) set.add(c);
+    }
+    final list = set.toList()..sort();
+    return ['All', ...list];
   }
 
   @override
@@ -116,6 +147,8 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
       body: RefreshIndicator(
         onRefresh: () async {
           setState(() => _isLoading = true);
+          if (!_annLoading) setState(() => _annLoading = true);
+          await _loadAnnouncements();
           final permission = await Geolocator.checkPermission();
           if (permission == LocationPermission.whileInUse || permission == LocationPermission.always) {
             final pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
@@ -188,16 +221,21 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
             ),
             
             // Banner Carousel
-            SizedBox(
-              height: 150,
-              child: PageView(
-                children: [
-                  _buildBanner(Colors.green.shade100, 'Promo Spesial Hari Ini!', Colors.green.shade800),
-                  _buildBanner(Colors.orange.shade100, 'Diskon Ongkir s/d 10rb', Colors.orange.shade800),
-                  _buildBanner(Colors.blue.shade100, 'Flash Sale 50% Off', Colors.blue.shade800),
-                ],
+            if (_annLoading)
+              const SizedBox(
+                height: 150,
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (_announcements.isNotEmpty)
+              SizedBox(
+                height: 150,
+                child: PageView(
+                  children: [
+                    for (var i = 0; i < _announcements.length && i < 5; i++)
+                      _buildAnnouncementBanner(_announcements[i], i),
+                  ],
+                ),
               ),
-            ),
             
             const SizedBox(height: 24),
             const Padding(
@@ -209,7 +247,22 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
               height: 180,
               child: Consumer2<ReviewsProvider, SearchHistoryProvider>(
                 builder: (context, rev, hist, _) {
-                  final all = _nearbyStores.expand((s) => (s['products'] as List<dynamic>? ?? [])).toList();
+                  final all = <Map<String, dynamic>>[];
+                  for (final s in _nearbyStores) {
+                    if (s is! Map) continue;
+                    final prods = (s['products'] as List<dynamic>? ?? const []);
+                    for (final p in prods) {
+                      if (p is! Map) continue;
+                      final map = Map<String, dynamic>.from(p);
+                      map['__storeId'] = s['id'];
+                      map['__storeName'] = s['name'];
+                      map['__storeDistance'] = s['distance'];
+                      map['__storeAddress'] =
+                          (s['address'] ?? s['location'] ?? s['alamat'])
+                              ?.toString();
+                      all.add(map);
+                    }
+                  }
                   final lastQuery = (hist.history.isNotEmpty ? hist.history.first : '').toLowerCase();
                   all.sort((a, b) {
                     final ar = rev.getAverage(a['id']);
@@ -229,6 +282,13 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                     itemBuilder: (context, i) {
                       final p = list[i];
                       final avg = rev.getAverage(p['id']);
+                      final imageUrl = MarketApiService()
+                          .resolveFileUrl(p['imageUrl'] ?? p['image']);
+                      final dynamic distV = p['__storeDistance'];
+                      final distNum = (distV is num)
+                          ? distV.toDouble()
+                          : double.tryParse(distV?.toString() ?? '');
+                      final distText = distNum?.toStringAsFixed(1);
                       final lastQuery = Provider.of<SearchHistoryProvider>(context, listen: false).history.isNotEmpty
                           ? Provider.of<SearchHistoryProvider>(context, listen: false).history.first.toLowerCase()
                           : '';
@@ -245,12 +305,31 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Expanded(
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.grey.shade200,
-                                  borderRadius: const BorderRadius.vertical(top: Radius.circular(12))
-                                ),
-                                child: const Center(child: Icon(Icons.fastfood, size: 30, color: Colors.grey)),
+                              child: ClipRRect(
+                                borderRadius: const BorderRadius.vertical(
+                                    top: Radius.circular(12)),
+                                child: imageUrl.isEmpty
+                                    ? Container(
+                                        color: Colors.grey.shade200,
+                                        child: const Center(
+                                            child: Icon(Icons.fastfood,
+                                                size: 30,
+                                                color: Colors.grey)),
+                                      )
+                                    : Image.network(
+                                        imageUrl,
+                                        fit: BoxFit.cover,
+                                        errorBuilder:
+                                            (context, error, stackTrace) {
+                                          return Container(
+                                            color: Colors.grey.shade200,
+                                            child: const Center(
+                                                child: Icon(Icons.fastfood,
+                                                    size: 30,
+                                                    color: Colors.grey)),
+                                          );
+                                        },
+                                      ),
                               ),
                             ),
                             Padding(
@@ -265,6 +344,19 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                                       Text(avg.toStringAsFixed(1), style: const TextStyle(fontSize: 12)),
                                     ],
                                   ),
+                                  if (distText != null)
+                                    Row(
+                                      children: [
+                                        Icon(Icons.place,
+                                            size: 14,
+                                            color: Colors.grey.shade500),
+                                        const SizedBox(width: 2),
+                                        Text('$distText km',
+                                            style: TextStyle(
+                                                fontSize: 11,
+                                                color: Colors.grey.shade600)),
+                                      ],
+                                    ),
                                   if (match)
                                     Container(
                                       margin: const EdgeInsets.only(top: 4),
@@ -285,31 +377,35 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
             ),
             
             // Categories
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: Text('Kategori', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 90,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                children: [
-                  _buildCategoryItem(Icons.store, 'Semua', Colors.grey, isSelected: _selectedCategory == 'All'),
-                  const SizedBox(width: 16),
-                  _buildCategoryItem(Icons.local_pharmacy, 'Apotik', Colors.green, isSelected: _selectedCategory == 'Apotik'),
-                  const SizedBox(width: 16),
-                  _buildCategoryItem(Icons.lunch_dining, 'Kedai Makanan', Colors.orange, isSelected: _selectedCategory == 'Kedai Makanan'),
-                  const SizedBox(width: 16),
-                  _buildCategoryItem(Icons.shopping_bag, 'Toko Baju', Colors.purple, isSelected: _selectedCategory == 'Toko Baju'),
-                  const SizedBox(width: 16),
-                  _buildCategoryItem(Icons.phone_android, 'Outlet Ponsel', Colors.blue, isSelected: _selectedCategory == 'Outlet Ponsel'),
-                   const SizedBox(width: 16),
-                  _buildCategoryItem(Icons.storefront, 'Kelontong', Colors.brown, isSelected: _selectedCategory == 'Kelontong'),
-                ],
+            if (_categories.length > 1) ...[
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: Text('Kategori',
+                    style:
+                        TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
               ),
-            ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 90,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: _categories.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 16),
+                  itemBuilder: (context, index) {
+                    final cat = _categories[index];
+                    final label = cat == 'All' ? 'Semua' : cat;
+                    return _buildCategoryItem(
+                      _iconForCategory(cat),
+                      label,
+                      _colorForCategory(cat),
+                      category: cat,
+                      isSelected: _selectedCategory == cat,
+                    );
+                  },
+                ),
+              ),
+            ],
             
             const SizedBox(height: 24),
             
@@ -342,7 +438,11 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                    return const SizedBox.shrink(); 
                 }
                 
-                final dist = (store['distance'] as num?)?.toStringAsFixed(1) ?? '0.0';
+                final dynamic distV = store['distance'];
+                final distNum = (distV is num)
+                    ? distV.toDouble()
+                    : double.tryParse(distV?.toString() ?? '');
+                final dist = distNum?.toStringAsFixed(1) ?? '-';
                 final prods = store['products'] as List<dynamic>? ?? [];
                 final filtered = _query.isEmpty 
                     ? prods 
@@ -350,6 +450,9 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                 if (_query.isNotEmpty && filtered.isEmpty) {
                   return const SizedBox.shrink();
                 }
+                final storeAddr = (store['address'] ?? store['location'] ?? store['alamat'])?.toString() ?? '-';
+                final storeImageUrl = MarketApiService().resolveFileUrl(
+                    store['imageUrl'] ?? store['storeImageUrl'] ?? store['image']);
                 
                 return Card(
                   margin: const EdgeInsets.only(bottom: 24),
@@ -370,7 +473,18 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                             Container(
                               width: 40, height: 40,
                               decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(8)),
-                              child: const Icon(Icons.store, color: Colors.grey),
+                              child: storeImageUrl.isEmpty
+                                  ? const Icon(Icons.store, color: Colors.grey)
+                                  : ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Image.network(
+                                        storeImageUrl,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) {
+                                          return const Icon(Icons.store, color: Colors.grey);
+                                        },
+                                      ),
+                                    ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -378,7 +492,7 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(store['name'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                                  Text('${store['address']} • $dist km', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                                  Text(storeAddr, style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
                                 ],
                               ),
                             ),
@@ -391,12 +505,33 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                                   child: Text(store['category'], style: TextStyle(color: Colors.indigo.shade800, fontSize: 10, fontWeight: FontWeight.bold)),
                                 ),
                                 const SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    Icon(Icons.star, size: 14, color: Colors.orange.shade400),
-                                    const Text(' 4.8 ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                                  ],
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                      color: Colors.grey.shade100,
+                                      borderRadius: BorderRadius.circular(4)),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.place,
+                                          size: 12,
+                                          color: Colors.grey.shade700),
+                                      const SizedBox(width: 4),
+                                      Text('$dist km',
+                                          style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.grey.shade700)),
+                                    ],
+                                  ),
                                 ),
+                                const SizedBox(height: 4),
+                                Text('${prods.length} produk',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                        color: Colors.grey.shade700)),
                                 const SizedBox(height: 8),
                                 TextButton(
                                   onPressed: () {
@@ -427,6 +562,8 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                                 builder: (context, fav, rev, _) {
                                   final isFav = fav.isFavorite(p['id']);
                                   final avg = rev.getAverage(p['id']);
+                                  final imageUrl = MarketApiService()
+                                      .resolveFileUrl(p['imageUrl'] ?? p['image']);
                                   return GestureDetector(
                                     onTap: () {
                                       Navigator.push(
@@ -454,12 +591,43 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                                             crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
                                               Expanded(
-                                                child: Container(
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.grey.shade200,
-                                                    borderRadius: const BorderRadius.vertical(top: Radius.circular(8))
-                                                  ),
-                                                  child: const Center(child: Icon(Icons.fastfood, size: 30, color: Colors.grey)),
+                                                child: ClipRRect(
+                                                  borderRadius:
+                                                      const BorderRadius
+                                                          .vertical(
+                                                          top: Radius.circular(
+                                                              8)),
+                                                  child: imageUrl.isEmpty
+                                                      ? Container(
+                                                          color: Colors
+                                                              .grey.shade200,
+                                                          child: const Center(
+                                                              child: Icon(
+                                                                  Icons
+                                                                      .fastfood,
+                                                                  size: 30,
+                                                                  color: Colors
+                                                                      .grey)),
+                                                        )
+                                                      : Image.network(
+                                                          imageUrl,
+                                                          fit: BoxFit.cover,
+                                                          errorBuilder: (context,
+                                                              error,
+                                                              stackTrace) {
+                                                            return Container(
+                                                              color: Colors.grey
+                                                                  .shade200,
+                                                              child: const Center(
+                                                                  child: Icon(
+                                                                      Icons
+                                                                          .fastfood,
+                                                                      size: 30,
+                                                                      color: Colors
+                                                                          .grey)),
+                                                            );
+                                                          },
+                                                        ),
                                                 ),
                                               ),
                                               Padding(
@@ -514,20 +682,78 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
     );
   }
 
-  Widget _buildBanner(Color bg, String text, Color textCol) {
+  Widget _buildAnnouncementBanner(Map<String, dynamic> a, int index) {
+    final palette = <Color>[
+      Colors.blue.shade100,
+      Colors.orange.shade100,
+      Colors.green.shade100,
+      Colors.purple.shade100,
+      Colors.red.shade100,
+    ];
+    final bg = palette[index % palette.length];
+    final title = (a['title'] ?? a['name'] ?? '-').toString();
+    final subtitle = (a['content'] ?? a['message'] ?? '').toString();
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(16),
       ),
-      child: Center(child: Text(text, style: TextStyle(color: textCol, fontWeight: FontWeight.bold, fontSize: 18))),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold, fontSize: 18)),
+            if (subtitle.trim().isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(subtitle,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: Colors.grey.shade800)),
+            ],
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _buildCategoryItem(IconData icon, String label, Color color, {bool isSelected = false}) {
+  IconData _iconForCategory(String category) {
+    final c = category.toLowerCase();
+    if (c == 'all') return Icons.store;
+    if (c.contains('apotik') || c.contains('pharmacy')) return Icons.local_pharmacy;
+    if (c.contains('makan') || c.contains('resto') || c.contains('kedai')) return Icons.lunch_dining;
+    if (c.contains('baju') || c.contains('fashion')) return Icons.shopping_bag;
+    if (c.contains('ponsel') || c.contains('phone') || c.contains('hp')) return Icons.phone_android;
+    if (c.contains('kelontong') || c.contains('grocery')) return Icons.storefront;
+    return Icons.category;
+  }
+
+  Color _colorForCategory(String category) {
+    final c = category.toLowerCase();
+    if (c == 'all') return Colors.grey;
+    if (c.contains('apotik') || c.contains('pharmacy')) return Colors.green;
+    if (c.contains('makan') || c.contains('resto') || c.contains('kedai')) return Colors.orange;
+    if (c.contains('baju') || c.contains('fashion')) return Colors.purple;
+    if (c.contains('ponsel') || c.contains('phone') || c.contains('hp')) return Colors.blue;
+    if (c.contains('kelontong') || c.contains('grocery')) return Colors.brown;
+    return Colors.indigo;
+  }
+
+  Widget _buildCategoryItem(IconData icon, String label, Color color, {required String category, bool isSelected = false}) {
     return GestureDetector(
-      onTap: () => setState(() => _selectedCategory = isSelected ? 'All' : (label == 'Semua' ? 'All' : label)),
+      onTap: () => setState(() {
+        if (category != 'All' && isSelected) {
+          _selectedCategory = 'All';
+        } else {
+          _selectedCategory = category;
+        }
+      }),
       child: Column(
         children: [
           Container(

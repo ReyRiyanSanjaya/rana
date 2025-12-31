@@ -23,6 +23,11 @@ class CartProvider extends ChangeNotifier {
 
   double _discount = 0.0;
   double _taxRate = 0.0; // 0.1 for 10%
+  String? _customerName;
+  String? _notes;
+
+  String? get customerName => _customerName;
+  String? get notes => _notes;
 
   double get subtotal {
     var total = 0.0;
@@ -50,6 +55,18 @@ class CartProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setCustomerName(String? name) {
+    final normalized = name?.trim();
+    _customerName = (normalized == null || normalized.isEmpty) ? null : normalized;
+    notifyListeners();
+  }
+
+  void setNotes(String? value) {
+    final normalized = value?.trim();
+    _notes = (normalized == null || normalized.isEmpty) ? null : normalized;
+    notifyListeners();
+  }
+
   void addItem(String productId, String name, double price) {
     if (_items.containsKey(productId)) {
       _items.update(
@@ -74,6 +91,8 @@ class CartProvider extends ChangeNotifier {
     _items.clear();
     _discount = 0;
     _taxRate = 0;
+    _customerName = null;
+    _notes = null;
     notifyListeners();
   }
 
@@ -148,8 +167,8 @@ class CartProvider extends ChangeNotifier {
       // New Fields for UMKM Features
       'paymentMethod': paymentMethod, // CASH, QRIS, KASBON
       // 'customerId' removed as it doesn't exist in local DB schema yet
-      'customerName': customerName, // For Kasbon/Struk
-      'notes': notes
+      'customerName': (customerName ?? _customerName), // For Kasbon/Struk
+      'notes': (notes ?? _notes)
     };
 
     // 2. Prepare Items

@@ -41,10 +41,12 @@ import 'package:rana_merchant/screens/notification_screen.dart'; // [NEW]
 import 'package:rana_merchant/screens/blog_detail_screen.dart'; // [NEW]
 import 'package:rana_merchant/screens/blog_list_screen.dart'; // [NEW]
 import 'package:rana_merchant/screens/subscription_pending_screen.dart'; // [NEW] Lock Screen
+import 'package:rana_merchant/screens/login_screen.dart';
 import 'dart:async'; // For Timer
 import 'package:flutter/services.dart';
 import 'package:rana_merchant/screens/flash_sales_screen.dart';
 import 'package:rana_merchant/screens/promo_hub_screen.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -58,6 +60,8 @@ class _HomeScreenState extends State<HomeScreen> {
   bool isLoading = true;
   String _selectedCategory = 'All';
   int _bottomNavIndex = 0;
+  String? _storeName;
+  String? _storeContact;
   final List<GlobalKey<NavigatorState>> _tabNavigatorKeys =
       List.generate(5, (_) => GlobalKey<NavigatorState>());
   final ScrollController _scrollController =
@@ -159,6 +163,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _loadProducts();
     _loadInsight();
+    _loadStoreInfo();
     _appMenusFuture = ApiService().fetchAppMenus();
     // [NEW] Load Wallet Data for Home Card
     Future.microtask(() => context.read<WalletProvider>().loadData());
@@ -168,18 +173,21 @@ class _HomeScreenState extends State<HomeScreen> {
       final sub = Provider.of<SubscriptionProvider>(context, listen: false);
       try {
         await sub.codeCheckSubscription();
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(
-                'Debug: Status is ${sub.status.toString().split('.').last} (Locked: ${sub.isLocked})'),
-            backgroundColor: sub.isLocked ? Colors.red : Colors.green,
-            duration: const Duration(seconds: 3),
-          ));
+        if (kDebugMode && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                  'Status: ${sub.status.toString().split('.').last} (Locked: ${sub.isLocked})'),
+              backgroundColor: sub.isLocked ? Colors.red : Colors.green,
+              duration: const Duration(seconds: 2),
+            ),
+          );
         }
       } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text('Debug Error: $e'), backgroundColor: Colors.red));
+        if (kDebugMode && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error cek langganan: $e')),
+          );
         }
       }
 
@@ -202,6 +210,17 @@ class _HomeScreenState extends State<HomeScreen> {
         await SyncService().syncTransactions();
       }
     });
+  }
+
+  Future<void> _loadStoreInfo() async {
+    try {
+      final tenant = await DatabaseHelper.instance.getTenantInfo();
+      if (!mounted) return;
+      setState(() {
+        _storeName = tenant?['businessName']?.toString();
+        _storeContact = (tenant?['email'] ?? tenant?['phone'])?.toString();
+      });
+    } catch (_) {}
   }
 
   @override
@@ -584,45 +603,72 @@ class _HomeScreenState extends State<HomeScreen> {
                         rootBuilder: (_) => const SettingsScreen()),
                   ],
                 ),
-                bottomNavigationBar: NavigationBar(
-                  selectedIndex: _bottomNavIndex,
-                  onDestinationSelected: (idx) {
-                    if (idx == _bottomNavIndex) {
-                      _tabNavigatorKeys[idx]
-                          .currentState
-                          ?.popUntil((r) => r.isFirst);
-                      return;
-                    }
-                    setState(() => _bottomNavIndex = idx);
-                  },
-                  backgroundColor: Colors.white,
-                  indicatorColor: Colors.indigo.shade100,
-                  destinations: const [
-                    NavigationDestination(
-                        icon: Icon(Icons.home_outlined),
-                        selectedIcon: Icon(Icons.home_filled),
-                        label: 'Beranda'),
-                    NavigationDestination(
-                        icon: Icon(Icons.history_outlined),
-                        selectedIcon: Icon(Icons.history),
-                        label: 'Transaksi'),
-                    NavigationDestination(
-                        icon: Icon(Icons.qr_code_scanner_rounded),
-                        label: 'Scan'),
-                    NavigationDestination(
-                        icon: Icon(Icons.bar_chart_outlined),
-                        selectedIcon: Icon(Icons.bar_chart),
-                        label: 'Laporan'),
-                    NavigationDestination(
-                        icon: Icon(Icons.person_outline),
-                        selectedIcon: Icon(Icons.person),
-                        label: 'Akun'),
-                  ],
+                bottomNavigationBar: Container(
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, -4),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildNavItem(0, Icons.home, 'Beranda'),
+                      _buildNavItem(1, Icons.history, 'Transaksi'),
+                      _buildNavItem(2, Icons.qr_code_scanner, 'Scan'),
+                      _buildNavItem(3, Icons.bar_chart, 'Laporan'),
+                      _buildNavItem(4, Icons.person, 'Akun'),
+                    ],
+                  ),
                 ),
               ),
             );
           }
         },
+      ),
+    );
+  }
+
+  Widget _buildNavItem(int index, IconData icon, String label) {
+    final isSelected = _bottomNavIndex == index;
+    final color = isSelected ? const Color(0xFFD70677) : const Color(0xFFD70677).withOpacity(0.5);
+
+    return InkWell(
+      onTap: () {
+        if (index == _bottomNavIndex) {
+          _tabNavigatorKeys[index].currentState?.popUntil((r) => r.isFirst);
+          return;
+        }
+        setState(() => _bottomNavIndex = index);
+      },
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: color, size: 26)
+              .animate(target: isSelected ? 1 : 0)
+              .scale(
+                begin: const Offset(1, 1),
+                end: const Offset(1.2, 1.2),
+                duration: 200.ms,
+                curve: Curves.easeOutBack,
+              )
+              .then()
+              .shimmer(duration: 1200.ms, delay: 2000.ms),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: GoogleFonts.poppins(
+              color: color,
+              fontSize: 12,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            ),
+          ).animate().fadeIn(duration: 300.ms),
+        ],
       ),
     );
   }
@@ -709,10 +755,14 @@ class _HomeScreenState extends State<HomeScreen> {
   // [FIXED] Sticky Sliver AppBar - Updated
   // [UPDATED] Animated Sliver AppBar without Search - Red Theme
   Widget _buildSliverAppBar(BuildContext context) {
+    final titleName =
+        (_storeName != null && _storeName!.trim().isNotEmpty)
+            ? _storeName!.trim()
+            : 'Toko';
     return SliverAppBar(
       expandedHeight: 140, // Slightly taller for better effect
       pinned: true,
-      backgroundColor: const Color(0xFFBF092F), // Red Brand
+      backgroundColor: const Color(0xFFD70677), // Red Brand
       stretch: true, // Enable stretch effect
       // [NEW] Fixed Title and Actions so they don't scroll away
       centerTitle: false,
@@ -721,7 +771,7 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           Text('Selamat Pagi,',
               style: GoogleFonts.outfit(color: Colors.white70, fontSize: 12)),
-          Text('Rana Store',
+          Text(titleName,
               style: GoogleFonts.outfit(
                   color: Colors.white,
                   fontSize: 20,
@@ -744,7 +794,7 @@ class _HomeScreenState extends State<HomeScreen> {
             onTap: () => _switchTab(4),
             child: const CircleAvatar(
                 backgroundColor: Colors.white,
-                child: Icon(Icons.person, color: Color(0xFFBF092F)))),
+                child: Icon(Icons.person, color: Color(0xFFD70677)))),
         const SizedBox(width: 16),
       ],
       flexibleSpace: FlexibleSpaceBar(
@@ -760,7 +810,7 @@ class _HomeScreenState extends State<HomeScreen> {
               decoration: const BoxDecoration(
                   gradient: LinearGradient(colors: [
                 Color(0xFF9F0013),
-                Color(0xFFBF092F),
+                Color(0xFFD70677),
                 Color(0xFFE11D48)
               ], begin: Alignment.topCenter, end: Alignment.bottomCenter)),
             ),
@@ -841,12 +891,12 @@ class _HomeScreenState extends State<HomeScreen> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
         gradient: const LinearGradient(
-            colors: [Color(0xFFBF092F), Color(0xFFE11D48)],
+            colors: [Color(0xFFD70677), Color(0xFFE11D48)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight),
         boxShadow: [
           BoxShadow(
-              color: const Color(0xFFBF092F).withOpacity(0.3),
+              color: const Color(0xFFD70677).withOpacity(0.3),
               blurRadius: 20,
               offset: const Offset(0, 10))
         ],
@@ -1069,6 +1119,15 @@ class _HomeScreenState extends State<HomeScreen> {
                     return;
                   }
                   final screen = _getScreen(route);
+                  
+                  // [FIX] Use root navigator for Kulakan to hide main bottom bar
+                  if (route == '/kulakan') {
+                    Navigator.of(context, rootNavigator: true).push(
+                      MaterialPageRoute(builder: (_) => screen)
+                    );
+                    return;
+                  }
+
                   Navigator.push(
                       context, MaterialPageRoute(builder: (_) => screen));
                 },
@@ -1115,13 +1174,21 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // [NEW] Drawer for Mobile Navigation
   Widget _buildDrawer(BuildContext context) {
+    final titleName =
+        (_storeName != null && _storeName!.trim().isNotEmpty)
+            ? _storeName!.trim()
+            : 'Rana Merchant';
+    final subtitle =
+        (_storeContact != null && _storeContact!.trim().isNotEmpty)
+            ? _storeContact!.trim()
+            : '-';
     return Drawer(
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
           UserAccountsDrawerHeader(
-            accountName: const Text('Rana Merchant'),
-            accountEmail: const Text('store@rana.id'),
+            accountName: Text(titleName),
+            accountEmail: Text(subtitle),
             currentAccountPicture: const CircleAvatar(
                 backgroundColor: Colors.white,
                 child: Icon(Icons.store, color: Color(0xFF1E293B))),
@@ -1282,7 +1349,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: GoogleFonts.inter(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
-                          color: const Color(0xFFBF092F))))
+                          color: const Color(0xFFD70677))))
             ],
           ),
         ),
@@ -1295,8 +1362,8 @@ class _HomeScreenState extends State<HomeScreen> {
               return const SizedBox.shrink();
 
             final posts = snapshot.data!;
-            return SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1608,7 +1675,7 @@ class _HomeScreenState extends State<HomeScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       decoration: const BoxDecoration(
           gradient: LinearGradient(
-              colors: [Color(0xFF9F0013), Color(0xFFBF092F)],
+              colors: [Color(0xFF9F0013), Color(0xFFD70677)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight)),
       child: SafeArea(
@@ -1685,7 +1752,15 @@ class _HomeScreenState extends State<HomeScreen> {
               tooltip: 'Keranjang',
             ),
             IconButton(
-              onPressed: () {}, // Logout placeholder
+              onPressed: () async {
+                final auth = context.read<AuthProvider>();
+                await auth.logout();
+                if (!context.mounted) return;
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  (_) => false,
+                );
+              },
               icon: const Icon(Icons.logout, color: Colors.white),
               tooltip: 'Logout',
             )
@@ -1714,7 +1789,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     fontWeight:
                         isSelected ? FontWeight.bold : FontWeight.normal),
                 backgroundColor:
-                    isSelected ? const Color(0xFFBF092F) : Colors.grey[100],
+                    isSelected ? const Color(0xFFD70677) : Colors.grey[100],
                 side: BorderSide.none,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20)),
@@ -1786,13 +1861,13 @@ class _HomeScreenState extends State<HomeScreen> {
               Row(
                 children: [
                   const Icon(Icons.shopping_cart_outlined,
-                      color: Color(0xFFBF092F)),
+                      color: Color(0xFFD70677)),
                   const SizedBox(width: 8),
                   const Text('Keranjang Belanja',
                       style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFFBF092F))),
+                          color: Color(0xFFD70677))),
                 ],
               ),
               Container(
@@ -1803,7 +1878,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     borderRadius: BorderRadius.circular(12)), // Light Red
                 child: Text('${cart.itemCount} Items',
                     style: const TextStyle(
-                        color: Color(0xFFBF092F),
+                        color: Color(0xFFD70677),
                         fontSize: 12,
                         fontWeight: FontWeight.bold)),
               )
@@ -1815,7 +1890,36 @@ class _HomeScreenState extends State<HomeScreen> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           child: InkWell(
-            onTap: () {}, // TODO: Open Customer Modal
+            onTap: () async {
+              final controller =
+                  TextEditingController(text: cart.customerName ?? '');
+              final result = await showDialog<String?>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Pelanggan'),
+                  content: TextField(
+                    controller: controller,
+                    decoration: const InputDecoration(
+                      labelText: 'Nama pelanggan (opsional)',
+                    ),
+                    textInputAction: TextInputAction.done,
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, null),
+                      child: const Text('Umum'),
+                    ),
+                    FilledButton(
+                      onPressed: () =>
+                          Navigator.pop(ctx, controller.text.trim()),
+                      child: const Text('Simpan'),
+                    ),
+                  ],
+                ),
+              );
+              if (!mounted) return;
+              cart.setCustomerName(result);
+            },
             borderRadius: BorderRadius.circular(12),
             child: Container(
               padding: const EdgeInsets.all(12),
@@ -1827,9 +1931,15 @@ class _HomeScreenState extends State<HomeScreen> {
                   const Icon(Icons.person_outline,
                       color: Colors.grey, size: 20),
                   const SizedBox(width: 12),
-                  const Expanded(
-                      child: Text('Pilih Pelanggan (Umum)',
-                          style: TextStyle(color: Colors.grey))),
+                  Expanded(
+                    child: Text(
+                      cart.customerName == null
+                          ? 'Pelanggan: Umum'
+                          : 'Pelanggan: ${cart.customerName}',
+                      style: const TextStyle(color: Colors.grey),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                   const Icon(Icons.add, color: Colors.grey, size: 20),
                 ],
               ),
@@ -2002,7 +2112,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: FilledButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         backgroundColor:
-                            const Color(0xFFBF092F), // [FIX] Red Brand
+                            const Color(0xFFD70677), // [FIX] Red Brand
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12)),
                       ),

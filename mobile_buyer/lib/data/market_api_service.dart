@@ -23,6 +23,15 @@ class MarketApiService {
 
   Dio get dio => _dio;
 
+  String resolveFileUrl(dynamic value) {
+    final raw = value?.toString().trim() ?? '';
+    if (raw.isEmpty) return '';
+    if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
+    final base = _baseUrl.endsWith('/api') ? _baseUrl.substring(0, _baseUrl.length - 4) : _baseUrl;
+    if (raw.startsWith('/')) return '$base$raw';
+    return '$base/$raw';
+  }
+
   bool _isSuccess(dynamic body) {
     if (body is! Map) return false;
     final dynamic success = body['success'];
@@ -202,10 +211,21 @@ class MarketApiService {
     }
   }
 
-  Future<List<dynamic>> getMyOrders({String? customerPhone}) async {
+  Future<List<dynamic>> getAnnouncements() async {
     try {
+      final response = await _dio.get('/system/announcements');
+      return response.data['data'] ?? [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<List<dynamic>> getMyOrders({String? phone}) async {
+    try {
+      final normalized = phone?.toString().trim();
+      if (normalized == null || normalized.isEmpty) return [];
       final response = await _dio.get('/market/orders', queryParameters: {
-        if (customerPhone != null) 'customerPhone': customerPhone
+        'phone': normalized
       });
       return response.data['data'] ?? [];
     } catch (e) {

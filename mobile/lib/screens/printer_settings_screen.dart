@@ -55,7 +55,7 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Perangkat & Printer', style: GoogleFonts.poppins(color: Colors.white)),
-        backgroundColor: const Color(0xFFBF092F),
+        backgroundColor: const Color(0xFFD70677),
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           if (isConnected)
@@ -90,7 +90,7 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                      onPressed: () => _printerService.printTest(), 
                      icon: const Icon(Icons.print), 
                      label: const Text("Tes Print"),
-                     style: FilledButton.styleFrom(backgroundColor: const Color(0xFFBF092F))
+                     style: FilledButton.styleFrom(backgroundColor: const Color(0xFFD70677))
                    )
                  ]
                ],

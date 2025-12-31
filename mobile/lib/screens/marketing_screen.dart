@@ -8,11 +8,10 @@ import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'package:flutter_animate/flutter_animate.dart'; // [NEW]
-import 'package:dio/dio.dart'; // [NEW]
-import '../constants.dart'; // [NEW]
 import 'package:provider/provider.dart'; // [NEW]
 import '../providers/auth_provider.dart'; // [NEW]
 import 'package:lottie/lottie.dart';
+import 'package:rana_merchant/data/remote/api_service.dart';
 
 class MarketingScreen extends StatefulWidget {
   const MarketingScreen({super.key});
@@ -25,6 +24,8 @@ class _MarketingScreenState extends State<MarketingScreen>
     with SingleTickerProviderStateMixin {
   List<Map<String, dynamic>> _products = [];
   String? _selectedProductId;
+  String? _storeName;
+  String? _storePhone;
   Map<String, dynamic>? get _selectedProduct {
     if (_selectedProductId == null) return null;
     try {
@@ -64,11 +65,33 @@ class _MarketingScreenState extends State<MarketingScreen>
     'Simple'
   ];
 
+  Future<void> _loadStoreInfo() async {
+    try {
+      final tenant = await DatabaseHelper.instance.getTenantInfo();
+      if (!mounted) return;
+      setState(() {
+        _storeName = tenant?['businessName']?.toString();
+        _storePhone = tenant?['phone']?.toString();
+      });
+    } catch (_) {}
+  }
+
+  String get _resolvedStoreName =>
+      (_storeName != null && _storeName!.trim().isNotEmpty)
+          ? _storeName!.trim()
+          : 'Toko';
+
+  String get _resolvedStorePhone =>
+      (_storePhone != null && _storePhone!.trim().isNotEmpty)
+          ? _storePhone!.trim()
+          : '';
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _resetLayout();
+    _loadStoreInfo();
     _loadProducts();
 
     // Auto-generate initial caption listener
@@ -987,7 +1010,7 @@ class _MarketingScreenState extends State<MarketingScreen>
                         const Icon(Icons.storefront,
                             color: Colors.white, size: 10),
                         const SizedBox(width: 4),
-                        Text("Rana Store",
+                        Text(_resolvedStoreName,
                             style: GoogleFonts.poppins(
                                 color: Colors.white,
                                 fontSize: 9,
@@ -998,7 +1021,7 @@ class _MarketingScreenState extends State<MarketingScreen>
                         const Icon(Icons.phone_android,
                             color: Colors.white, size: 10),
                         const SizedBox(width: 3),
-                        Text("0812-3456-7890",
+                        Text(_resolvedStorePhone.isEmpty ? '-' : _resolvedStorePhone,
                             style: GoogleFonts.poppins(
                                 color: Colors.white, fontSize: 9)),
                       ],
@@ -1018,20 +1041,25 @@ class _MarketingScreenState extends State<MarketingScreen>
     final price =
         NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0)
             .format(_selectedProduct!['sellingPrice']);
+    final store = _resolvedStoreName;
+    final phone = _resolvedStorePhone;
+    final storeLine = '📍 $store';
+    final phoneLine = phone.isEmpty ? '' : '📞 Order via WA: $phone';
+    final footer = [storeLine, if (phoneLine.isNotEmpty) phoneLine].join('\n');
 
     List<String> templates = [];
 
     switch (_selectedTemplate) {
       case 'Discount':
         templates = [
-          "🔥 DISKON SPESIAL HARI INI! 🔥\n\nDapatkan $name cuma seharga $price lho! Mumpung lagi promo, yuk borong sekarang sebelum kehabisan.\n\n📍 Rana Store\n📞 Order via WA: 0812-3456-7890",
+          "🔥 DISKON SPESIAL HARI INI! 🔥\n\nDapatkan $name cuma seharga $price lho! Mumpung lagi promo, yuk borong sekarang sebelum kehabisan.\n\n$footer",
           "Turun Harga! 📉\n\n$name favorit kamu lagi diskon nih. Cuma $price aja! Kapan lagi dapet harga segini?\n\nYuk order sekarang!",
         ];
         break;
       case 'New Arrival':
         templates = [
           "✨ BARANG BARU NIH! ✨\n\nHalo kak, kita baru aja restock $name nih. Harganya $price aja. Kualitas dijamin mantap!\n\nStok terbatas ya, siapa cepat dia dapat! 🏃‍♂️💨",
-          "Fresh from the oven! 🥐\n\n$name sudah tersedia di Rana Store. Yuk cobain sekarang, cuma $price!",
+          "Fresh from the oven! 🥐\n\n$name sudah tersedia di $store. Yuk cobain sekarang, cuma $price!",
         ];
         break;
       case 'Flash Sale':
@@ -1126,25 +1154,19 @@ class _MarketingScreenState extends State<MarketingScreen>
       // Get Token
       final token = Provider.of<AuthProvider>(context, listen: false).token;
       if (token == null) throw Exception("Not Authenticated");
+      ApiService().setToken(token);
 
       // Calculate promo end date
       final durationDays = int.tryParse(_durationController.text) ?? 7;
       final promoEndsAt = DateTime.now().add(Duration(days: durationDays));
 
-      // Direct Dio Call
-      final dio = Dio();
-      final url =
-          '${AppConstants.baseUrl}/api/products/$productId/apply-discount';
-
-      await dio.post(url,
-          data: {
-            "newPrice": newPrice,
-            "promoType":
-                _selectedTemplate == 'Flash Sale' ? 'flashsale' : 'discount',
-            "label": _captionController.text.split('\\n').first,
-            "durationDays": durationDays
-          },
-          options: Options(headers: {"Authorization": "Bearer $token"}));
+      await ApiService().applyDiscountToProduct(
+        productId,
+        newPrice,
+        _selectedTemplate == 'Flash Sale' ? 'flashsale' : 'discount',
+        _captionController.text.split('\\n').first,
+        durationDays,
+      );
 
       // [FIX] Also update local SQLite database
       final currentProduct = _selectedProduct!;

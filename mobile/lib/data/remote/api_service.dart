@@ -13,31 +13,70 @@ class ApiService {
   // CONFIGURATION
   // static const String _prodUrl = 'https://api.yourdomain.com/api';
   static const String _devUrl = 'http://10.0.2.2:4000/api';
-  static const String _webDevUrl = 'http://localhost:4000/api';
 
   // Set this to TRUE for production build
   static const bool _isProduction =
       bool.fromEnvironment('RANA_PROD', defaultValue: kReleaseMode);
 
-  final Dio _dio = Dio(BaseOptions(
-    baseUrl: _isProduction
-        ? 'https://api.rana-app.com/api' // Replace with real domain
-        : (kIsWeb ? _webDevUrl : _devUrl),
-    connectTimeout: const Duration(seconds: 30),
-    receiveTimeout: const Duration(seconds: 30),
-  ));
+  static const String _apiBaseUrlOverride =
+      String.fromEnvironment('API_BASE_URL', defaultValue: '');
+
+  late final Dio _dio;
 
   ApiService._internal() {
-    // [NEW] Add Logger
-    _dio.interceptors.add(LogInterceptor(
-        request: true,
-        requestHeader: true,
-        responseHeader: true,
-        responseBody: true,
-        error: true));
+    final resolvedBaseUrl = _resolveBaseUrl();
+    _dio = Dio(BaseOptions(
+      baseUrl: resolvedBaseUrl,
+      connectTimeout: const Duration(seconds: 30),
+      receiveTimeout: const Duration(seconds: 30),
+    ));
+
+    if (kDebugMode) {
+      _dio.interceptors.add(LogInterceptor(
+          request: true,
+          requestHeader: false,
+          responseHeader: false,
+          responseBody: true,
+          error: true));
+    }
   }
 
   Dio get dio => _dio;
+
+  String _resolveBaseUrl() {
+    final override = _apiBaseUrlOverride.trim();
+    if (override.isNotEmpty) return override;
+
+    if (_isProduction) return 'https://api.rana-app.com/api';
+
+    if (kIsWeb) {
+      final host = Uri.base.host;
+      if (host.isEmpty) return 'http://localhost:4000/api';
+      return 'http://$host:4000/api';
+    }
+
+    return _devUrl;
+  }
+
+  bool _isSuccess(dynamic body) {
+    if (body is! Map) return false;
+    final dynamic success = body['success'];
+    if (success is bool) return success;
+    final dynamic status = body['status'];
+    if (status is String) return status.toLowerCase() == 'success';
+    return false;
+  }
+
+  String _messageFromBody(dynamic body, {String fallback = 'Terjadi kesalahan'}) {
+    if (body is Map) {
+      final dynamic msg = body['message'];
+      if (msg is String && msg.trim().isNotEmpty) return msg;
+      final dynamic error = body['error'];
+      if (error is String && error.trim().isNotEmpty) return error;
+    }
+    if (body is String && body.trim().isNotEmpty) return body;
+    return fallback;
+  }
 
   String? _token;
   String? get token => _token; // [NEW] Getter
@@ -48,13 +87,23 @@ class ApiService {
         'Bearer $token'; // Set global header
   }
 
+  String _messageFromApiBody(dynamic body, {required String fallback}) {
+    if (body is Map) {
+      final msg = body['message'];
+      if (msg is String && msg.trim().isNotEmpty) return msg.trim();
+    }
+    return fallback;
+  }
+
   // --- Auth ---
   Future<void> register({
     required String businessName,
+    required String ownerName,
     required String email,
     required String password,
     required String waNumber,
     required String category, // [NEW]
+    String? storeImageBase64,
     double? lat,
     double? long,
     String? address,
@@ -62,10 +111,12 @@ class ApiService {
     try {
       final response = await _dio.post('/auth/register', data: {
         'businessName': businessName,
+        'ownerName': ownerName,
         'email': email,
         'password': password,
         'waNumber': waNumber,
         'category': category, // [NEW]
+        'storeImageBase64': storeImageBase64,
         'latitude': lat,
         'longitude': long,
         'address': address
@@ -74,16 +125,22 @@ class ApiService {
       if (response.data['status'] != 'success') {
         throw Exception(response.data['message']);
       }
-    } catch (e) {
-      throw Exception('Registration Failed: $e');
+    } on DioException catch (e) {
+      final message = _messageFromApiBody(
+        e.response?.data,
+        fallback: 'Registrasi gagal',
+      );
+      throw Exception(message);
+    } catch (_) {
+      throw Exception('Registrasi gagal');
     }
   }
 
   Future<dynamic> login(
-      {required String email, required String password}) async {
+      {required String phone, required String password}) async {
     try {
       final response = await _dio
-          .post('/auth/login', data: {'email': email, 'password': password});
+          .post('/auth/login', data: {'phone': phone, 'password': password});
       return response.data;
     } on DioException catch (e) {
       if (e.response?.statusCode == 401) {
@@ -102,7 +159,7 @@ class ApiService {
     try {
       final response = await _dio.get('/auth/me',
           options: Options(headers: {'Authorization': 'Bearer ${_token}'}));
-      if (response.data['status'] == 'success') {
+      if (_isSuccess(response.data)) {
         return response.data['data'];
       }
       throw Exception(response.data['message']);
@@ -115,6 +172,7 @@ class ApiService {
       {required String businessName,
       required String waNumber,
       required String address,
+      String? storeImageBase64,
       String? latitude,
       String? longitude}) async {
     try {
@@ -123,6 +181,7 @@ class ApiService {
             'businessName': businessName,
             'waNumber': waNumber,
             'address': address,
+            'storeImageBase64': storeImageBase64,
             'latitude': latitude,
             'longitude': longitude
           },
@@ -191,6 +250,29 @@ class ApiService {
     return response.data['data'];
   }
 
+  Future<void> applyDiscountToProduct(
+    String productId,
+    double newPrice,
+    String promoType,
+    String label,
+    int durationDays,
+  ) async {
+    final response = await _dio.post(
+      '/products/$productId/apply-discount',
+      data: {
+        'newPrice': newPrice,
+        'promoType': promoType,
+        'label': label,
+        'durationDays': durationDays,
+      },
+      options: Options(headers: {'Authorization': 'Bearer ${_token}'}),
+    );
+
+    if (response.data['status'] != 'success') {
+      throw Exception(response.data['message'] ?? 'Failed to apply discount');
+    }
+  }
+
   Future<void> deleteProduct(String id) async {
     await _dio.delete('/products/$id');
   }
@@ -242,7 +324,7 @@ class ApiService {
       '/products/flashsales',
       options: Options(headers: {'Authorization': 'Bearer ${_token}'}),
     );
-    if (response.data['status'] != 'success') {
+    if (!_isSuccess(response.data)) {
       throw Exception(
           response.data['message'] ?? 'Failed to fetch flash sales');
     }
@@ -442,11 +524,59 @@ class ApiService {
           },
           options: Options(headers: {'Authorization': 'Bearer ${_token}'}));
 
-      if (response.data['status'] != 'success') {
+      if (!_isSuccess(response.data)) {
         throw Exception(response.data['message']);
       }
     } catch (e) {
       throw Exception('Stock Adjustment Failed: $e');
+    }
+  }
+
+  Future<List<dynamic>> getIncomingMarketOrders() async {
+    try {
+      final response = await _dio.get(
+        '/orders',
+        options: Options(headers: {'Authorization': 'Bearer ${_token}'}),
+      );
+      if (response.data['status'] == 'success') {
+        return response.data['data'] ?? [];
+      }
+      throw Exception(response.data['message'] ?? 'Failed to fetch orders');
+    } catch (e) {
+      throw Exception('Failed to fetch orders: $e');
+    }
+  }
+
+  Future<void> updateMarketOrderStatus(String orderId, String status) async {
+    try {
+      final response = await _dio.put(
+        '/orders/status',
+        data: {'orderId': orderId, 'status': status},
+        options: Options(headers: {'Authorization': 'Bearer ${_token}'}),
+      );
+      if (response.data['status'] != 'success') {
+        throw Exception(response.data['message'] ?? 'Update failed');
+      }
+    } catch (e) {
+      throw Exception('Update failed: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> scanMarketOrderPickup(String pickupCode) async {
+    try {
+      final response = await _dio.post(
+        '/orders/scan',
+        data: {'pickupCode': pickupCode},
+        options: Options(headers: {'Authorization': 'Bearer ${_token}'}),
+      );
+      if (!_isSuccess(response.data)) {
+        throw Exception(response.data['message'] ?? 'Scan failed');
+      }
+      final data = response.data['data'];
+      if (data is Map) return Map<String, dynamic>.from(data);
+      return {};
+    } catch (e) {
+      throw Exception('Scan failed: $e');
     }
   }
 
@@ -535,9 +665,8 @@ class ApiService {
       await _dio.post('/tickets',
           data: {'subject': subject, 'message': message, 'priority': priority});
     } catch (e) {
-      if (e is DioException && e.response != null) {
-        throw Exception(
-            e.response!.data['message'] ?? 'Failed to create ticket');
+      if (e is DioException) {
+        throw Exception(_messageFromBody(e.response?.data, fallback: 'Failed to create ticket'));
       }
       throw Exception('Failed to create ticket: $e');
     }
@@ -755,7 +884,7 @@ class ApiService {
           },
           options: Options(headers: {'Authorization': 'Bearer ${_token}'}));
 
-      if (response.data['status'] != 'success')
+      if (!_isSuccess(response.data))
         throw Exception(response.data['message']);
       return Map<String, dynamic>.from(response.data['data'] ?? {});
     } catch (e) {

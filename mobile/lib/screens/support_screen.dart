@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:rana_merchant/data/remote/api_service.dart';
 import 'package:rana_merchant/screens/ticket_detail_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class SupportScreen extends StatefulWidget {
   const SupportScreen({super.key});
@@ -89,8 +90,9 @@ class _SupportScreenState extends State<SupportScreen> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   child: InkWell(
                     onTap: () {
-                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Membuka WhatsApp Admin...'))); 
-                       // In real app: launchUrl(Uri.parse('https://wa.me/6281234567890'));
+                      final Uri url = Uri.parse(
+                          'https://wa.me/628887992299?text=Halo%20Admin%20Rana%20POS,%20saya%20butuh%20bantuan');
+                      launchUrl(url, mode: LaunchMode.externalApplication);
                     },
                     borderRadius: BorderRadius.circular(16),
                     child: Padding(

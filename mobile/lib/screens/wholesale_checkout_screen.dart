@@ -24,9 +24,13 @@ class _WholesaleCheckoutScreenState extends State<WholesaleCheckoutScreen> {
   String _paymentMethod = 'Transfer Bank (BCA)';
   bool _isProcessing = false;
   final TextEditingController _couponController = TextEditingController();
+  final TextEditingController _addressController = TextEditingController();
   bool _applyingCoupon = false;
   bool _isPickup = false;
   File? _transferProof;
+  double _shippingCost = 0;
+  Map<String, dynamic>? _tenant;
+  bool _paymentInitialized = false;
 
   Future<void> _pickTransferProof() async {
     final picker = ImagePicker();
@@ -40,8 +44,43 @@ class _WholesaleCheckoutScreenState extends State<WholesaleCheckoutScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _loadTenantInfo();
+  }
+
+  Future<void> _loadTenantInfo() async {
+    final db = DatabaseHelper.instance;
+    Map<String, dynamic>? tenant = await db.getTenantInfo();
+    if (tenant == null) {
+      try {
+        final profile = await ApiService().getProfile();
+        final tenantId = (profile['tenantId'] ?? profile['id'])?.toString();
+        if (tenantId != null && tenantId.isNotEmpty) {
+          await db.upsertTenant({
+            'id': tenantId,
+            'businessName': profile['businessName']?.toString(),
+            'email': profile['email']?.toString(),
+            'phone': (profile['waNumber'] ?? profile['phone'])?.toString(),
+            'address': profile['address']?.toString(),
+          });
+          tenant = await db.getTenantInfo();
+        }
+      } catch (_) {}
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _tenant = tenant;
+      final addr = tenant?['address']?.toString() ?? '';
+      if (_addressController.text.trim().isEmpty) _addressController.text = addr;
+    });
+  }
+
+  @override
   void dispose() {
     _couponController.dispose();
+    _addressController.dispose();
     super.dispose();
   }
 
@@ -51,29 +90,13 @@ class _WholesaleCheckoutScreenState extends State<WholesaleCheckoutScreen> {
     final fmtPrice =
         NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
 
-    // Mock Distance Logic (In real app, calculate from LatLng)
-    double distanceKm = 5.2;
-    double shippingCost = _isPickup ? 0 : distanceKm * cart.shippingCostPerKm;
+    if (!_paymentInitialized && cart.paymentMethods.isNotEmpty) {
+      _paymentInitialized = true;
+      _paymentMethod = cart.paymentMethods.first;
+    }
+
+    double shippingCost = _isPickup ? 0 : _shippingCost;
     double serviceFee = cart.serviceFee;
-
-    // Total calculation
-    // Cart total - Discount + Shipping + Service Fee
-    // Note: If discount is fixed/percentage, it applies to cart subtotal.
-    // If free shipping, shipping is 0.
-    // Backend logic: "totalAmount = subtotal + finalShippingCost - discountAmount".
-    // Check provider discountAmount logic.
-    // If FREE_SHIPPING type, provider sets discountAmount = 0 (based on my validation logic? No wait).
-    // Let's recheck validation logic in Controller.
-    // Controller: if FREE_SHIPPING, discount = 0.
-    // BUT Controller createOrder: if FREE_SHIPPING, discountAmount = finalShippingCost.
-    // So UI should display: Subtotal + Shipping (15k) - Discount (15k) = Total.
-    // OR: Subtotal + Shipping (0) = Total.
-
-    // Let's stick to visual:
-    // Subtotal: 100
-    // Shipping: 15
-    // Voucher: -15 (if free ship) OR -10 (if discount)
-    // Total: ...
 
     double displayDiscount = cart.discountAmount;
 
@@ -90,7 +113,7 @@ class _WholesaleCheckoutScreenState extends State<WholesaleCheckoutScreen> {
         title: Text('Pengiriman & Pembayaran',
             style: GoogleFonts.poppins(
                 fontWeight: FontWeight.bold, color: Colors.white)),
-        backgroundColor: Colors.blue.shade800,
+        backgroundColor: const Color(0xFFD70677),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: SingleChildScrollView(
@@ -105,25 +128,44 @@ class _WholesaleCheckoutScreenState extends State<WholesaleCheckoutScreen> {
               decoration: BoxDecoration(
                   border: Border.all(color: Colors.grey.shade300),
                   borderRadius: BorderRadius.circular(8)),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.location_on, color: Colors.blue),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Toko Kelontong Berkah (Bpk. Riyan)',
-                            style: GoogleFonts.poppins(
-                                fontWeight: FontWeight.bold)),
-                        Text('Jl. Sudirman No. 45, Jakarta Pusat',
-                            style: GoogleFonts.poppins(color: Colors.grey)),
-                        Text('0812-3456-7890',
-                            style: GoogleFonts.poppins(color: Colors.grey)),
-                      ],
-                    ),
+                  Row(
+                    children: [
+                      const Icon(Icons.location_on, color: Colors.blue),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              (_tenant?['businessName']?.toString().trim().isNotEmpty ?? false)
+                                  ? _tenant!['businessName'].toString()
+                                  : 'Toko',
+                              style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+                            ),
+                            if ((_tenant?['phone']?.toString().trim().isNotEmpty ?? false))
+                              Text(
+                                _tenant!['phone'].toString(),
+                                style: GoogleFonts.poppins(color: Colors.grey),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                  TextButton(onPressed: () {}, child: const Text('Ubah'))
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _addressController,
+                    decoration: const InputDecoration(
+                      labelText: 'Alamat Pengiriman',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    minLines: 2,
+                    maxLines: 3,
+                  ),
                 ],
               ),
             ),
@@ -140,7 +182,7 @@ class _WholesaleCheckoutScreenState extends State<WholesaleCheckoutScreen> {
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: !_isPickup
-                            ? Colors.blue.withOpacity(0.1)
+                            ? Colors.blue.withValues(alpha: 26)
                             : Colors.white,
                         border: Border.all(
                             color: !_isPickup
@@ -170,7 +212,7 @@ class _WholesaleCheckoutScreenState extends State<WholesaleCheckoutScreen> {
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: _isPickup
-                            ? Colors.blue.withOpacity(0.1)
+                            ? Colors.blue.withValues(alpha: 26)
                             : Colors.white,
                         border: Border.all(
                             color:
@@ -199,18 +241,40 @@ class _WholesaleCheckoutScreenState extends State<WholesaleCheckoutScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                      color: Colors.orange.withOpacity(0.1),
+                      color: Colors.orange.withValues(alpha: 26),
                       borderRadius: BorderRadius.circular(8)),
                   child: Row(
                     children: [
-                      const Icon(Icons.info_outline,
-                          size: 16, color: Colors.orange),
+                      const Icon(Icons.local_shipping, size: 16, color: Colors.orange),
                       const SizedBox(width: 8),
                       Expanded(
-                          child: Text(
-                              "Ongkir dihitung berdasarkan jarak (${distanceKm}km)",
-                              style: GoogleFonts.poppins(
-                                  fontSize: 12, color: Colors.orange[800])))
+                        child: TextField(
+                          keyboardType: TextInputType.number,
+                          decoration: InputDecoration(
+                            hintText: 'Isi ongkos kirim (Rp)',
+                            isDense: true,
+                            border: InputBorder.none,
+                            hintStyle: GoogleFonts.poppins(
+                              fontSize: 12,
+                              color: Colors.orange[800],
+                            ),
+                          ),
+                          style: GoogleFonts.poppins(fontSize: 12, color: Colors.orange[900]),
+                          onChanged: (v) {
+                            final parsed = double.tryParse(v.replaceAll(',', '').trim()) ?? 0;
+                            setState(() => _shippingCost = parsed);
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        fmtPrice.format(shippingCost),
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.orange[900],
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -253,10 +317,11 @@ class _WholesaleCheckoutScreenState extends State<WholesaleCheckoutScreen> {
                             ? null
                             : () async {
                                 if (_couponController.text.isEmpty) return;
+                                final code = _couponController.text;
                                 setState(() => _applyingCoupon = true);
                                 try {
-                                  await cart
-                                      .applyCoupon(_couponController.text);
+                                  await cart.applyCoupon(code);
+                                  if (!context.mounted) return;
                                   ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
                                           content:
@@ -264,6 +329,7 @@ class _WholesaleCheckoutScreenState extends State<WholesaleCheckoutScreen> {
                                           backgroundColor: Colors.green));
                                   _couponController.clear();
                                 } catch (e) {
+                                  if (!context.mounted) return;
                                   ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                           content: Text(e
@@ -271,7 +337,9 @@ class _WholesaleCheckoutScreenState extends State<WholesaleCheckoutScreen> {
                                               .replaceAll('Exception: ', '')),
                                           backgroundColor: Colors.red));
                                 } finally {
-                                  setState(() => _applyingCoupon = false);
+                                  if (mounted) {
+                                    setState(() => _applyingCoupon = false);
+                                  }
                                 }
                               },
                         child: _applyingCoupon
@@ -293,6 +361,49 @@ class _WholesaleCheckoutScreenState extends State<WholesaleCheckoutScreen> {
                   .map((method) => _buildPaymentOption(method))
                   .toList(),
             ),
+            if (_paymentMethod.contains('Transfer')) ...[
+              const SizedBox(height: 12),
+              _buildSectionHeader('Bukti Transfer'),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        _transferProof == null
+                            ? 'Belum ada bukti'
+                            : _transferProof!.path.split(Platform.pathSeparator).last,
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color: _transferProof == null ? Colors.grey : Colors.black87,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    OutlinedButton.icon(
+                      onPressed: _isProcessing ? null : _pickTransferProof,
+                      icon: const Icon(Icons.upload_file),
+                      label: const Text('Upload'),
+                    ),
+                    if (_transferProof != null) ...[
+                      const SizedBox(width: 8),
+                      IconButton(
+                        onPressed: _isProcessing
+                            ? null
+                            : () => setState(() => _transferProof = null),
+                        icon: const Icon(Icons.close, color: Colors.red),
+                        tooltip: 'Hapus',
+                      ),
+                    ]
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 24),
 
             // 5. Summary
@@ -344,11 +455,17 @@ class _WholesaleCheckoutScreenState extends State<WholesaleCheckoutScreen> {
                             return;
                           }
 
-                          // Fetch real tenant ID
                           final db = DatabaseHelper.instance;
-                          final tenant = await db.getTenantInfo();
-                          final tenantId =
-                              tenant != null ? tenant['id'] : 'demo-tenant-id';
+                          final latestTenant = _tenant ?? await db.getTenantInfo();
+                          final tenantId = latestTenant?['id']?.toString();
+                          if (tenantId == null || tenantId.isEmpty) {
+                            throw Exception('Tenant tidak ditemukan. Silakan login ulang.');
+                          }
+
+                          final address = _addressController.text.trim();
+                          if (address.isEmpty) {
+                            throw Exception('Alamat pengiriman wajib diisi.');
+                          }
 
                           String? proofUrl;
                           if (_transferProof != null) {
@@ -359,38 +476,35 @@ class _WholesaleCheckoutScreenState extends State<WholesaleCheckoutScreen> {
                           await cart.checkout(
                               tenantId,
                               _paymentMethod,
-                              'Jl. Sudirman No. 45, Jakarta Pusat',
+                              address,
                               shippingCost,
                               serviceFee,
                               proofUrl: proofUrl);
 
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                    content: Text("Pesanan Berhasil Dibuat!"),
-                                    backgroundColor: Colors.green));
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content: Text("Pesanan Berhasil Dibuat!"),
+                                  backgroundColor: Colors.green));
 
-                            // Navigate to Order History
-                            Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) =>
-                                        WholesaleOrderListScreen(
-                                            tenantId: tenantId)));
-                          }
+                          Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) =>
+                                      WholesaleOrderListScreen(
+                                          tenantId: tenantId)));
                         } catch (e) {
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                content: Text('Gagal membuat pesanan: $e'),
-                                backgroundColor: Colors.red));
-                          }
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                              content: Text('Gagal membuat pesanan: $e'),
+                              backgroundColor: Colors.red));
                         } finally {
                           if (mounted) setState(() => _isProcessing = false);
                         }
                       },
                 style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: Colors.blue.shade900),
+                    backgroundColor: const Color(0xFFD70677)),
                 child: _isProcessing
                     ? const SizedBox(
                         height: 20,
@@ -425,7 +539,7 @@ class _WholesaleCheckoutScreenState extends State<WholesaleCheckoutScreen> {
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-            color: isSelected ? Colors.blue.withOpacity(0.1) : Colors.white,
+            color: isSelected ? Colors.blue.withValues(alpha: 26) : Colors.white,
             border: Border.all(
                 color: isSelected ? Colors.blue : Colors.grey.shade300),
             borderRadius: BorderRadius.circular(8)),

@@ -15,34 +15,34 @@ datasource db {
 // ================================
 
 model Tenant {
-  id            String   @id @default(uuid())
-  name          String
-  plan          SubscriptionPlan @default(FREE)
-  trialEndsAt   DateTime? // Date when trial expires
+  id                 String             @id @default(uuid())
+  name               String
+  plan               SubscriptionPlan   @default(FREE)
+  trialEndsAt        DateTime? // Date when trial expires
   subscriptionEndsAt DateTime? // [NEW] Subscription expiry date based on package
   subscriptionStatus SubscriptionStatus @default(TRIAL)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  
-  users         User[]
-  stores        Store[]
-  products      Product[]
-  categories    Category[]
-  customers     Customer[]
-  transactions  Transaction[]
-  
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  users        User[]
+  stores       Store[]
+  products     Product[]
+  categories   Category[]
+  customers    Customer[]
+  transactions Transaction[]
+
   // Reporting Aggregates
-  dailySales    DailySalesSummary[]
-  productStats  ProductSalesSummary[]
-  cashLogs      CashflowLog[]
-  purchases     Purchase[]
-  debtRecords   DebtRecord[]
+  dailySales           DailySalesSummary[]
+  productStats         ProductSalesSummary[]
+  cashLogs             CashflowLog[]
+  purchases            Purchase[]
+  debtRecords          DebtRecord[]
   subscriptionRequests SubscriptionRequest[] // [FIX] Added relation
-  wholesaleOrders      WholesaleOrder[]      // [FIX] Added relation
-  tickets              SupportTicket[]       // [NEW]
-  notifications        Notification[]        // [NEW]
-  ppobTransactions     PpobTransaction[]     // [NEW]
-  flashSales           FlashSale[]           // [FIX] Added relation
+  wholesaleOrders      WholesaleOrder[] // [FIX] Added relation
+  tickets              SupportTicket[] // [NEW]
+  notifications        Notification[] // [NEW]
+  ppobTransactions     PpobTransaction[] // [NEW]
+  flashSales           FlashSale[] // [FIX] Added relation
 }
 
 model Notification {
@@ -53,7 +53,7 @@ model Notification {
   isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
 
-  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  tenant Tenant @relation(fields: [tenantId], references: [id])
 }
 
 enum SubscriptionPlan {
@@ -72,28 +72,28 @@ enum SubscriptionStatus {
 
 // [NEW] Configurable Packages
 model SubscriptionPackage {
-  id            String   @id @default(uuid())
-  name          String   // e.g. "Bulanan", "Tahunan"
-  price         Float    // e.g. 49000
-  durationDays  Int      // e.g. 30
-  description   String?
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  
+  id           String   @id @default(uuid())
+  name         String // e.g. "Bulanan", "Tahunan"
+  price        Float // e.g. 49000
+  durationDays Int // e.g. 30
+  description  String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
   subscriptionRequests SubscriptionRequest[] // [NEW] Reverse relation
 }
 
 model SubscriptionRequest {
-  id            String   @id @default(uuid())
-  tenantId      String
-  packageId     String?  // [NEW] Selected package
-  proofUrl      String?
-  status        RequestStatus @default(PENDING)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  
-  tenant        Tenant   @relation(fields: [tenantId], references: [id])
-  package       SubscriptionPackage? @relation(fields: [packageId], references: [id]) // [NEW]
+  id        String        @id @default(uuid())
+  tenantId  String
+  packageId String? // [NEW] Selected package
+  proofUrl  String?
+  status    RequestStatus @default(PENDING)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  tenant  Tenant               @relation(fields: [tenantId], references: [id])
+  package SubscriptionPackage? @relation(fields: [packageId], references: [id]) // [NEW]
 }
 
 enum RequestStatus {
@@ -103,20 +103,20 @@ enum RequestStatus {
 }
 
 model User {
-  id            String   @id @default(uuid())
-  tenantId      String
-  storeId       String?  // If null, can access all stores (Admin)
-  name          String
-  email         String   @unique
-  passwordHash  String
-  role          UserRole @default(CASHIER)
-  createdAt     DateTime @default(now())
+  id           String   @id @default(uuid())
+  tenantId     String
+  storeId      String? // If null, can access all stores (Admin)
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         UserRole @default(CASHIER)
+  createdAt    DateTime @default(now())
 
-  tenant        Tenant   @relation(fields: [tenantId], references: [id])
-  store         Store?   @relation(fields: [storeId], references: [id])
-  transactions  Transaction[]
-  
-  loginHistory  LoginHistory[]
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  store        Store?        @relation(fields: [storeId], references: [id])
+  transactions Transaction[]
+
+  loginHistory LoginHistory[]
 }
 
 enum UserRole {
@@ -133,8 +133,8 @@ model LoginHistory {
   ip        String?
   userAgent String?
   loginAt   DateTime @default(now())
-  
-  user      User     @relation(fields: [userId], references: [id])
+
+  user User @relation(fields: [userId], references: [id])
 }
 
 // ================================
@@ -143,47 +143,48 @@ model LoginHistory {
 
 // 
 model Store {
-  id          String   @id @default(uuid())
-  tenantId    String
-  name        String
-  location    String?
-  latitude    Float?   // [NEW] For Map Visualization
-  longitude   Float?   // [NEW] For Map Visualization
-  category    String?  // [NEW] UMKM Category (Apotik, Kedai, etc.)
-  waNumber    String?  // [NEW] For WhatsApp Notifications
-  balance     Float    @default(0) // [NEW] Digital Wallet Balance
-  createdAt   DateTime @default(now())
+  id        String   @id @default(uuid())
+  tenantId  String
+  name      String
+  location  String?
+  latitude  Float? // [NEW] For Map Visualization
+  longitude Float? // [NEW] For Map Visualization
+  category  String? // [NEW] UMKM Category (Apotik, Kedai, etc.)
+  waNumber  String?  @unique // [NEW] For WhatsApp Notifications
+  imageUrl  String?
+  balance   Float    @default(0) // [NEW] Digital Wallet Balance
+  createdAt DateTime @default(now())
 
-  tenant      Tenant   @relation(fields: [tenantId], references: [id])
-  users       User[]
-  transactions Transaction[]
-  dailySales  DailySalesSummary[]
-  stock       Stock[]
-  cashLogs    CashflowLog[]
-  debts       DebtRecord[]
-  purchases   Purchase[]
-  withdrawals Withdrawal[] // [NEW]
-  topUps      TopUpRequest[] // [NEW]
-  sentTransfers     WalletTransfer[] @relation("SentTransfers") // [NEW]
-  receivedTransfers WalletTransfer[] @relation("ReceivedTransfers") // [NEW]
+  tenant            Tenant              @relation(fields: [tenantId], references: [id])
+  users             User[]
+  transactions      Transaction[]
+  dailySales        DailySalesSummary[]
+  stock             Stock[]
+  cashLogs          CashflowLog[]
+  debts             DebtRecord[]
+  purchases         Purchase[]
+  withdrawals       Withdrawal[] // [NEW]
+  topUps            TopUpRequest[] // [NEW]
+  sentTransfers     WalletTransfer[]    @relation("SentTransfers") // [NEW]
+  receivedTransfers WalletTransfer[]    @relation("ReceivedTransfers") // [NEW]
   ppobTransactions  PpobTransaction[] // [NEW]
   flashSales        FlashSale[] // [FIX] Added relation
 }
 
 // [NEW] Withdrawal Request
 model Withdrawal {
-  id            String   @id @default(uuid())
+  id            String           @id @default(uuid())
   storeId       String
   amount        Float
-  fee           Float    @default(0) // [NEW] Platform Fee applied
-  netAmount     Float    @default(0) // [NEW] Final amount transferred
+  fee           Float            @default(0) // [NEW] Platform Fee applied
+  netAmount     Float            @default(0) // [NEW] Final amount transferred
   bankName      String
   accountNumber String
   status        WithdrawalStatus @default(PENDING)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt // Track approval time
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt // Track approval time
 
-  store         Store    @relation(fields: [storeId], references: [id])
+  store Store @relation(fields: [storeId], references: [id])
 }
 
 enum WithdrawalStatus {
@@ -202,69 +203,69 @@ model Announcement {
 }
 
 model Supplier {
-  id            String   @id @default(uuid())
-  tenantId      String
-  name          String
-  phone         String?
-  address       String?
-  createdAt     DateTime @default(now())
-  
-  purchases     Purchase[]
+  id        String   @id @default(uuid())
+  tenantId  String
+  name      String
+  phone     String?
+  address   String?
+  createdAt DateTime @default(now())
+
+  purchases Purchase[]
 }
 
 model Purchase {
-  id            String   @id @default(uuid())
-  tenantId      String
-  storeId       String
-  supplierId    String?
-  totalAmount   Float
-  purchasedAt   DateTime @default(now())
-  
-  tenant        Tenant   @relation(fields: [tenantId], references: [id])
-  store         Store    @relation(fields: [storeId], references: [id])
-  supplier      Supplier? @relation(fields: [supplierId], references: [id])
-  items         PurchaseItem[]
+  id          String   @id @default(uuid())
+  tenantId    String
+  storeId     String
+  supplierId  String?
+  totalAmount Float
+  purchasedAt DateTime @default(now())
+
+  tenant   Tenant         @relation(fields: [tenantId], references: [id])
+  store    Store          @relation(fields: [storeId], references: [id])
+  supplier Supplier?      @relation(fields: [supplierId], references: [id])
+  items    PurchaseItem[]
 }
 
 model PurchaseItem {
-  id            String   @id @default(uuid())
-  purchaseId    String
-  productId     String
-  quantity      Int
-  costPrice     Float    // Price at the moment of purchase
-  
-  purchase      Purchase @relation(fields: [purchaseId], references: [id])
+  id         String @id @default(uuid())
+  purchaseId String
+  productId  String
+  quantity   Int
+  costPrice  Float // Price at the moment of purchase
+
+  purchase Purchase @relation(fields: [purchaseId], references: [id])
 }
 
 // ... existing models ...
 
 model Product {
-  id            String   @id @default(uuid())
-  tenantId      String
-  storeId       String?  // If null, is a global template or HQ product
-  name          String
-  description   String?
-  sku           String?
-  barcode       String?
-  basePrice     Float
-  sellingPrice  Float
-  stock         Int      @default(0)
-  categoryId    String?
-  imageUrl      String?  
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  
-  tenant        Tenant   @relation(fields: [tenantId], references: [id])
-  category      Category? @relation(fields: [categoryId], references: [id])
+  id           String   @id @default(uuid())
+  tenantId     String
+  storeId      String? // If null, is a global template or HQ product
+  name         String
+  description  String?
+  sku          String?
+  barcode      String?
+  basePrice    Float
+  sellingPrice Float
+  stock        Int      @default(0)
+  categoryId   String?
+  imageUrl     String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant        Tenant            @relation(fields: [tenantId], references: [id])
+  category      Category?         @relation(fields: [categoryId], references: [id])
   stocks        Stock[]
   sales         TransactionItem[]
   inventoryLogs InventoryLog[]
-  minStock      Int            @default(5)
-  
+  minStock      Int               @default(5)
+
   // [NEW] Discount features
-  originalPrice Float?         // For storing price before discount
-  discountLabel String?        // e.g. "Flash Sale"
+  originalPrice  Float? // For storing price before discount
+  discountLabel  String? // e.g. "Flash Sale"
   flashSaleItems FlashSaleItem[] // [FIX] Added relation
 }
 
@@ -277,91 +278,91 @@ enum InventoryType {
 model InventoryLog {
   id        String        @id @default(uuid())
   productId String
-  storeId   String?       // Optional: track which store if product is global? assuming product is store-specific or we trust productId
+  storeId   String? // Optional: track which store if product is global? assuming product is store-specific or we trust productId
   type      InventoryType
   quantity  Int
   reason    String?
   createdAt DateTime      @default(now())
-  
-  product   Product       @relation(fields: [productId], references: [id])
+
+  product Product @relation(fields: [productId], references: [id])
 }
 
 model Category {
-  id            String   @id @default(uuid())
-  tenantId      String
-  name          String
-  products      Product[]
-  
-  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  id       String    @id @default(uuid())
+  tenantId String
+  name     String
+  products Product[]
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
 }
 
 model Stock {
-  id            String   @id @default(uuid())
-  storeId       String
-  productId     String
-  quantity      Int
-  
-  store         Store    @relation(fields: [storeId], references: [id])
-  product       Product  @relation(fields: [productId], references: [id])
-  
+  id        String @id @default(uuid())
+  storeId   String
+  productId String
+  quantity  Int
+
+  store   Store   @relation(fields: [storeId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
   @@unique([storeId, productId])
 }
 
 model Customer {
-  id            String   @id @default(uuid())
-  tenantId      String
-  name          String
-  phone         String?
-  email         String?
-  createdAt     DateTime @default(now())
-  
-  tenant        Tenant   @relation(fields: [tenantId], references: [id])
-  transactions  Transaction[]
+  id        String   @id @default(uuid())
+  tenantId  String
+  name      String
+  phone     String?
+  email     String?
+  createdAt DateTime @default(now())
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  transactions Transaction[]
 }
 
 model Transaction {
-  id            String   @id @default(uuid()) // Custom ID like ORD-123
-  tenantId      String
-  storeId       String
-  cashierId     String? // User ID
-  customerId    String?
-  source        String?   // "POS", "MARKET"
-  
+  id         String  @id @default(uuid()) // Custom ID like ORD-123
+  tenantId   String
+  storeId    String
+  cashierId  String? // User ID
+  customerId String?
+  source     String? // "POS", "MARKET"
+
   totalAmount   Float
-  paymentMethod String  // CASH, QRIS, TRANSFER
+  paymentMethod String // CASH, QRIS, TRANSFER
   amountPaid    Float
   change        Float
-  buyerFee      Float    @default(0)
-  merchantFee   Float    @default(0)
-  platformFee   Float    @default(0)
-  
-  // O2O Fields
-  orderStatus   String   // PENDING, COMPLETED, CANCELLED
-  paymentStatus PaymentStatus @default(UNPAID)
-  fulfillmentType FulfillmentType @default(DELIVERY)
-  pickupCode    String?   @unique // For QR Scanning
-  deliveryAddress String?
-  
-  // [NEW] O2O Fields
-  customerName    String?   // For Guest/Quick Buy without full account
-  customerPhone   String?   // For WhatsApp coordination
-  
-  paymentProof    String?   // [NEW] URL/Path to proof
-  paidAt          DateTime? 
+  buyerFee      Float  @default(0)
+  merchantFee   Float  @default(0)
+  platformFee   Float  @default(0)
 
-  occurredAt    DateTime @default(now())
-  
-  tenant        Tenant   @relation(fields: [tenantId], references: [id])
-  store         Store    @relation(fields: [storeId], references: [id])
-  user          User?    @relation(fields: [cashierId], references: [id])
-  customer      Customer? @relation(fields: [customerId], references: [id])
-  
+  // O2O Fields
+  orderStatus     String // PENDING, COMPLETED, CANCELLED
+  paymentStatus   PaymentStatus   @default(UNPAID)
+  fulfillmentType FulfillmentType @default(DELIVERY)
+  pickupCode      String?         @unique // For QR Scanning
+  deliveryAddress String?
+
+  // [NEW] O2O Fields
+  customerName  String? // For Guest/Quick Buy without full account
+  customerPhone String? // For WhatsApp coordination
+
+  paymentProof String? // [NEW] URL/Path to proof
+  paidAt       DateTime?
+
+  occurredAt DateTime @default(now())
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id])
+  store    Store     @relation(fields: [storeId], references: [id])
+  user     User?     @relation(fields: [cashierId], references: [id])
+  customer Customer? @relation(fields: [customerId], references: [id])
+
   transactionItems TransactionItem[]
-  
-  offlineId     String?   // [NEW] To map back to mobile device ID for idempotency
-  
-  @@index([storeId, occurredAt])
+
+  offlineId String? // [NEW] To map back to mobile device ID for idempotency
+
   @@unique([tenantId, offlineId]) // Ensure we don't double-sync the same offline txn
+  @@index([storeId, occurredAt])
 }
 
 // ... (TransactionItem, etc.)
@@ -376,40 +377,40 @@ model SystemSettings {
 }
 
 model TransactionItem {
-  id            String   @id @default(uuid())
+  id            String @id @default(uuid())
   transactionId String
   productId     String
   quantity      Int
-  price         Float    // Price at moment of sale
-  
-  transaction   Transaction @relation(fields: [transactionId], references: [id])
-  product       Product     @relation(fields: [productId], references: [id])
+  price         Float // Price at moment of sale
+
+  transaction Transaction @relation(fields: [transactionId], references: [id])
+  product     Product     @relation(fields: [productId], references: [id])
 }
 
 // Reporting 
 model DailySalesSummary {
-  id            String   @id @default(uuid())
-  tenantId      String
-  storeId       String
-  date          DateTime @db.Date
-  totalSales    Float
-  totalTrans    Int
-  
-  tenant        Tenant   @relation(fields: [tenantId], references: [id])
-  store         Store    @relation(fields: [storeId], references: [id])
-  
+  id         String   @id @default(uuid())
+  tenantId   String
+  storeId    String
+  date       DateTime @db.Date
+  totalSales Float
+  totalTrans Int
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  store  Store  @relation(fields: [storeId], references: [id])
+
   @@unique([storeId, date])
 }
 
 model ProductSalesSummary {
-  id            String   @id @default(uuid())
-  tenantId      String
-  productId     String
-  date          DateTime @db.Date
-  quantitySold  Int
-  totalRevenue  Float
-  
-  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  id           String   @id @default(uuid())
+  tenantId     String
+  productId    String
+  date         DateTime @db.Date
+  quantitySold Int
+  totalRevenue Float
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
 }
 
 enum PaymentStatus {
@@ -427,19 +428,19 @@ enum FulfillmentType {
 // ... existing models ...
 
 model CashflowLog {
-  id            String   @id @default(uuid())
-  tenantId      String
-  storeId       String
-  amount        Decimal  @db.Decimal(15, 2)
-  type          CashflowType // IN or OUT
-  category      CashflowCategory // [UPDATED] Enum for better reporting
-  description   String?
-  performedBy   String?  // User ID who did this
-  occurredAt    DateTime
-  
-  tenant        Tenant   @relation(fields: [tenantId], references: [id])
-  store         Store    @relation(fields: [storeId], references: [id])
-  
+  id          String           @id @default(uuid())
+  tenantId    String
+  storeId     String
+  amount      Decimal          @db.Decimal(15, 2)
+  type        CashflowType // IN or OUT
+  category    CashflowCategory // [UPDATED] Enum for better reporting
+  description String?
+  performedBy String? // User ID who did this
+  occurredAt  DateTime
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  store  Store  @relation(fields: [storeId], references: [id])
+
   @@index([tenantId, occurredAt])
 }
 
@@ -449,62 +450,62 @@ enum CashflowType {
 }
 
 enum CashflowCategory {
-  SALES           // Auto-generated from Transactions
+  SALES // Auto-generated from Transactions
   EXPENSE_OPERATIONAL // Listrik, Air, Sewa
-  EXPENSE_PURCHASE    // Beli Bahan Baku
-  EXPENSE_PETTY       // Es batu, plastik, dll
-  DEBT_PAYMENT        // Bayar Utang
-  RECEIVABLE_PAYMENT  // Terima Pelunasan Kasbon
-  CAPITAL_IN          // Modal Masuk
+  EXPENSE_PURCHASE // Beli Bahan Baku
+  EXPENSE_PETTY // Es batu, plastik, dll
+  DEBT_PAYMENT // Bayar Utang
+  RECEIVABLE_PAYMENT // Terima Pelunasan Kasbon
+  CAPITAL_IN // Modal Masuk
   OTHER
   TOPUP
   TRANSFER
   WITHDRAWAL
 }
 
-model TopUpRequest { // [NEW]
-  id            String   @id @default(uuid())
-  storeId       String
-  amount        Float
-  proofUrl      String   // Path to uploaded proof
-  status        RequestStatus @default(PENDING)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  
-  store         Store    @relation(fields: [storeId], references: [id])
+model TopUpRequest {
+  id        String        @id @default(uuid())
+  storeId   String
+  amount    Float
+  proofUrl  String // Path to uploaded proof
+  status    RequestStatus @default(PENDING)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  store Store @relation(fields: [storeId], references: [id])
 }
 
-model WalletTransfer { // [NEW]
+model WalletTransfer {
   id              String   @id @default(uuid())
   senderStoreId   String
   receiverStoreId String
   amount          Float
   note            String?
   createdAt       DateTime @default(now())
-  
-  sender          Store    @relation("SentTransfers", fields: [senderStoreId], references: [id])
-  receiver        Store    @relation("ReceivedTransfers", fields: [receiverStoreId], references: [id])
+
+  sender   Store @relation("SentTransfers", fields: [senderStoreId], references: [id])
+  receiver Store @relation("ReceivedTransfers", fields: [receiverStoreId], references: [id])
 }
 
-model DebtRecord { // [NEW] "Kasbon" Tracking
-  id            String   @id @default(uuid())
-  tenantId      String
-  storeId       String
-  customerId    String?  // Link to customer if applicable
-  borrowerName  String   // Name manual if no customer entity
-  amount        Decimal  @db.Decimal(15, 2)
-  amountPaid    Decimal  @db.Decimal(15, 2) @default(0)
-  dueDate       DateTime?
-  phone         String?
-  address       String?
-  city          String?
-  latitude      Float?   // [NEW] For Location-based search
-  longitude     Float?   // [NEW] For Location-based search
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  
-  tenant        Tenant   @relation(fields: [tenantId], references: [id])
-  store         Store    @relation(fields: [storeId], references: [id])
+model DebtRecord {
+  id           String    @id @default(uuid())
+  tenantId     String
+  storeId      String
+  customerId   String? // Link to customer if applicable
+  borrowerName String // Name manual if no customer entity
+  amount       Decimal   @db.Decimal(15, 2)
+  amountPaid   Decimal   @default(0) @db.Decimal(15, 2)
+  dueDate      DateTime?
+  phone        String?
+  address      String?
+  city         String?
+  latitude     Float? // [NEW] For Location-based search
+  longitude    Float? // [NEW] For Location-based search
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  store  Store  @relation(fields: [storeId], references: [id])
 }
 
 enum DebtStatus {
@@ -519,26 +520,26 @@ enum DebtStatus {
 // ================================
 
 model SyncLog {
-  id            String   @id @default(uuid())
+  id            String    @id @default(uuid())
   tenantId      String
   deviceId      String
-  status        String   // SUCCESS, PARTIAL, ERROR
+  status        String // SUCCESS, PARTIAL, ERROR
   recordsSynced Int
-  startedAt     DateTime @default(now())
+  startedAt     DateTime  @default(now())
   completedAt   DateTime?
   errorMessage  String? // If failed
 }
 
 model AuditLog {
-  id            String   @id @default(uuid())
-  tenantId      String
-  userId        String?
-  action        String   // "UPDATE_PRICE", "ADJUST_STOCK"
-  entity        String   // "Product", "Transaction"
-  entityId      String
-  oldValue      String?
-  newValue      String?
-  occurredAt    DateTime @default(now())
+  id         String   @id @default(uuid())
+  tenantId   String
+  userId     String?
+  action     String // "UPDATE_PRICE", "ADJUST_STOCK"
+  entity     String // "Product", "Transaction"
+  entityId   String
+  oldValue   String?
+  newValue   String?
+  occurredAt DateTime @default(now())
 }
 
 // ================================
@@ -546,72 +547,72 @@ model AuditLog {
 // ================================
 
 model WholesaleCategory {
-  id            String   @id @default(uuid())
-  name          String
-  icon          String?  // URL or Material Icon Name
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  
-  products      WholesaleProduct[]
+  id        String   @id @default(uuid())
+  name      String
+  icon      String? // URL or Material Icon Name
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  products WholesaleProduct[]
 }
 
 model WholesaleProduct {
-  id            String   @id @default(uuid())
-  categoryId    String
-  name          String
-  description   String?
-  price         Float
-  stock         Int      @default(0)
-  imageUrl      String?
-  supplierName  String?  // e.g. "Official Partner"
-  minOrder      Int      @default(1)
-  isActive      Boolean  @default(true)
-  soldCount     Int      @default(0)
-  rating        Float    @default(0.0)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id           String   @id @default(uuid())
+  categoryId   String
+  name         String
+  description  String?
+  price        Float
+  stock        Int      @default(0)
+  imageUrl     String?
+  supplierName String? // e.g. "Official Partner"
+  minOrder     Int      @default(1)
+  isActive     Boolean  @default(true)
+  soldCount    Int      @default(0)
+  rating       Float    @default(0.0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  category      WholesaleCategory @relation(fields: [categoryId], references: [id])
-  orderItems    WholesaleOrderItem[]
+  category   WholesaleCategory    @relation(fields: [categoryId], references: [id])
+  orderItems WholesaleOrderItem[]
 }
 
 model WholesaleOrder {
-  id            String   @id @default(uuid())
-  tenantId      String
-  storeId       String?
-  totalAmount   Float
-  status        WholesaleOrderStatus @default(PENDING)
-  paymentMethod String   // "TRANSFER_BCA", "COD"
+  id              String               @id @default(uuid())
+  tenantId        String
+  storeId         String?
+  totalAmount     Float
+  status          WholesaleOrderStatus @default(PENDING)
+  paymentMethod   String // "TRANSFER_BCA", "COD"
   shippingAddress String?
-  shippingCost  Float    @default(0)
-  
+  shippingCost    Float                @default(0)
+
   // [NEW] Platform Fee
-  serviceFee    Float    @default(0)
+  serviceFee Float @default(0)
 
   // Coupon Fields
-  couponCode    String?
+  couponCode     String?
   discountAmount Float   @default(0)
 
   // Verification
-  proofUrl      String?
-  pickupCode    String?
+  proofUrl   String?
+  pickupCode String?
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  
-  tenant        Tenant   @relation(fields: [tenantId], references: [id])
-  items         WholesaleOrderItem[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant               @relation(fields: [tenantId], references: [id])
+  items  WholesaleOrderItem[]
 }
 
 model WholesaleOrderItem {
-  id            String   @id @default(uuid())
-  orderId       String
-  productId     String
-  quantity      Int
-  price         Float    // Price at purchase time
-  
-  order         WholesaleOrder   @relation(fields: [orderId], references: [id])
-  product       WholesaleProduct @relation(fields: [productId], references: [id])
+  id        String @id @default(uuid())
+  orderId   String
+  productId String
+  quantity  Int
+  price     Float // Price at purchase time
+
+  order   WholesaleOrder   @relation(fields: [orderId], references: [id])
+  product WholesaleProduct @relation(fields: [productId], references: [id])
 }
 
 enum WholesaleOrderStatus {
@@ -624,16 +625,16 @@ enum WholesaleOrderStatus {
 }
 
 model WholesaleCoupon {
-  id          String      @id @default(uuid())
-  code        String      @unique
+  id          String     @id @default(uuid())
+  code        String     @unique
   type        CouponType
-  value       Float       // Amount or Percentage
-  minOrder    Float       @default(0)
-  maxDiscount Float?      // Max discount amount for percentage type
+  value       Float // Amount or Percentage
+  minOrder    Float      @default(0)
+  maxDiscount Float? // Max discount amount for percentage type
   startDate   DateTime?
   endDate     DateTime?
-  isActive    Boolean     @default(true)
-  createdAt   DateTime    @default(now())
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
 }
 
 enum CouponType {
@@ -665,33 +666,33 @@ enum FlashSaleStatus {
 }
 
 model FlashSale {
-  id        String   @id @default(uuid())
+  id        String          @id @default(uuid())
   tenantId  String
   storeId   String
   title     String
   startAt   DateTime
   endAt     DateTime
   status    FlashSaleStatus @default(PENDING)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
 
-  tenant    Tenant   @relation(fields: [tenantId], references: [id])
-  store     Store    @relation(fields: [storeId], references: [id])
-  items     FlashSaleItem[]
+  tenant Tenant          @relation(fields: [tenantId], references: [id])
+  store  Store           @relation(fields: [storeId], references: [id])
+  items  FlashSaleItem[]
 
   @@index([storeId, startAt, endAt])
 }
 
 model FlashSaleItem {
-  id            String   @id @default(uuid())
-  flashSaleId   String
-  productId     String
-  salePrice     Float
-  maxQtyPerOrder Int     @default(0) // 0 means unlimited
-  saleStock     Int?     // Optional limited stock
+  id             String @id @default(uuid())
+  flashSaleId    String
+  productId      String
+  salePrice      Float
+  maxQtyPerOrder Int    @default(0) // 0 means unlimited
+  saleStock      Int? // Optional limited stock
 
-  flashSale     FlashSale @relation(fields: [flashSaleId], references: [id])
-  product       Product   @relation(fields: [productId], references: [id])
+  flashSale FlashSale @relation(fields: [flashSaleId], references: [id])
+  product   Product   @relation(fields: [productId], references: [id])
 }
 
 // ================================
@@ -699,14 +700,13 @@ model FlashSaleItem {
 // ================================
 
 model PlatformRevenue {
-  id            String   @id @default(uuid())
-  amount        Float
-  source        RevenueSource // SUBSCRIPTION, WITHDRAWAL_FEE
-  description   String?  // e.g. "Upgrade to Premium - Toko A", "Fee from Withdrawal #123"
-  referenceId   String?  // ID of SubscriptionRequest or Withdrawal
-  createdAt     DateTime @default(now())
+  id          String        @id @default(uuid())
+  amount      Float
+  source      RevenueSource // SUBSCRIPTION, WITHDRAWAL_FEE
+  description String? // e.g. "Upgrade to Premium - Toko A", "Fee from Withdrawal #123"
+  referenceId String? // ID of SubscriptionRequest or Withdrawal
+  createdAt   DateTime      @default(now())
 }
-
 
 enum RevenueSource {
   SUBSCRIPTION
@@ -719,29 +719,29 @@ enum RevenueSource {
 // ================================
 
 model SupportTicket {
-  id            String       @id @default(uuid())
-  tenantId      String
-  storeId       String?
-  subject       String
-  status        TicketStatus @default(OPEN)
-  priority      TicketPriority @default(NORMAL)
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-  
-  tenant        Tenant       @relation(fields: [tenantId], references: [id])
-  messages      TicketMessage[]
+  id        String         @id @default(uuid())
+  tenantId  String
+  storeId   String?
+  subject   String
+  status    TicketStatus   @default(OPEN)
+  priority  TicketPriority @default(NORMAL)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  tenant   Tenant          @relation(fields: [tenantId], references: [id])
+  messages TicketMessage[]
 }
 
 model TicketMessage {
-  id            String   @id @default(uuid())
-  ticketId      String
-  senderType    SenderType // MERCHANT or ADMIN
-  senderId      String   // User ID if known, or "SYSTEM"
-  message       String
-  isAdmin       Boolean  @default(false)
-  createdAt     DateTime @default(now())
-  
-  ticket        SupportTicket @relation(fields: [ticketId], references: [id])
+  id         String     @id @default(uuid())
+  ticketId   String
+  senderType SenderType // MERCHANT or ADMIN
+  senderId   String // User ID if known, or "SYSTEM"
+  message    String
+  isAdmin    Boolean    @default(false)
+  createdAt  DateTime   @default(now())
+
+  ticket SupportTicket @relation(fields: [ticketId], references: [id])
 }
 
 enum TicketStatus {
@@ -764,7 +764,6 @@ enum SenderType {
   SYSTEM
 }
 
-
 // ================================
 // MOBILE APP CONFIGURATION
 // ================================
@@ -772,9 +771,9 @@ enum SenderType {
 model AppMenu {
   id        String   @id @default(uuid())
   key       String   @unique // e.g. "POS", "STOCK", "REPORT"
-  label     String   // Display Name
-  icon      String   // Icon Name (Lucide/Material)
-  route     String   // App Route / Screen Name
+  label     String // Display Name
+  icon      String // Icon Name (Lucide/Material)
+  route     String // App Route / Screen Name
   isActive  Boolean  @default(true)
   order     Int      @default(0)
   createdAt DateTime @default(now())
@@ -786,18 +785,18 @@ model AppMenu {
 // ================================
 
 model BlogPost {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   title       String
-  slug        String   @unique
-  summary     String?  
-  content     String   // Text or HTML
+  slug        String    @unique
+  summary     String?
+  content     String // Text or HTML
   imageUrl    String?
-  author      String?  // Name of author
+  author      String? // Name of author
   tags        String[]
-  status      String   @default("DRAFT") // DRAFT, PUBLISHED
+  status      String    @default("DRAFT") // DRAFT, PUBLISHED
   publishedAt DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 // ================================
@@ -805,43 +804,42 @@ model BlogPost {
 // ================================
 
 model DigitalProduct {
-  id          String   @id @default(uuid())
-  sku         String   @unique // e.g. "P5", "PLN20"
-  name        String
-  category    String   // "pulsa", "pln", "game"
-  brand       String?  // "Telkomsel", "Indosat"
-  price       Float    // Base price from provider
-  sellingPrice Float   // Price sold to merchant/user
-  isPromo     Boolean  @default(false)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String   @id @default(uuid())
+  sku          String   @unique // e.g. "P5", "PLN20"
+  name         String
+  category     String // "pulsa", "pln", "game"
+  brand        String? // "Telkomsel", "Indosat"
+  price        Float // Base price from provider
+  sellingPrice Float // Price sold to merchant/user
+  isPromo      Boolean  @default(false)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model PpobTransaction {
-  id                  String   @id @default(uuid())
-  tenantId            String
-  storeId             String
-  refId               String   @unique
-  buyerSkuCode        String
-  customerNo          String
-  command             String
-  status              String
-  rc                  String?
-  message             String?
-  sn                  String?
-  providerPrice       Float?
+  id                   String   @id @default(uuid())
+  tenantId             String
+  storeId              String
+  refId                String   @unique
+  buyerSkuCode         String
+  customerNo           String
+  command              String
+  status               String
+  rc                   String?
+  message              String?
+  sn                   String?
+  providerPrice        Float?
   providerSellingPrice Float?
-  chargeAmount        Float?
-  walletLogId         String?
-  rawResponse         Json?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  chargeAmount         Float?
+  walletLogId          String?
+  rawResponse          Json?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
-  tenant              Tenant   @relation(fields: [tenantId], references: [id])
-  store               Store    @relation(fields: [storeId], references: [id])
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  store  Store  @relation(fields: [storeId], references: [id])
 
   @@index([tenantId, createdAt])
   @@index([storeId, createdAt])
 }
-

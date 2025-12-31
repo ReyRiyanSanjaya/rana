@@ -575,7 +575,7 @@ class _ProductDetailSheetState extends State<_ProductDetailSheet> {
                     },
                     style: FilledButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        backgroundColor: Colors.blue.shade800,
+                        backgroundColor: const Color(0xFFD70677),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8))),
                     child: const Text('Tambah ke Keranjang',

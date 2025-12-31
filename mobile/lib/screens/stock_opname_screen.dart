@@ -231,10 +231,10 @@ class _StockOpnameScreenState extends State<StockOpnameScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
+      backgroundColor: const Color(0xFFFFF5EC),
       appBar: AppBar(
         title: const Text('Manajemen Stok', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-        backgroundColor: const Color(0xFFBF092F),
+        backgroundColor: const Color(0xFFD70677),
         iconTheme: const IconThemeData(color: Colors.white),
         elevation: 0,
         centerTitle: true,
@@ -319,7 +319,6 @@ class _StockOpnameScreenState extends State<StockOpnameScreen> {
                                  padding: const EdgeInsets.all(16.0),
                                  child: Row(
                                    children: [
-                                     // Icon / Image Placeholder
                                      Container(
                                        width: 48, height: 48,
                                        decoration: BoxDecoration(

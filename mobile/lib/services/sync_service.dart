@@ -19,7 +19,7 @@ class SyncService {
       final pendingTxns = await db.getPendingTransactions();
       
       if (pendingTxns.isEmpty) {
-        if (kDebugMode) print('No pending transactions to sync.');
+        if (kDebugMode) debugPrint('No pending transactions to sync.');
         return;
       }
 
@@ -50,7 +50,7 @@ class SyncService {
       }
       
     } catch (e) {
-      if (kDebugMode) print('Sync Error: $e');
+      if (kDebugMode) debugPrint('Sync Error: $e');
       rethrow;
     } finally {
       _isSyncing = false;

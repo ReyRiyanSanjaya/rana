@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:rana_merchant/data/local/database_helper.dart';
 
 class AiService {
@@ -54,7 +55,7 @@ class AiService {
           }
         }
       } catch (e) {
-        print('Weather fetch failed: $e');
+        debugPrint('Weather fetch failed: $e');
         // Fallback to generic insight if offline
       }
 

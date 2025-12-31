@@ -3,9 +3,118 @@ import 'package:provider/provider.dart';
 import 'package:rana_market/providers/auth_provider.dart';
 import 'package:rana_market/screens/login_screen.dart';
 import 'package:rana_market/screens/register_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  String? _buyerName;
+  String? _buyerPhone;
+  bool _loadingPrefs = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBuyerContact();
+  }
+
+  Future<void> _loadBuyerContact() async {
+    final prefs = await SharedPreferences.getInstance();
+    final name = prefs.getString('buyer_name')?.trim();
+    final phone = prefs.getString('buyer_phone')?.trim();
+    if (!mounted) return;
+    setState(() {
+      _buyerName = (name != null && name.isNotEmpty) ? name : null;
+      _buyerPhone = (phone != null && phone.isNotEmpty) ? phone : null;
+      _loadingPrefs = false;
+    });
+  }
+
+  Future<void> _openContactEditor() async {
+    final nameCtrl = TextEditingController(text: _buyerName ?? '');
+    final phoneCtrl = TextEditingController(text: _buyerPhone ?? '');
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        bool saving = false;
+        return StatefulBuilder(
+          builder: (context, setLocal) {
+            return AlertDialog(
+              title: const Text('Kontak Pesanan'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: nameCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Nama',
+                      border: OutlineInputBorder(),
+                    ),
+                    textInputAction: TextInputAction.next,
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: phoneCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Nomor WhatsApp',
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.phone,
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: saving ? null : () => Navigator.pop(ctx, false),
+                  child: const Text('Batal'),
+                ),
+                FilledButton(
+                  onPressed: saving
+                      ? null
+                      : () async {
+                          final phone = phoneCtrl.text.trim();
+                          final name = nameCtrl.text.trim();
+                          if (phone.isEmpty) return;
+                          setLocal(() => saving = true);
+                          final prefs = await SharedPreferences.getInstance();
+                          await prefs.setString('buyer_phone', phone);
+                          if (name.isNotEmpty) {
+                            await prefs.setString('buyer_name', name);
+                          } else {
+                            await prefs.remove('buyer_name');
+                          }
+                          if (mounted) {
+                            setState(() {
+                              _buyerPhone = phone;
+                              _buyerName = name.isNotEmpty ? name : null;
+                            });
+                          }
+                          if (context.mounted) Navigator.pop(ctx, true);
+                        },
+                  child: const Text('Simpan'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    nameCtrl.dispose();
+    phoneCtrl.dispose();
+
+    if (result == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Kontak pesanan diperbarui')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -16,9 +125,6 @@ class ProfileScreen extends StatelessWidget {
       return Scaffold(
         appBar: AppBar(
           title: const Text('Profil'),
-          actions: [
-            IconButton(icon: const Icon(Icons.settings), onPressed: () {}),
-          ],
         ),
         body: Padding(
           padding: const EdgeInsets.all(16),
@@ -45,6 +151,36 @@ class ProfileScreen extends StatelessWidget {
                     'Kamu bisa melihat pesanan, profil, dan melakukan transaksi.',
                     style: TextStyle(color: Colors.grey),
                     textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  Card(
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(color: Colors.grey.shade200),
+                    ),
+                    child: ListTile(
+                      leading: const Icon(Icons.phone, color: Colors.indigo),
+                      title: const Text('Kontak pesanan'),
+                      subtitle: _loadingPrefs
+                          ? const Text('Memuat...')
+                          : Text(
+                              [
+                                if ((_buyerName ?? '').isNotEmpty) _buyerName!,
+                                if ((_buyerPhone ?? '').isNotEmpty) _buyerPhone!,
+                              ].join(' • ').isEmpty
+                                  ? 'Belum diatur'
+                                  : [
+                                      if ((_buyerName ?? '').isNotEmpty)
+                                        _buyerName!,
+                                      if ((_buyerPhone ?? '').isNotEmpty)
+                                        _buyerPhone!,
+                                    ].join(' • '),
+                            ),
+                      trailing: const Icon(Icons.chevron_right,
+                          color: Colors.grey),
+                      onTap: () => _openContactEditor(),
+                    ),
                   ),
                   const SizedBox(height: 24),
                   SizedBox(
@@ -85,9 +221,6 @@ class ProfileScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Profil Saya'),
-        actions: [
-          IconButton(icon: const Icon(Icons.settings), onPressed: () {}),
-        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -105,16 +238,13 @@ class ProfileScreen extends StatelessWidget {
                     const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
             Text(user?['email'] ?? '-',
                 style: const TextStyle(color: Colors.grey)),
-            Text(user?['phone'] ?? '-',
+            Text((user?['phone'] ?? user?['phoneNumber'] ?? '-').toString(),
                 style: const TextStyle(color: Colors.grey)),
 
             const SizedBox(height: 32),
 
-            // Menu Options
-            _buildMenuItem(Icons.location_on, 'Alamat Tersimpan', onTap: () {}),
-            _buildMenuItem(Icons.payment, 'Metode Pembayaran', onTap: () {}),
-            _buildMenuItem(Icons.favorite, 'Favorit', onTap: () {}),
-            _buildMenuItem(Icons.help, 'Bantuan & Dukungan', onTap: () {}),
+            _buildMenuItem(Icons.phone, 'Kontak Pesanan',
+                onTap: () => _openContactEditor()),
 
             const SizedBox(height: 32),
             OutlinedButton(

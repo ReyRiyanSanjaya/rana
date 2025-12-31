@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 import 'package:rana_merchant/providers/cart_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:rana_merchant/providers/auth_provider.dart';
+import 'package:rana_merchant/services/printer_service.dart';
+import 'package:rana_merchant/data/local/database_helper.dart';
 
 class PaymentScreen extends StatefulWidget {
   final CartProvider cart;
@@ -25,6 +27,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
   void initState() {
     super.initState();
     _amountController = TextEditingController();
+    // Auto-fill amount for QRIS
+    if (method == 'QRIS') {
+      payAmount = widget.cart.totalAmount;
+    }
   }
 
   @override
@@ -58,11 +64,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Metode Pembayaran', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+              Text('Pembayaran', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 20)),
               IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close))
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 24),
           Row(
             children: [
               _buildMethodCard('CASH', Icons.payments, true),
@@ -75,15 +81,16 @@ class _PaymentScreenState extends State<PaymentScreen> {
             const SizedBox(height: 24),
             TextField(
               keyboardType: TextInputType.number,
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              decoration: const InputDecoration(
+              style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.bold),
+              decoration: InputDecoration(
                 prefixText: 'Rp ',
                 labelText: 'Nominal Diterima',
-                border: OutlineInputBorder()
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                filled: true,
+                fillColor: Colors.grey[50]
               ),
               controller: _amountController,
               onChanged: (v) {
-                // Don't call setAmount here to avoid loop with controller text update
                 setState(() => payAmount = double.tryParse(v) ?? 0);
               },
             ),
@@ -95,7 +102,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 return ActionChip(
                   label: Text('Rp ${NumberFormat.decimalPattern('id').format(amt)}'),
                   onPressed: () => setAmount(amt),
-                  backgroundColor: payAmount == amt ? Colors.green[100] : null,
+                  backgroundColor: payAmount == amt ? Colors.green[100] : Colors.white,
+                  side: BorderSide(color: payAmount == amt ? Colors.green : Colors.grey[300]!),
                 );
               }).toList(),
             ),
@@ -110,8 +118,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
                child: Row(
                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                  children: [
-                   const Text('Kembalian', style: TextStyle(fontSize: 16)),
-                   Text('Rp ${change < 0 ? 0 : NumberFormat.decimalPattern('id').format(change)}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                   Text('Kembalian', style: GoogleFonts.poppins(fontSize: 16)),
+                   Text('Rp ${change < 0 ? 0 : NumberFormat.decimalPattern('id').format(change)}', style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold, color: change >= 0 ? Colors.green[800] : Colors.red[800])),
                  ],
                ),
              )
@@ -126,26 +134,113 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 final auth = Provider.of<AuthProvider>(context, listen: false);
                 final user = auth.currentUser;
 
-                if (user == null || user['storeId'] == null) {
-                   throw Exception('User data or Store configuration missing. Please login again.');
+                // [FIX] Relaxed check. If storeId missing, we try to proceed or use tenantId
+                String? storeId = user?['storeId'];
+                String? tenantId = user?['tenantId'];
+                
+                if (tenantId == null) {
+                   // Try getting from DB
+                   final tenant = await DatabaseHelper.instance.getTenantInfo();
+                   tenantId = tenant?['id'];
                 }
 
+                if (tenantId == null) {
+                   throw Exception('Data sesi tidak valid. Silakan login ulang.');
+                }
+                
+                // If storeId is missing, use tenantId as fallback for now (assuming single store)
+                // or 'DEFAULT_STORE' if backend can handle it.
+                // Best effort:
+                storeId ??= tenantId;
+
+                final cashierId = user?['id'] ?? 'OFFLINE_CASHIER';
+
+                // Capture items before checkout
+                final items = List<Map<String, dynamic>>.from(widget.cart.items.values.map((e) => {
+                  'name': e.name,
+                  'quantity': e.quantity,
+                  'price': e.price,
+                }));
+                final totalAmt = widget.cart.totalAmount;
+                final discAmt = widget.cart.discountAmount;
+
                 await widget.cart.checkout(
-                  user['tenantId'], 
-                  user['storeId'], 
-                  user['id'], // Cashier ID
-                  paymentMethod: method
+                  tenantId, 
+                  storeId, 
+                  cashierId, 
+                  paymentMethod: method,
+                  customerName: widget.cart.customerName,
+                  notes: widget.cart.notes,
                 );
                 
                 if (!mounted) return;
-                Navigator.pop(context, true);
+                
+                // Prepare Data for Receipt
+                final txnData = {
+                  'offlineId': 'TXN-${DateTime.now().millisecondsSinceEpoch}', 
+                  'totalAmount': totalAmt, 
+                  'payAmount': payAmount,
+                  'changeAmount': change,
+                  'cashierName': user?['name'] ?? 'Kasir',
+                  'customerName': widget.cart.customerName,
+                  'discount': discAmt,
+                  'storeId': storeId
+                };
+
+                Navigator.pop(context); // Close Payment Sheet
+
+                // Show Success Dialog
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (ctx) => AlertDialog(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    title: Column(
+                      children: [
+                        const Icon(Icons.check_circle, color: Colors.green, size: 64),
+                        const SizedBox(height: 16),
+                        Text('Transaksi Berhasil', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                    content: Text('Pembayaran telah berhasil disimpan.', textAlign: TextAlign.center, style: GoogleFonts.poppins()),
+                    actions: [
+                      OutlinedButton.icon(
+                        onPressed: () async {
+                           // Print
+                           await PrinterService().printReceipt(txnData, items, storeName: 'RANA STORE');
+                        },
+                        icon: const Icon(Icons.print),
+                        label: const Text('Cetak Struk'),
+                        style: OutlinedButton.styleFrom(padding: const EdgeInsets.all(16)),
+                      ),
+                      const SizedBox(height: 12),
+                      FilledButton(
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                        },
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF4F46E5),
+                          minimumSize: const Size.fromHeight(50),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
+                        ),
+                        child: const Text('Tutup'),
+                      )
+                    ],
+                    actionsAlignment: MainAxisAlignment.center,
+                  )
+                );
+
               } catch (e) {
-                setState(() => _isProcessing = false);
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                 setState(() => _isProcessing = false);
+                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
               }
             },
-            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF4F46E5), padding: const EdgeInsets.symmetric(vertical: 16)),
-            child: _isProcessing ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white)) : const Text('SELESAIKAN'),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF4F46E5), 
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
+            ),
+            child: _isProcessing ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white)) : Text('SELESAIKAN', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
           )
         ],
       ),
@@ -156,7 +251,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     final isSelected = method == id;
     return Expanded(
       child: GestureDetector(
-        onTap: () => setState(() { method = id; payAmount = 0; }),
+        onTap: () => setState(() { method = id; payAmount = (id == 'QRIS' ? widget.cart.totalAmount : 0); }),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(vertical: 16),
@@ -164,12 +259,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
              color: isSelected ? const Color(0xFF4F46E5) : Colors.white,
              borderRadius: BorderRadius.circular(12),
              border: Border.all(color: isSelected ? const Color(0xFF4F46E5) : Colors.grey[300]!),
+             boxShadow: isSelected ? [BoxShadow(color: const Color(0xFF4F46E5).withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))] : []
           ),
           child: Column(
             children: [
-              Icon(icon, color: isSelected ? Colors.white : Colors.grey[600], size: 24),
+              Icon(icon, color: isSelected ? Colors.white : Colors.grey[600], size: 28),
               const SizedBox(height: 8),
-              Text(id, style: TextStyle(color: isSelected ? Colors.white : Colors.grey[600], fontWeight: FontWeight.bold))
+              Text(id, style: GoogleFonts.poppins(color: isSelected ? Colors.white : Colors.grey[600], fontWeight: FontWeight.bold))
             ],
           ),
         ),

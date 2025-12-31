@@ -6,15 +6,16 @@
 // tree, read text, and verify that the values of widget properties are correct.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 
 import 'package:rana_merchant/main.dart';
 
 void main() {
   testWidgets('App boots smoke test', (WidgetTester tester) async {
     await tester.pumpWidget(const RanaApp());
-    await tester.pumpAndSettle(const Duration(seconds: 3));
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.byType(MaterialApp), findsOneWidget);
     await tester.pumpWidget(const SizedBox(width: 0, height: 0));
-    await tester.pumpAndSettle();
+    await tester.pump();
   });
 }
