@@ -47,6 +47,15 @@ class WholesaleCartProvider with ChangeNotifier {
           _paymentMethods = methods;
         }
       }
+      if (settings.containsKey('BANK_NAME')) {
+        _bankName = settings['BANK_NAME']!;
+      }
+      if (settings.containsKey('BANK_ACCOUNT_NUMBER')) {
+        _bankAccountNumber = settings['BANK_ACCOUNT_NUMBER']!;
+      }
+      if (settings.containsKey('BANK_ACCOUNT_NAME')) {
+        _bankAccountName = settings['BANK_ACCOUNT_NAME']!;
+      }
       notifyListeners();
     } catch (e) {
       debugPrint('Failed to fetch wholesale settings: $e');
@@ -66,6 +75,9 @@ class WholesaleCartProvider with ChangeNotifier {
     'Transfer Bank (Mandiri)',
     'Bayar di Tempat (COD)'
   ];
+  String _bankName = '';
+  String _bankAccountNumber = '';
+  String _bankAccountName = '';
 
   Map<String, WholesaleCartItem> get items => _items;
   String? get couponCode => _couponCode;
@@ -74,6 +86,9 @@ class WholesaleCartProvider with ChangeNotifier {
   double get serviceFee => _serviceFee;
   double get shippingCostPerKm => _shippingCostPerKm;
   List<String> get paymentMethods => _paymentMethods;
+  String get bankName => _bankName;
+  String get bankAccountNumber => _bankAccountNumber;
+  String get bankAccountName => _bankAccountName;
 
   int get itemCount {
     return _items.length;

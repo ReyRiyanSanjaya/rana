@@ -13,8 +13,11 @@ class StoreDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final products = store['products'] as List<dynamic>? ?? [];
     return Scaffold(
+      backgroundColor: const Color(0xFFFFF8F0),
       appBar: AppBar(
         title: Text(store['name'] ?? 'Toko'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -22,15 +25,17 @@ class StoreDetailScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border(bottom: BorderSide(color: Colors.grey.shade200))
-            ),
+                color: Colors.white,
+                border:
+                    Border(bottom: BorderSide(color: Colors.grey.shade200))),
             child: Row(
               children: [
                 Container(
                   width: 50,
                   height: 50,
-                  decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(8)),
+                  decoration: BoxDecoration(
+                      color: Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(8)),
                   child: const Icon(Icons.store, color: Colors.grey),
                 ),
                 const SizedBox(width: 12),
@@ -38,22 +43,32 @@ class StoreDetailScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(store['name'] ?? '-', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                      Text(store['address'] ?? '-', style: TextStyle(color: Colors.grey.shade600)),
+                      Text(store['name'] ?? '-',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 18)),
+                      Text(store['address'] ?? '-',
+                          style: TextStyle(color: Colors.grey.shade600)),
                     ],
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(color: const Color(0xFFFFF5EC), borderRadius: BorderRadius.circular(4)),
-                  child: Text(store['category'] ?? '-', style: const TextStyle(color: Color(0xFFD70677), fontWeight: FontWeight.bold)),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                      color: const Color(0xFFFFF8F0),
+                      borderRadius: BorderRadius.circular(4)),
+                  child: Text(store['category'] ?? '-',
+                      style: const TextStyle(
+                          color: Color(0xFFE07A5F),
+                          fontWeight: FontWeight.bold)),
                 )
               ],
             ),
           ),
           const Padding(
             padding: EdgeInsets.all(16.0),
-            child: Text('Produk', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            child: Text('Produk',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
           ),
           Expanded(
             child: GridView.builder(
@@ -62,7 +77,7 @@ class StoreDetailScreen extends StatelessWidget {
                 crossAxisCount: 2,
                 mainAxisSpacing: 12,
                 crossAxisSpacing: 12,
-                childAspectRatio: 3/4,
+                childAspectRatio: 3 / 4,
               ),
               itemCount: products.length,
               itemBuilder: (context, i) {
@@ -76,16 +91,30 @@ class StoreDetailScreen extends StatelessWidget {
                     return GestureDetector(
                       onTap: () {
                         Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => ProductDetailScreen(
-                            product: p,
-                            storeId: store['id'],
-                            storeName: store['name'],
-                            storeAddress: (store['address'] ?? store['location'] ?? store['alamat'])?.toString(),
-                            storeLat: ((store['latitude'] ?? store['lat']) is num) ? (store['latitude'] ?? store['lat']).toDouble() : null,
-                            storeLong: ((store['longitude'] ?? store['long'] ?? store['lng']) is num) ? (store['longitude'] ?? store['long'] ?? store['lng']).toDouble() : null,
-                          ))
-                        );
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => ProductDetailScreen(
+                                      product: p,
+                                      storeId: store['id'],
+                                      storeName: store['name'],
+                                      storeAddress: (store['address'] ??
+                                              store['location'] ??
+                                              store['alamat'])
+                                          ?.toString(),
+                                      storeLat: ((store['latitude'] ??
+                                              store['lat']) is num)
+                                          ? (store['latitude'] ?? store['lat'])
+                                              .toDouble()
+                                          : null,
+                                      storeLong: ((store['longitude'] ??
+                                              store['long'] ??
+                                              store['lng']) is num)
+                                          ? (store['longitude'] ??
+                                                  store['long'] ??
+                                                  store['lng'])
+                                              .toDouble()
+                                          : null,
+                                    )));
                       },
                       child: Stack(
                         children: [
@@ -129,14 +158,24 @@ class StoreDetailScreen extends StatelessWidget {
                                 Padding(
                                   padding: const EdgeInsets.all(12.0),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Text(p['name'], maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                      Text(p['name'],
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.bold)),
                                       const SizedBox(height: 4),
-                                      Text('Rp ${p['sellingPrice']}', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                                      Text('Rp ${p['sellingPrice']}',
+                                          style: const TextStyle(
+                                              color: Color(0xFF81B29A),
+                                              fontWeight: FontWeight.bold)),
                                       Row(
                                         children: [
-                                          Icon(Icons.star, size: 14, color: Colors.orange.shade400),
+                                          Icon(Icons.star,
+                                              size: 14,
+                                              color: Color(0xFFF2CC8F)),
                                           Text(avg.toStringAsFixed(1)),
                                         ],
                                       ),
@@ -150,7 +189,13 @@ class StoreDetailScreen extends StatelessWidget {
                             right: 8,
                             top: 8,
                             child: IconButton(
-                              icon: Icon(isFav ? Icons.favorite : Icons.favorite_border, color: isFav ? Colors.red : Colors.grey),
+                              icon: Icon(
+                                  isFav
+                                      ? Icons.favorite
+                                      : Icons.favorite_border,
+                                  color: isFav
+                                      ? const Color(0xFFE07A5F)
+                                      : Colors.grey),
                               onPressed: () => fav.toggleFavorite(p['id']),
                             ),
                           ),

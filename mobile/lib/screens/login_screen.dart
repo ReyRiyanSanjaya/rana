@@ -23,10 +23,13 @@ class _LoginScreenState extends State<LoginScreen> {
       await Provider.of<AuthProvider>(context, listen: false)
           .login(_phoneCtrl.text, _passCtrl.text);
       if (mounted) {
-         Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomeScreen()));
+        Navigator.pushReplacement(
+            context, MaterialPageRoute(builder: (_) => const HomeScreen()));
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(e.toString()),
+          backgroundColor: const Color(0xFFE07A5F)));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -35,26 +38,43 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFFFF8F0),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.storefront, size: 64, color: Colors.indigo).animate().scale(duration: 600.ms, curve: Curves.elasticOut),
+              const Icon(Icons.storefront, size: 64, color: Color(0xFFE07A5F))
+                  .animate()
+                  .scale(duration: 600.ms, curve: Curves.elasticOut),
               const SizedBox(height: 16),
-              Text('Rana POS', style: Theme.of(context).textTheme.headlineMedium).animate().fadeIn(delay: 300.ms).slideY(begin: 0.3),
+              Text('Rana POS',
+                      style: Theme.of(context).textTheme.headlineMedium)
+                  .animate()
+                  .fadeIn(delay: 300.ms)
+                  .slideY(begin: 0.3),
               const SizedBox(height: 32),
               TextField(
                 controller: _phoneCtrl,
                 keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(labelText: 'Nomor HP / WhatsApp', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                    labelText: 'Nomor HP / WhatsApp',
+                    border: OutlineInputBorder(),
+                    focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: Color(0xFFE07A5F))),
+                    floatingLabelStyle: TextStyle(color: Color(0xFFE07A5F))),
               ),
               const SizedBox(height: 16),
               TextField(
                 controller: _passCtrl,
                 obscureText: true,
-                decoration: const InputDecoration(labelText: 'Password', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                    labelText: 'Password',
+                    border: OutlineInputBorder(),
+                    focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: Color(0xFFE07A5F))),
+                    floatingLabelStyle: TextStyle(color: Color(0xFFE07A5F))),
               ),
               const SizedBox(height: 24),
               SizedBox(
@@ -63,14 +83,19 @@ class _LoginScreenState extends State<LoginScreen> {
                   onPressed: _isLoading ? null : _login,
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
-                    child: _isLoading ? const CircularProgressIndicator() : const Text('Login'),
+                    child: _isLoading
+                        ? const CircularProgressIndicator()
+                        : const Text('Login'),
                   ),
                 ),
               ),
               const SizedBox(height: 16),
               TextButton(
                 onPressed: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => const RegisterScreen()));
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const RegisterScreen()));
                 },
                 child: const Text('Belum punya akun? Daftar gratis'),
               )

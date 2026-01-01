@@ -67,7 +67,8 @@ class ApiService {
     return false;
   }
 
-  String _messageFromBody(dynamic body, {String fallback = 'Terjadi kesalahan'}) {
+  String _messageFromBody(dynamic body,
+      {String fallback = 'Terjadi kesalahan'}) {
     if (body is Map) {
       final dynamic msg = body['message'];
       if (msg is String && msg.trim().isNotEmpty) return msg;
@@ -191,6 +192,28 @@ class ApiService {
     }
   }
 
+  Future<void> changePassword(String oldPassword, String newPassword) async {
+    try {
+      final response = await _dio.put('/auth/change-password',
+          data: {
+            'oldPassword': oldPassword,
+            'newPassword': newPassword,
+          },
+          options: Options(headers: {'Authorization': 'Bearer ${_token}'}));
+
+      if (!_isSuccess(response.data)) {
+        throw Exception(response.data['message']);
+      }
+    } catch (e) {
+      // Handle specific Dio errors if needed
+      if (e is DioException && e.response != null) {
+        throw Exception(
+            e.response!.data['message'] ?? 'Gagal mengubah password');
+      }
+      throw Exception('Gagal mengubah password: $e');
+    }
+  }
+
   Future<void> createPurchase(
       {required String supplierName,
       required List<Map<String, dynamic>> items}) async {
@@ -278,12 +301,21 @@ class ApiService {
   }
 
   // --- Upload Proof ---
-  Future<String> uploadTransferProof(String filePath) async {
+  Future<String> uploadTransferProof(String filePath,
+      {List<int>? fileBytes, String? fileName}) async {
     try {
-      String fileName = filePath.split('/').last;
-      FormData formData = FormData.fromMap({
-        'file': await MultipartFile.fromFile(filePath, filename: fileName),
-      });
+      String name = fileName ?? filePath.split('/').last;
+      FormData formData;
+
+      if (fileBytes != null) {
+        formData = FormData.fromMap({
+          'file': MultipartFile.fromBytes(fileBytes, filename: name),
+        });
+      } else {
+        formData = FormData.fromMap({
+          'file': await MultipartFile.fromFile(filePath, filename: name),
+        });
+      }
 
       final response = await _dio.post('/wholesale/upload-proof',
           data: formData,
@@ -666,7 +698,8 @@ class ApiService {
           data: {'subject': subject, 'message': message, 'priority': priority});
     } catch (e) {
       if (e is DioException) {
-        throw Exception(_messageFromBody(e.response?.data, fallback: 'Failed to create ticket'));
+        throw Exception(_messageFromBody(e.response?.data,
+            fallback: 'Failed to create ticket'));
       }
       throw Exception('Failed to create ticket: $e');
     }
@@ -713,6 +746,15 @@ class ApiService {
         final Map<String, dynamic> payData = payRes.data['data'];
         settings['PLATFORM_QRIS_URL'] = payData['qrisUrl'] ?? '';
         settings['PLATFORM_BANK_INFO'] = payData['bankInfo'] ?? '';
+      } catch (_) {}
+
+      // 3. Fetch Global Settings (Wholesale, etc.)
+      try {
+        final settingsRes = await _dio.get('/system/settings');
+        final Map<String, dynamic> settingsData = settingsRes.data['data'];
+        settingsData.forEach((key, value) {
+          settings[key] = value.toString();
+        });
       } catch (_) {}
 
       return settings;
@@ -884,8 +926,7 @@ class ApiService {
           },
           options: Options(headers: {'Authorization': 'Bearer ${_token}'}));
 
-      if (!_isSuccess(response.data))
-        throw Exception(response.data['message']);
+      if (!_isSuccess(response.data)) throw Exception(response.data['message']);
       return Map<String, dynamic>.from(response.data['data'] ?? {});
     } catch (e) {
       if (e is DioException && e.response?.statusCode == 402) {

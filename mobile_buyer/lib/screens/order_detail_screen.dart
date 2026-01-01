@@ -59,8 +59,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     setState(() => _refreshing = true);
     try {
       final auth = Provider.of<AuthProvider>(context, listen: false);
-      final fromUser = (auth.user?['phone'] ?? auth.user?['phoneNumber'])?.toString().trim();
-      String? phone = (fromUser != null && fromUser.isNotEmpty) ? fromUser : null;
+      final fromUser =
+          (auth.user?['phone'] ?? auth.user?['phoneNumber'])?.toString().trim();
+      String? phone =
+          (fromUser != null && fromUser.isNotEmpty) ? fromUser : null;
       if (phone == null) {
         final prefs = await SharedPreferences.getInstance();
         final p = (prefs.getString('buyer_phone') ?? '').trim();
@@ -103,7 +105,12 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         ?.toString();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Detail Pesanan')),
+      backgroundColor: const Color(0xFFFFF8F0),
+      appBar: AppBar(
+        title: const Text('Detail Pesanan'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
       body: RefreshIndicator(
         onRefresh: _refreshOrder,
         child: SingleChildScrollView(
@@ -114,8 +121,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               // Status Card
               Card(
                 color: status == 'COMPLETED'
-                    ? Colors.green.shade50
-                    : const Color(0xFFFFF5EC),
+                    ? const Color(0xFF81B29A).withOpacity(0.1)
+                    : Colors.white,
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
@@ -126,8 +133,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                               : Icons.access_time,
                           size: 48,
                           color: status == 'COMPLETED'
-                              ? Colors.green
-                              : const Color(0xFFD70677)),
+                              ? Color(0xFF81B29A)
+                              : const Color(0xFFE07A5F)),
                       const SizedBox(height: 8),
                       Text(status,
                           style: const TextStyle(

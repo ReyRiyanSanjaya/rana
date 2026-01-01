@@ -146,16 +146,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // [NEW] Color Mapper (Simple hash or predefined)
   Color _getColor(String key) {
-    final colors = [
-      const Color(0xFFF59E0B),
-      const Color(0xFF3B82F6),
-      const Color(0xFF10B981),
-      const Color(0xFFEC4899),
-      const Color(0xFF8B5CF6),
-      const Color(0xFF06B6D4),
-      const Color(0xFF6366F1)
-    ];
-    return colors[key.length % colors.length];
+    return const Color(0xFFE07A5F); // Terra Cotta
   }
 
   @override
@@ -178,7 +169,9 @@ class _HomeScreenState extends State<HomeScreen> {
             SnackBar(
               content: Text(
                   'Status: ${sub.status.toString().split('.').last} (Locked: ${sub.isLocked})'),
-              backgroundColor: sub.isLocked ? Colors.red : Colors.green,
+              backgroundColor: sub.isLocked
+                  ? const Color(0xFFE07A5F)
+                  : const Color(0xFF81B29A),
               duration: const Duration(seconds: 2),
             ),
           );
@@ -293,7 +286,8 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.lock_clock, size: 48, color: Colors.red),
+                  const Icon(Icons.lock_clock,
+                      size: 48, color: Color(0xFFE07A5F)),
                   const SizedBox(height: 16),
                   Text('Masa Uji Coba Habis',
                       style: GoogleFonts.poppins(
@@ -422,7 +416,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           builder: (_) => const SubscriptionScreen())),
                   style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
-                      foregroundColor: const Color(0xFF991B1B),
+                      foregroundColor: const Color(0xFFE07A5F),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16))),
                   child: Text('Perpanjang Sekarang',
@@ -448,7 +442,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       key: _scaffoldKey, // [FIX] Assigned Key
-      backgroundColor: const Color(0xFFF3F4F6),
+      backgroundColor: const Color(0xFFFFF8F0),
       drawer: _buildDrawer(context),
       body: LayoutBuilder(
         builder: (context, constraints) {
@@ -636,7 +630,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildNavItem(int index, IconData icon, String label) {
     final isSelected = _bottomNavIndex == index;
-    final color = isSelected ? const Color(0xFFD70677) : const Color(0xFFD70677).withOpacity(0.5);
+    final color = isSelected
+        ? const Color(0xFFE07A5F)
+        : const Color(0xFFE07A5F).withOpacity(0.5);
 
     return InkWell(
       onTap: () {
@@ -728,7 +724,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               builder: (_) => const AnnouncementsScreen())),
                       child: Text('Lihat Semua',
                           style: GoogleFonts.poppins(
-                              color: const Color(0xFF6366F1),
+                              color: const Color(0xFFE07A5F),
                               fontWeight: FontWeight.w600)),
                     )
                   ],
@@ -753,23 +749,46 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // [FIXED] Sticky Sliver AppBar - Updated
-  // [UPDATED] Animated Sliver AppBar without Search - Red Theme
+  // [UPDATED] Animated Sliver AppBar without Search - Terra Cotta Theme
   Widget _buildSliverAppBar(BuildContext context) {
-    final titleName =
-        (_storeName != null && _storeName!.trim().isNotEmpty)
-            ? _storeName!.trim()
-            : 'Toko';
+    // 1. Dynamic Greeting
+    final hour = DateTime.now().hour;
+    String greeting;
+    if (hour < 11) {
+      greeting = 'Selamat Pagi,';
+    } else if (hour < 15) {
+      greeting = 'Selamat Siang,';
+    } else if (hour < 18) {
+      greeting = 'Selamat Sore,';
+    } else {
+      greeting = 'Selamat Malam,';
+    }
+
+    // 2. Dynamic Store Name
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final user = authProvider.currentUser;
+    final storeNameFromAuth = user?['businessName']?.toString();
+    final ownerName = user?['name']?.toString();
+
+    final titleName = (_storeName != null && _storeName!.trim().isNotEmpty)
+        ? _storeName!.trim()
+        : (storeNameFromAuth != null && storeNameFromAuth.trim().isNotEmpty
+            ? storeNameFromAuth.trim()
+            : (ownerName != null && ownerName.trim().isNotEmpty
+                ? ownerName.trim()
+                : 'Toko'));
+
     return SliverAppBar(
       expandedHeight: 140, // Slightly taller for better effect
       pinned: true,
-      backgroundColor: const Color(0xFFD70677), // Red Brand
+      backgroundColor: const Color(0xFFE07A5F), // Terra Cotta Brand
       stretch: true, // Enable stretch effect
       // [NEW] Fixed Title and Actions so they don't scroll away
       centerTitle: false,
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Selamat Pagi,',
+          Text(greeting,
               style: GoogleFonts.outfit(color: Colors.white70, fontSize: 12)),
           Text(titleName,
               style: GoogleFonts.outfit(
@@ -794,7 +813,7 @@ class _HomeScreenState extends State<HomeScreen> {
             onTap: () => _switchTab(4),
             child: const CircleAvatar(
                 backgroundColor: Colors.white,
-                child: Icon(Icons.person, color: Color(0xFFD70677)))),
+                child: const Icon(Icons.person, color: Color(0xFFE07A5F)))),
         const SizedBox(width: 16),
       ],
       flexibleSpace: FlexibleSpaceBar(
@@ -805,17 +824,17 @@ class _HomeScreenState extends State<HomeScreen> {
         background: Stack(
           fit: StackFit.expand,
           children: [
-            // 1. Dynamic Background Gradient (Red Theme)
+            // 1. Dynamic Background Gradient (Terra Cotta Theme)
             Container(
               decoration: const BoxDecoration(
                   gradient: LinearGradient(colors: [
-                Color(0xFF9F0013),
-                Color(0xFFD70677),
-                Color(0xFFE11D48)
+                Color(0xFFE07A5F),
+                Color(0xFFE07A5F),
+                Color(0xFFE07A5F)
               ], begin: Alignment.topCenter, end: Alignment.bottomCenter)),
             ),
 
-            // 2. Animated Orbs/Glows (Tuned for Red)
+            // 2. Animated Orbs/Glows (Tuned for Terra Cotta)
             Positioned(
                 top: -50,
                 right: -50,
@@ -824,10 +843,10 @@ class _HomeScreenState extends State<HomeScreen> {
                         height: 200,
                         decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: Colors.orange.withOpacity(0.15),
+                            color: Colors.white.withOpacity(0.15),
                             boxShadow: [
                               BoxShadow(
-                                  color: Colors.orange.withOpacity(0.3),
+                                  color: Colors.white.withOpacity(0.3),
                                   blurRadius: 80,
                                   spreadRadius: 10)
                             ]))
@@ -861,42 +880,54 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // [NEW] Live Ticker
   Widget _buildLiveTicker() {
-    return Container(
-      width: double.infinity,
-      color: const Color(0xFFFEF3C7), // Amber 100
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-      child: Row(
-        children: [
-          const Icon(Icons.campaign, size: 16, color: Colors.orange),
-          const SizedBox(width: 8),
-          Expanded(
-              child: Text(
-                  "🔥 Promo Spesial: Diskon 50% Printer Thermal hanya hari ini!",
-                  style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      color: Colors.brown,
-                      fontWeight: FontWeight.w500),
-                  overflow: TextOverflow.ellipsis)),
-        ],
-      )
-          .animate(onPlay: (c) => c.repeat())
-          .shimmer(duration: 3.seconds, delay: 2.seconds),
+    return FutureBuilder<List<dynamic>>(
+      future: ApiService().getAnnouncements(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        // Find a promo or just take the latest
+        final item = snapshot.data!.first;
+        final text = "🔥 ${item['title']}: ${item['content']}";
+
+        return Container(
+          width: double.infinity,
+          color: const Color(0xFFFFF8F0), // Soft Beige
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+          child: Row(
+            children: [
+              const Icon(Icons.campaign, size: 16, color: Color(0xFFE07A5F)),
+              const SizedBox(width: 8),
+              Expanded(
+                  child: Text(text,
+                      style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color: const Color(0xFFE07A5F),
+                          fontWeight: FontWeight.w500),
+                      overflow: TextOverflow.ellipsis)),
+            ],
+          )
+              .animate(onPlay: (c) => c.repeat())
+              .shimmer(duration: 3.seconds, delay: 2.seconds),
+        );
+      },
     );
   }
 
-  // [UPDATED] Red Glassmorphism Wallet Card
+  // [UPDATED] Terra Cotta Glassmorphism Wallet Card
   Widget _buildWalletCard(BuildContext context) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 24),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
         gradient: const LinearGradient(
-            colors: [Color(0xFFD70677), Color(0xFFE11D48)],
+            colors: [Color(0xFFE07A5F), Color(0xFFE07A5F)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight),
         boxShadow: [
           BoxShadow(
-              color: const Color(0xFFD70677).withOpacity(0.3),
+              color: const Color(0xFFE07A5F).withOpacity(0.3),
               blurRadius: 20,
               offset: const Offset(0, 10))
         ],
@@ -1119,12 +1150,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     return;
                   }
                   final screen = _getScreen(route);
-                  
+
                   // [FIX] Use root navigator for Kulakan to hide main bottom bar
                   if (route == '/kulakan') {
-                    Navigator.of(context, rootNavigator: true).push(
-                      MaterialPageRoute(builder: (_) => screen)
-                    );
+                    Navigator.of(context, rootNavigator: true)
+                        .push(MaterialPageRoute(builder: (_) => screen));
                     return;
                   }
 
@@ -1174,14 +1204,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // [NEW] Drawer for Mobile Navigation
   Widget _buildDrawer(BuildContext context) {
-    final titleName =
-        (_storeName != null && _storeName!.trim().isNotEmpty)
-            ? _storeName!.trim()
-            : 'Rana Merchant';
-    final subtitle =
-        (_storeContact != null && _storeContact!.trim().isNotEmpty)
-            ? _storeContact!.trim()
-            : '-';
+    final titleName = (_storeName != null && _storeName!.trim().isNotEmpty)
+        ? _storeName!.trim()
+        : 'Rana Merchant';
+    final subtitle = (_storeContact != null && _storeContact!.trim().isNotEmpty)
+        ? _storeContact!.trim()
+        : '-';
     return Drawer(
       child: ListView(
         padding: EdgeInsets.zero,
@@ -1252,15 +1280,16 @@ class _HomeScreenState extends State<HomeScreen> {
               margin: const EdgeInsets.symmetric(horizontal: 24),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
+                  color: const Color(0xFF3D405B).withOpacity(0.1),
                   borderRadius: BorderRadius.circular(16)),
               child: Row(
                 children: [
-                  const Icon(Icons.info_outline, color: Colors.blue),
+                  const Icon(Icons.info_outline, color: Color(0xFF3D405B)),
                   const SizedBox(width: 12),
                   Expanded(
                       child: Text("Belum ada info terkini.",
-                          style: GoogleFonts.poppins(color: Colors.blue[900])))
+                          style: GoogleFonts.poppins(
+                              color: const Color(0xFF3D405B))))
                 ],
               ),
             );
@@ -1293,10 +1322,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                          color: Colors.blue.withOpacity(0.1),
+                          color: const Color(0xFF3D405B).withOpacity(0.1),
                           shape: BoxShape.circle),
                       child: const Icon(Icons.notifications_active,
-                          color: Colors.blue, size: 20),
+                          color: Color(0xFF3D405B), size: 20),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -1349,7 +1378,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: GoogleFonts.inter(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
-                          color: const Color(0xFFD70677))))
+                          color: const Color(0xFFE07A5F))))
             ],
           ),
         ),
@@ -1362,8 +1391,8 @@ class _HomeScreenState extends State<HomeScreen> {
               return const SizedBox.shrink();
 
             final posts = snapshot.data!;
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+            return SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1513,89 +1542,147 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildAiCard(BuildContext context) {
-    // Modified to fit list
+    if (_aiInsight == null) return const SizedBox.shrink();
 
-    bool isAlert = _aiInsight!['type'] == 'ALERT';
+    final type = _aiInsight!['type'];
+    final iconStr = _aiInsight!['icon'];
+    final action = _aiInsight!['action'];
+
+    // Theme Colors
+    Color themeColor = const Color(0xFFE07A5F);
+    if (type == 'ALERT') themeColor = Colors.redAccent;
+    if (type == 'POSITIVE') themeColor = Colors.green;
+    if (type == 'TIP') themeColor = Colors.orange;
+    if (type == 'INFO') themeColor = Colors.blueAccent;
+
+    // Icon Mapping
+    IconData icon = Icons.auto_awesome;
+    if (iconStr == 'alert') icon = Icons.warning_amber_rounded;
+    if (iconStr == 'percent') icon = Icons.percent;
+    if (iconStr == 'trending_up') icon = Icons.trending_up;
+    if (iconStr == 'trending_down') icon = Icons.trending_down;
+    if (iconStr == 'rain') icon = Icons.cloud;
+    if (iconStr == 'sun') icon = Icons.wb_sunny;
+    if (iconStr == 'chart') icon = Icons.bar_chart;
+    if (iconStr == 'smart_toy') icon = Icons.smart_toy;
+
     return Container(
-      margin: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: isAlert
-              ? [Colors.red.shade50, Colors.white]
-              : [Colors.indigo.shade50, Colors.white],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-            color: isAlert ? Colors.red.shade100 : Colors.indigo.shade100),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4))
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+                color: themeColor.withOpacity(0.12),
+                blurRadius: 20,
+                offset: const Offset(0, 8))
+          ],
+          border: Border.all(color: themeColor.withOpacity(0.1), width: 1.5)),
+      child: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: isAlert
-                  ? Colors.red.withOpacity(0.1)
-                  : Colors.indigo.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-                isAlert ? Icons.warning_amber_rounded : Icons.auto_awesome,
-                color: isAlert ? Colors.red : Colors.indigo,
-                size: 24),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: themeColor.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: themeColor, size: 28),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Rana AI Insight',
-                        style: GoogleFonts.poppins(
-                            fontSize: 12,
+                    Row(
+                      children: [
+                        Text('Rana AI Insight',
+                            style: GoogleFonts.outfit(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF94A3B8))),
+                        const Spacer(),
+                        Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                                color: themeColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(20)),
+                            child: Text(_aiInsight!['short'] ?? 'Insight',
+                                style: GoogleFonts.outfit(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: themeColor))),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(_aiInsight!['title'] ?? '',
+                        style: GoogleFonts.outfit(
+                            fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: isAlert ? Colors.red : Colors.indigo)),
-                    const SizedBox(width: 8),
-                    Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                            color: Colors.black12,
-                            borderRadius: BorderRadius.circular(4)),
-                        child: const Text('BETA',
-                            style: TextStyle(
-                                fontSize: 10, fontWeight: FontWeight.bold))),
+                            color: const Color(0xFF1E293B))),
+                    const SizedBox(height: 6),
+                    Text(_aiInsight!['message'],
+                        style: GoogleFonts.outfit(
+                            fontSize: 14,
+                            color: const Color(0xFF64748B),
+                            height: 1.5)),
                   ],
                 ),
-                const SizedBox(height: 4),
-                Text(_aiInsight!['message'],
-                    style: GoogleFonts.poppins(
-                        fontSize: 14, color: Colors.black87)),
-              ],
-            ),
-          ),
-          if (_aiInsight!['action'] == 'KULAKAN')
-            FilledButton(
-              onPressed: () => Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const PurchaseScreen())),
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.red,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20)),
-                padding: const EdgeInsets.symmetric(horizontal: 16),
               ),
-              child: const Text('Belanja'),
-            )
+            ],
+          ),
+          if (action != 'NONE') ...[
+            const SizedBox(height: 20),
+            SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                    onPressed: () {
+                      if (action == 'KULAKAN') {
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const PurchaseScreen()));
+                      } else if (action == 'PROMO' || action == 'MARKETING') {
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const MarketingScreen()));
+                      } else if (action == 'REPORT') {
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const ReportScreen()));
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: themeColor,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12))),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                            action == 'KULAKAN'
+                                ? 'Mulai Belanja'
+                                : action == 'PROMO'
+                                    ? 'Buat Promo'
+                                    : action == 'REPORT'
+                                        ? 'Lihat Laporan'
+                                        : 'Lihat Detail',
+                            style: GoogleFonts.outfit(
+                                fontWeight: FontWeight.w600)),
+                        const SizedBox(width: 8),
+                        const Icon(Icons.arrow_forward_rounded, size: 18)
+                      ],
+                    )))
+          ]
         ],
       ),
     );
@@ -1675,7 +1762,7 @@ class _HomeScreenState extends State<HomeScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       decoration: const BoxDecoration(
           gradient: LinearGradient(
-              colors: [Color(0xFF9F0013), Color(0xFFD70677)],
+              colors: [Color(0xFFE07A5F), Color(0xFFE07A5F)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight)),
       child: SafeArea(
@@ -1703,11 +1790,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         width: 8,
                         height: 8,
                         decoration: const BoxDecoration(
-                            color: Colors.greenAccent, shape: BoxShape.circle)),
+                            color: Color(0xFF81B29A), shape: BoxShape.circle)),
                     const SizedBox(width: 6),
                     Text('CONNECTED',
                         style: TextStyle(
-                            color: Colors.greenAccent[100],
+                            color: Color(0xFF81B29A),
                             fontSize: 10,
                             fontWeight: FontWeight.bold)),
                   ],
@@ -1789,7 +1876,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     fontWeight:
                         isSelected ? FontWeight.bold : FontWeight.normal),
                 backgroundColor:
-                    isSelected ? const Color(0xFFD70677) : Colors.grey[100],
+                    isSelected ? const Color(0xFFE07A5F) : Colors.grey[100],
                 side: BorderSide.none,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20)),
@@ -1861,13 +1948,13 @@ class _HomeScreenState extends State<HomeScreen> {
               Row(
                 children: [
                   const Icon(Icons.shopping_cart_outlined,
-                      color: Color(0xFFD70677)),
+                      color: Color(0xFFE07A5F)),
                   const SizedBox(width: 8),
                   const Text('Keranjang Belanja',
                       style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFFD70677))),
+                          color: Color(0xFFE07A5F))),
                 ],
               ),
               Container(
@@ -1878,7 +1965,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     borderRadius: BorderRadius.circular(12)), // Light Red
                 child: Text('${cart.itemCount} Items',
                     style: const TextStyle(
-                        color: Color(0xFFD70677),
+                        color: Color(0xFFE07A5F),
                         fontSize: 12,
                         fontWeight: FontWeight.bold)),
               )
@@ -2112,7 +2199,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: FilledButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         backgroundColor:
-                            const Color(0xFFD70677), // [FIX] Red Brand
+                            const Color(0xFFE07A5F), // [FIX] Red Brand
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12)),
                       ),

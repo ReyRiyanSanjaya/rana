@@ -61,8 +61,9 @@ class _PpobScreenState extends State<PpobScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F4F6),
+      backgroundColor: const Color(0xFFFFF8F0),
       appBar: AppBar(
+        backgroundColor: const Color(0xFFE07A5F),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
           onPressed: () => Navigator.pop(context),

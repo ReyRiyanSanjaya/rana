@@ -35,7 +35,8 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
     }
   }
 
-  Future<void> _saveContact({required String name, required String phone}) async {
+  Future<void> _saveContact(
+      {required String name, required String phone}) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('buyer_name', name);
     await prefs.setString('buyer_phone', phone);
@@ -66,7 +67,11 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
     final cart = Provider.of<MarketCartProvider>(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Keranjang Belanja')),
+      appBar: AppBar(
+        title: const Text('Keranjang Belanja'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
       body: cart.items.isEmpty
           ? const Center(child: Text('Keranjang Kosong'))
           : Column(
@@ -85,7 +90,7 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
                         Row(
                           children: [
                             const Icon(Icons.location_on,
-                                size: 16, color: Colors.red),
+                                size: 16, color: Color(0xFFE07A5F)),
                             const SizedBox(width: 6),
                             Expanded(
                               child: Text(
@@ -128,7 +133,7 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
                                 style: const TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 18,
-                                    color: Colors.green)),
+                                    color: Color(0xFFE07A5F))),
                           ],
                         ),
                       ),
@@ -166,7 +171,7 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
                       const Text(
                           'Setelah bayar, Anda akan mendapatkan Kode QR untuk di-scan di kasir.',
                           style: TextStyle(
-                              color: Colors.green,
+                              color: Color(0xFF81B29A),
                               fontWeight: FontWeight.bold)),
                       const SizedBox(height: 24),
                       SizedBox(

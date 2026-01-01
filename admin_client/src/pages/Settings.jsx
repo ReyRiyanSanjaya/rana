@@ -9,9 +9,9 @@ import Button from '../components/ui/Button';
 const Settings = () => {
     const [settings, setSettings] = useState({
         PLATFORM_QRIS_URL: '',
-        BANK_NAME: '',
-        BANK_ACCOUNT_NUMBER: '',
-        BANK_ACCOUNT_NAME: '',
+        BANK_NAME: 'BCA',
+        BANK_ACCOUNT_NUMBER: '8735089123',
+        BANK_ACCOUNT_NAME: 'PT RANA TEKNOLOGI INDONESIA',
         PLATFORM_FEE_PERCENTAGE: '',
         DIGIFLAZZ_USERNAME: '',
         DIGIFLAZZ_MODE: 'production',
@@ -205,7 +205,7 @@ const Settings = () => {
                                 value={settings.WHOLESALE_PAYMENT_METHODS || ''}
                                 onChange={(e) => handleChange('WHOLESALE_PAYMENT_METHODS', e.target.value)}
                             />
-                            <p className="text-xs text-slate-500 mt-1">Example: Transfer Bank (BCA),Bayar di Tempat (COD)</p>
+                            <p className="text-xs text-slate-500 mt-1">Example: Transfer Bank (BCA),Bayar di Tempat (COD). For Transfer, configure bank details below.</p>
                         </div>
                     </div>
 
@@ -265,7 +265,7 @@ const Settings = () => {
                     <div className="flex items-start justify-between mb-6">
                         <div>
                             <h3 className="font-semibold text-slate-900">Bank Transfer Details</h3>
-                            <p className="text-sm text-slate-500 mt-1">Information displayed to merchants for manual transfers.</p>
+                            <p className="text-sm text-slate-500 mt-1">Information displayed to merchants for manual transfers (Wholesale/Kulakan).</p>
                         </div>
                         <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
                             <AlertCircle size={20} />

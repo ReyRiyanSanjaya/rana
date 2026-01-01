@@ -39,6 +39,7 @@ dependencies:
   permission_handler: ^11.0.1 # [NEW] Bluetooth Permissions
   screenshot: ^3.0.0 # [FIX] Upgrade for Flutter 3.19+
   share_plus: ^7.1.0 # [NEW] Share File
+  package_info_plus: ^9.0.0 # [NEW] App Version Info
   path_provider: ^2.1.1 # [NEW] Temp Storage
 
   

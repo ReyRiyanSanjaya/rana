@@ -77,7 +77,12 @@ class _OrdersScreenState extends State<OrdersScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Pesanan Saya')),
+      backgroundColor: const Color(0xFFFFF8F0),
+      appBar: AppBar(
+        title: const Text('Pesanan Saya'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
       body: RefreshIndicator(
         onRefresh: () async {
           if (_phone != null) await _initialLoad();

@@ -119,6 +119,16 @@ class PrinterService {
         }
     }
 
+    final prefs = await SharedPreferences.getInstance();
+    final customHeader = prefs.getString('receipt_header') ?? '';
+    final customFooter = prefs.getString('receipt_footer') ?? 'Terima Kasih';
+    final showLogo = prefs.getBool('receipt_show_logo') ?? true;
+    final paperSize = prefs.getString('receipt_paper_size') ?? '58mm';
+    
+    // 58mm = 32 chars, 80mm = 48 chars
+    final int lineLength = paperSize == '80mm' ? 48 : 32;
+    final String separator = '-' * lineLength;
+
     final currency = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
     final dateFormat = DateFormat('dd MMM yyyy, HH:mm', 'id_ID');
 
@@ -127,21 +137,33 @@ class PrinterService {
         if (isConnected == true) {
           // HEADER
           bluetooth.printNewLine();
-          bluetooth.printCustom(storeName ?? "RANA MERCHANT", 3, 1); // Bold, Centered, Large
+          
+          if (showLogo) {
+            // TODO: Print Image Logo if available
+            // For now, we emphasize the Store Name
+            bluetooth.printCustom(storeName ?? "RANA MERCHANT", 3, 1); 
+          } else {
+            bluetooth.printCustom(storeName ?? "RANA MERCHANT", 1, 1);
+          }
+
+          if (customHeader.isNotEmpty) {
+             bluetooth.printCustom(customHeader, 1, 1);
+          }
+
           if (storeAddress != null && storeAddress.isNotEmpty) {
              bluetooth.printCustom(storeAddress, 0, 1);
           }
           bluetooth.printNewLine();
           
           // INFO
-          bluetooth.printCustom("--------------------------------", 1, 1);
+          bluetooth.printCustom(separator, 1, 1);
           bluetooth.printLeftRight("Tgl", dateFormat.format(DateTime.now()), 0);
           bluetooth.printLeftRight("No. Ref", transaction['offlineId']?.toString().substring(0, 8) ?? "-", 0);
           bluetooth.printLeftRight("Kasir", transaction['cashierName'] ?? "Admin", 0);
           if (transaction['customerName'] != null) {
              bluetooth.printLeftRight("Pelanggan", transaction['customerName'], 0);
           }
-          bluetooth.printCustom("--------------------------------", 1, 1);
+          bluetooth.printCustom(separator, 1, 1);
           bluetooth.printNewLine();
           
           // ITEMS
@@ -151,16 +173,12 @@ class PrinterService {
              double price = (item['price'] is int) ? (item['price'] as int).toDouble() : (item['price'] ?? 0.0);
              double totalItem = price * qty;
              
-             // Format: 
-             // Nama Produk
-             // 2 x Rp 10.000         Rp 20.000
-             
              bluetooth.printCustom(name, 1, 0); // Bold name
              bluetooth.printLeftRight("${qty}x @ ${currency.format(price)}", currency.format(totalItem), 0);
           }
           
           bluetooth.printNewLine();
-          bluetooth.printCustom("--------------------------------", 1, 1);
+          bluetooth.printCustom(separator, 1, 1);
           
           // TOTALS
           double total = (transaction['totalAmount'] is int) ? (transaction['totalAmount'] as int).toDouble() : (transaction['totalAmount'] ?? 0.0);
@@ -180,7 +198,12 @@ class PrinterService {
           }
           
           bluetooth.printNewLine();
-          bluetooth.printCustom("Terima Kasih", 3, 1);
+          
+          // FOOTER
+          if (customFooter.isNotEmpty) {
+            bluetooth.printCustom(customFooter, 3, 1); // Bold Centered
+          }
+          
           bluetooth.printCustom("Simpan struk sebagai bukti pembayaran", 0, 1);
           bluetooth.printCustom("Powered by Rana POS", 0, 1);
           bluetooth.printNewLine();

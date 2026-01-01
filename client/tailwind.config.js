@@ -8,8 +8,8 @@ export default {
     theme: {
         extend: {
             colors: {
-                primary: '#BF092F', // Red Brand
-                secondary: '#0F172A', // Slate 900
+                primary: '#E07A5F', // Soft Terra Cotta
+                secondary: '#334155', // Soft Slate
                 success: '#10B981',
                 warning: '#F59E0B',
                 danger: '#EF4444',

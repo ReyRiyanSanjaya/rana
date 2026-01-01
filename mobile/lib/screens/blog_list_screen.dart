@@ -38,39 +38,47 @@ class _BlogListScreenState extends State<BlogListScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: Text('Blog & Berita', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
+        title: Text('Blog & Berita',
+            style: GoogleFonts.outfit(
+                fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
         centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 0,
         iconTheme: const IconThemeData(color: Color(0xFF1E293B)),
       ),
-      body: _isLoading 
-        ? const Center(child: CircularProgressIndicator(color: Color(0xFFD70677)))
-        : _posts.isEmpty
-          ? Center(child: Text('Belum ada berita', style: GoogleFonts.poppins(color: Colors.grey)))
-          : ListView.separated(
-              padding: const EdgeInsets.all(24),
-              itemCount: _posts.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 24),
-              itemBuilder: (context, index) {
-                final post = _posts[index];
-                return _buildBlogCard(post, index);
-              },
-            ),
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFFE07A5F)))
+          : _posts.isEmpty
+              ? Center(
+                  child: Text('Belum ada berita',
+                      style: GoogleFonts.poppins(color: Colors.grey)))
+              : ListView.separated(
+                  padding: const EdgeInsets.all(24),
+                  itemCount: _posts.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 24),
+                  itemBuilder: (context, index) {
+                    final post = _posts[index];
+                    return _buildBlogCard(post, index);
+                  },
+                ),
     );
   }
 
   Widget _buildBlogCard(Map<String, dynamic> post, int index) {
     return GestureDetector(
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => BlogDetailScreen(post: post))),
+      onTap: () => Navigator.push(context,
+          MaterialPageRoute(builder: (_) => BlogDetailScreen(post: post))),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(color: const Color(0xFF64748B).withOpacity(0.08), blurRadius: 16, offset: const Offset(0, 8))
-          ]
-        ),
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                  color: const Color(0xFF64748B).withOpacity(0.08),
+                  blurRadius: 16,
+                  offset: const Offset(0, 8))
+            ]),
         clipBehavior: Clip.antiAlias,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -82,27 +90,37 @@ class _BlogListScreenState extends State<BlogListScreen> {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                   if (post['imageUrl'] != null && post['imageUrl'] != '')
-                      Image.network(post['imageUrl'], fit: BoxFit.cover)
-                    else
-                      Container(color: const Color(0xFFF1F5F9), child: const Icon(Icons.article, size: 64, color: Color(0xFFCBD5E1))),
-                   
-                   Positioned(
-                     top: 16,
-                     left: 16,
-                     child: Container(
-                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                       decoration: BoxDecoration(color: Colors.white.withOpacity(0.9), borderRadius: BorderRadius.circular(12)),
-                       child: Text(
-                         post['tags']?.isNotEmpty == true ? post['tags'][0].toUpperCase() : 'NEWS',
-                         style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: const Color(0xFFD70677)),
-                       ),
-                     ),
-                   )
+                  if (post['imageUrl'] != null && post['imageUrl'] != '')
+                    Image.network(post['imageUrl'], fit: BoxFit.cover)
+                  else
+                    Container(
+                        color: const Color(0xFFF1F5F9),
+                        child: const Icon(Icons.article,
+                            size: 64, color: Color(0xFFCBD5E1))),
+                  Positioned(
+                    top: 16,
+                    left: 16,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.9),
+                          borderRadius: BorderRadius.circular(12)),
+                      child: Text(
+                        post['tags']?.isNotEmpty == true
+                            ? post['tags'][0].toUpperCase()
+                            : 'NEWS',
+                        style: GoogleFonts.inter(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFFE07A5F)),
+                      ),
+                    ),
+                  )
                 ],
               ),
             ),
-            
+
             Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -110,28 +128,45 @@ class _BlogListScreenState extends State<BlogListScreen> {
                 children: [
                   Text(
                     post['title'] ?? 'No Title',
-                    style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B), height: 1.3),
+                    style: GoogleFonts.poppins(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF1E293B),
+                        height: 1.3),
                   ),
                   const SizedBox(height: 8),
-                   Text(
-                      post['summary'] ?? (post['content'] ?? '').replaceAll(RegExp(r'<[^>]*>'), '').substring(0, 80) + '...', 
-                      style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF64748B), height: 1.5), 
-                      maxLines: 2, 
-                      overflow: TextOverflow.ellipsis
-                    ),
+                  Text(
+                      post['summary'] ??
+                          (post['content'] ?? '')
+                                  .replaceAll(RegExp(r'<[^>]*>'), '')
+                                  .substring(0, 80) +
+                              '...',
+                      style: GoogleFonts.inter(
+                          fontSize: 14,
+                          color: const Color(0xFF64748B),
+                          height: 1.5),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 16),
                   Row(
                     children: [
-                      Icon(Icons.access_time, size: 14, color: Colors.grey[400]),
+                      Icon(Icons.access_time,
+                          size: 14, color: Colors.grey[400]),
                       const SizedBox(width: 4),
-                      Text(
-                        post['readTime'] ?? '3 min read', 
-                        style: GoogleFonts.inter(fontSize: 12, color: Colors.grey[500], fontWeight: FontWeight.w500)
-                      ),
+                      Text(post['readTime'] ?? '3 min read',
+                          style: GoogleFonts.inter(
+                              fontSize: 12,
+                              color: Colors.grey[500],
+                              fontWeight: FontWeight.w500)),
                       const Spacer(),
-                      Text('Baca Selengkapnya', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: const Color(0xFFD70677))),
+                      Text('Baca Selengkapnya',
+                          style: GoogleFonts.inter(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFFE07A5F))),
                       const SizedBox(width: 4),
-                      const Icon(Icons.arrow_forward, size: 14, color: Color(0xFFD70677))
+                      const Icon(Icons.arrow_forward,
+                          size: 14, color: Color(0xFFE07A5F))
                     ],
                   )
                 ],

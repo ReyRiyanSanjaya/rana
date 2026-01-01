@@ -3,7 +3,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:rana_merchant/providers/wholesale_cart_provider.dart';
-import 'package:rana_merchant/providers/wholesale_cart_provider.dart';
 import 'package:rana_merchant/screens/wholesale_cart_screen.dart';
 import 'package:rana_merchant/screens/wholesale_order_list_screen.dart'; // [NEW]
 import 'package:rana_merchant/data/remote/api_service.dart';
@@ -71,17 +70,20 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
+      backgroundColor: const Color(0xFFFFF8F0),
       appBar: AppBar(
         title: Text('Rana Grosir (B2B)',
-            style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+            style: GoogleFonts.poppins(
+                fontWeight: FontWeight.bold, color: const Color(0xFFE07A5F))),
+        backgroundColor: Colors.transparent,
+        iconTheme: const IconThemeData(color: Color(0xFFE07A5F)),
         elevation: 0,
         actions: [
           Consumer<WholesaleCartProvider>(
             builder: (ctx, cart, _) => Row(
               children: [
                 IconButton(
-                  icon: Icon(Icons.history, color: Colors.blue.shade900),
+                  icon: const Icon(Icons.history, color: Color(0xFFE07A5F)),
                   onPressed: () => Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -94,8 +96,8 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                       isLabelVisible: cart.itemCount > 0,
                       label: Text('${cart.itemCount}'),
                       child: IconButton(
-                        icon: Icon(Icons.shopping_cart_outlined,
-                            color: Colors.blue.shade900),
+                        icon: const Icon(Icons.shopping_cart_outlined,
+                            color: Color(0xFFE07A5F)),
                         onPressed: () => Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -150,11 +152,15 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       children: _banners.isEmpty
                           ? [
-                              _buildBanner(Colors.blue, "Diskon Juragan",
-                                  "Potongan 50rb!", Icons.discount, null),
+                              _buildBanner(
+                                  const Color(0xFFE07A5F),
+                                  "Diskon Juragan",
+                                  "Potongan 50rb!",
+                                  Icons.discount,
+                                  null),
                               const SizedBox(width: 12),
                               _buildBanner(
-                                  Colors.orange,
+                                  const Color(0xFFE07A5F),
                                   "Gratis Ongkir",
                                   "Min. Blj 1 Juta",
                                   Icons.local_shipping,
@@ -164,7 +170,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                               .map((b) => Padding(
                                     padding: const EdgeInsets.only(right: 12),
                                     child: _buildBanner(
-                                        Colors.blue,
+                                        const Color(0xFFE07A5F),
                                         b['title'],
                                         b['description'] ?? '',
                                         Icons.star,
@@ -191,10 +197,11 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                                           () => _selectedCat = c.toString());
                                       _refreshProducts();
                                     },
-                                    selectedColor: Colors.blue.shade100,
+                                    selectedColor: const Color(0xFFE07A5F)
+                                        .withOpacity(0.2),
                                     labelStyle: TextStyle(
                                         color: _selectedCat == c
-                                            ? Colors.blue.shade900
+                                            ? const Color(0xFFE07A5F)
                                             : Colors.black87),
                                   ),
                                 ))
@@ -390,7 +397,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                       style: GoogleFonts.poppins(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
-                          color: Colors.blue.shade800)),
+                          color: const Color(0xFFE07A5F))),
                   const SizedBox(height: 6),
                   Row(
                     children: [
@@ -406,7 +413,8 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(Icons.star, size: 12, color: Colors.amber),
+                      const Icon(Icons.star,
+                          size: 12, color: Color(0xFFF2CC8F)),
                       Text(' ${item['rating'] ?? 0.0} ',
                           style: const TextStyle(
                               fontSize: 10, fontWeight: FontWeight.bold)),
@@ -451,14 +459,15 @@ class _ProductDetailSheetState extends State<_ProductDetailSheet> {
     final imageUrl = widget.item['imageUrl'];
 
     return Scaffold(
+      backgroundColor: const Color(0xFFFFF8F0),
       appBar: AppBar(
         title: const Text('Detail Produk'),
         leading: IconButton(
             icon: const Icon(Icons.close),
             onPressed: () => Navigator.pop(context)),
         elevation: 0,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
+        backgroundColor: Colors.transparent,
+        foregroundColor: const Color(0xFFE07A5F),
       ),
       body: Column(
         children: [
@@ -483,7 +492,7 @@ class _ProductDetailSheetState extends State<_ProductDetailSheet> {
                             style: GoogleFonts.poppins(
                                 fontSize: 26,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.blue.shade800)),
+                                color: const Color(0xFFE07A5F))),
                         const SizedBox(height: 8),
                         Text(widget.item['name'],
                             style:
@@ -492,7 +501,9 @@ class _ProductDetailSheetState extends State<_ProductDetailSheet> {
                         const Divider(),
                         ListTile(
                           contentPadding: EdgeInsets.zero,
-                          leading: const CircleAvatar(child: Icon(Icons.store)),
+                          leading: const CircleAvatar(
+                              backgroundColor: Color(0xFFE07A5F),
+                              child: Icon(Icons.store, color: Colors.white)),
                           title: Text(
                               widget.item['supplierName'] ?? 'No Supplier',
                               style: GoogleFonts.poppins(
@@ -500,7 +511,7 @@ class _ProductDetailSheetState extends State<_ProductDetailSheet> {
                           subtitle: Row(
                             children: [
                               const Icon(Icons.star,
-                                  size: 14, color: Colors.amber),
+                                  size: 14, color: Color(0xFFF2CC8F)),
                               Text(' ${widget.item['rating'] ?? '4.5'}',
                                   style: const TextStyle(fontSize: 12)),
                             ],
@@ -575,7 +586,7 @@ class _ProductDetailSheetState extends State<_ProductDetailSheet> {
                     },
                     style: FilledButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        backgroundColor: const Color(0xFFD70677),
+                        backgroundColor: const Color(0xFFE07A5F),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8))),
                     child: const Text('Tambah ke Keranjang',

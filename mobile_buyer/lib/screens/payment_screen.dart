@@ -68,7 +68,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Pembayaran')),
+      backgroundColor: const Color(0xFFFFF8F0),
+      appBar: AppBar(
+        title: const Text('Pembayaran'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -83,7 +88,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       style: const TextStyle(
                           fontSize: 32,
                           fontWeight: FontWeight.bold,
-                          color: Colors.indigo)),
+                          color: Color(0xFFE07A5F))),
                   const SizedBox(height: 32),
                   const Text('Ambil di Toko',
                       style:

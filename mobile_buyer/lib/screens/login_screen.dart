@@ -51,7 +51,7 @@ class _LoginScreenState extends State<LoginScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Icon(Icons.storefront, size: 80, color: Color(0xFF10B981)),
+              const Icon(Icons.storefront, size: 80, color: Color(0xFFE07A5F)),
               const SizedBox(height: 16),
               const Text(
                 'Masuk Rana Market',

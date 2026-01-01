@@ -100,6 +100,16 @@ class AuthProvider extends ChangeNotifier {
       }
   }
 
+  Future<void> refreshProfile() async {
+    try {
+      final profile = await _api.getProfile();
+      _currentUser = profile;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Failed to refresh profile: $e');
+    }
+  }
+
   Future<void> logout() async {
     _isAuthenticated = false;
     _currentUser = null;

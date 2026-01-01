@@ -20,7 +20,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 10, // [FIX] Increment version for migration - add syncedAt
+      version: 11, // [FIX] Increment version for migration - add syncedAt
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
@@ -103,6 +103,14 @@ class DatabaseHelper {
         // Column likely exists
       }
     }
+
+    if (oldVersion < 11) {
+      try {
+        await db.execute('ALTER TABLE expenses ADD COLUMN imagePath TEXT');
+      } catch (e) {
+        // Column likely exists
+      }
+    }
   }
 
   Future<void> _createDB(Database db, int version) async {
@@ -180,6 +188,7 @@ class DatabaseHelper {
         category TEXT, -- EXPENSE_PETTY, EXPENSE_OPERATIONAL
         description TEXT,
         date TEXT,
+        imagePath TEXT, -- [NEW]
         synced INTEGER DEFAULT 0
       )
     ''');
@@ -314,6 +323,16 @@ class DatabaseHelper {
     await db.insert('expenses', data);
   }
 
+  Future<void> updateExpense(int id, Map<String, dynamic> data) async {
+    final db = await instance.database;
+    await db.update('expenses', data, where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<void> deleteExpense(int id) async {
+    final db = await instance.database;
+    await db.delete('expenses', where: 'id = ?', whereArgs: [id]);
+  }
+
   Future<List<Map<String, dynamic>>> getExpenses(
       {DateTime? start, DateTime? end}) async {
     final db = await instance.database;
@@ -376,7 +395,48 @@ class DatabaseHelper {
       ORDER BY date ASC
     ''', [startStr, endStr]);
 
-    // [NEW] 4. Total Expenses
+    // [NEW] 4. Expense Trend (Daily)
+    final expenseTrendRes = await db.rawQuery('''
+      SELECT 
+        substr(date, 1, 10) as date, 
+        SUM(amount) as dailyTotal
+      FROM expenses 
+      WHERE date BETWEEN ? AND ?
+      GROUP BY date
+      ORDER BY date ASC
+    ''', [startStr, endStr]);
+
+    // Merge Trends
+    Map<String, Map<String, dynamic>> dailyData = {};
+
+    for (var row in trendRes) {
+      final date = row['date'] as String;
+      final total = (row['dailyTotal'] as num?)?.toDouble() ?? 0.0;
+      dailyData[date] = {
+        'date': date,
+        'sales': total,
+        'expenses': 0.0,
+      };
+    }
+
+    for (var row in expenseTrendRes) {
+      final date = row['date'] as String;
+      final total = (row['dailyTotal'] as num?)?.toDouble() ?? 0.0;
+      if (!dailyData.containsKey(date)) {
+        dailyData[date] = {
+          'date': date,
+          'sales': 0.0,
+          'expenses': total,
+        };
+      } else {
+        dailyData[date]!['expenses'] = total;
+      }
+    }
+
+    final combinedTrend = dailyData.values.toList()
+      ..sort((a, b) => (a['date'] as String).compareTo(b['date'] as String));
+
+    // [NEW] 5. Total Expenses
     final expRes = await db.rawQuery('''
       SELECT SUM(amount) as totalExpenses 
       FROM expenses 
@@ -396,7 +456,7 @@ class DatabaseHelper {
       'totalExpenses': totalExpenses, // [NEW] Return this too
       'averageOrderValue':
           totalTransactions > 0 ? grossSales / totalTransactions : 0,
-      'trend': trendRes
+      'trend': combinedTrend
     };
   }
 
@@ -422,7 +482,8 @@ class DatabaseHelper {
     DateTime? end,
   }) async {
     final db = await instance.database;
-    final startDate = start ?? DateTime.now().subtract(const Duration(days: 30));
+    final startDate =
+        start ?? DateTime.now().subtract(const Duration(days: 30));
     final endDate = end ?? DateTime.now();
 
     return await db.rawQuery('''
@@ -450,7 +511,8 @@ class DatabaseHelper {
     int minStock = 1,
   }) async {
     final db = await instance.database;
-    final startDate = start ?? DateTime.now().subtract(const Duration(days: 30));
+    final startDate =
+        start ?? DateTime.now().subtract(const Duration(days: 30));
     final endDate = end ?? DateTime.now();
 
     return await db.rawQuery('''
@@ -474,7 +536,12 @@ class DatabaseHelper {
         AND p.stock >= ?
       ORDER BY p.stock DESC, p.name ASC
       LIMIT ?
-    ''', [startDate.toIso8601String(), endDate.toIso8601String(), minStock, limit]);
+    ''', [
+      startDate.toIso8601String(),
+      endDate.toIso8601String(),
+      minStock,
+      limit
+    ]);
   }
 
   // [NEW] Category Breakdown

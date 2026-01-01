@@ -8,6 +8,11 @@ import 'package:rana_merchant/screens/wholesale_order_list_screen.dart';
 import 'package:rana_merchant/providers/auth_provider.dart';
 import 'package:rana_merchant/screens/purchase_screen.dart';
 import 'package:rana_merchant/screens/settings_screen.dart';
+import 'package:rana_merchant/providers/wholesale_cart_provider.dart';
+import 'package:rana_merchant/screens/wholesale_scan_screen.dart';
+import 'package:rana_merchant/utils/format_utils.dart';
+import 'package:rana_merchant/models/wholesale_product.dart';
+import 'package:rana_merchant/data/remote/api_service.dart';
 
 class WholesaleMainScreen extends StatefulWidget {
   const WholesaleMainScreen({super.key});
@@ -19,11 +24,14 @@ class WholesaleMainScreen extends StatefulWidget {
 class _WholesaleMainScreenState extends State<WholesaleMainScreen> {
   int _currentIndex = 0;
   String? _tenantId;
+  bool _isLoading = false;
+  List<WholesaleProduct> _products = [];
 
   @override
   void initState() {
     super.initState();
     _loadTenantId();
+    _loadProducts();
   }
 
   Future<void> _loadTenantId() async {
@@ -40,91 +48,246 @@ class _WholesaleMainScreenState extends State<WholesaleMainScreen> {
     final tenant = await db.getTenantInfo();
     final dbTenantId = tenant?['id']?.toString();
     setState(() {
-      _tenantId = (dbTenantId != null && dbTenantId.isNotEmpty) ? dbTenantId : null;
+      _tenantId =
+          (dbTenantId != null && dbTenantId.isNotEmpty) ? dbTenantId : null;
     });
+  }
+
+  Future<void> _loadProducts() async {
+    setState(() => _isLoading = true);
+    try {
+      final rawProducts = await ApiService().getWholesaleProducts();
+      setState(() {
+        _products =
+            rawProducts.map((p) => WholesaleProduct.fromJson(p)).toList();
+      });
+    } catch (e) {
+      debugPrint('Failed to load products: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Gagal memuat produk kulakan')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_tenantId == null) {
-      return Scaffold(
-        appBar: AppBar(
-          title: Text('Rana Grosir', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: Colors.white)),
-          backgroundColor: const Color(0xFFD70677),
-          iconTheme: const IconThemeData(color: Colors.white),
-        ),
-        body: Center(
-          child: Text(
-            'Akun belum siap. Silakan login ulang atau sinkronisasi.',
-            style: GoogleFonts.poppins(color: Colors.grey),
-            textAlign: TextAlign.center,
-          ),
-        ),
-      );
-    }
-
-    final List<Widget> screens = [
-      const PurchaseScreen(),
-      const WholesaleCartScreen(),
-      WholesaleOrderListScreen(tenantId: _tenantId!),
-      const SettingsScreen(),
-    ];
-
     return Scaffold(
-      body: screens[_currentIndex],
+      backgroundColor: const Color(0xFFFFF8F0),
+      appBar: AppBar(
+        title: Text('Rana Grosir',
+            style: GoogleFonts.poppins(
+                fontWeight: FontWeight.bold, color: const Color(0xFFE07A5F))),
+        backgroundColor: Colors.transparent,
+        iconTheme: const IconThemeData(color: Color(0xFFE07A5F)),
+        elevation: 0,
+        actions: [
+          Stack(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.shopping_cart_outlined),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const WholesaleCartScreen()),
+                  );
+                },
+              ),
+              Consumer<WholesaleCartProvider>(
+                builder: (context, cart, child) {
+                  if (cart.itemCount == 0) return const SizedBox();
+                  return Positioned(
+                    right: 8,
+                    top: 8,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFE07A5F),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        '${cart.itemCount}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _loadProducts,
+              child: GridView.builder(
+                padding: const EdgeInsets.all(16),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  childAspectRatio: 0.75,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                ),
+                itemCount: _products.length,
+                itemBuilder: (context, index) {
+                  final product = _products[index];
+                  return Card(
+                    elevation: 0,
+                    color: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(color: Colors.grey[200]!),
+                    ),
+                    child: InkWell(
+                      onTap: () {
+                        // Show product details
+                      },
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.grey[100],
+                                borderRadius: const BorderRadius.vertical(
+                                    top: Radius.circular(12)),
+                              ),
+                              child: Center(
+                                child: Icon(Icons.inventory_2_outlined,
+                                    size: 48, color: Colors.grey[400]),
+                              ),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  product.name,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.poppins(
+                                      fontWeight: FontWeight.w600),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  FormatUtils.formatCurrency(
+                                      product.wholesalePrice),
+                                  style: GoogleFonts.poppins(
+                                    color: const Color(0xFFE07A5F),
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: OutlinedButton(
+                                    onPressed: () {
+                                      Provider.of<WholesaleCartProvider>(
+                                              context,
+                                              listen: false)
+                                          .addItem(
+                                              product.id,
+                                              product.name,
+                                              product.wholesalePrice,
+                                              product.image,
+                                              product.supplier);
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                              '${product.name} ditambahkan ke keranjang'),
+                                          duration: const Duration(seconds: 1),
+                                          backgroundColor:
+                                              const Color(0xFFE07A5F),
+                                        ),
+                                      );
+                                    },
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: const Color(0xFFE07A5F),
+                                      side: const BorderSide(
+                                          color: Color(0xFFE07A5F)),
+                                    ),
+                                    child: const Text('Tambah'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
       bottomNavigationBar: Container(
-        height: 80,
+        padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
           color: Colors.white,
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.05),
               blurRadius: 10,
-              offset: const Offset(0, -4),
+              offset: const Offset(0, -5),
             ),
           ],
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            _buildNavItem(0, Icons.store, 'Beranda'),
-            _buildNavItem(1, Icons.shopping_cart, 'Keranjang'),
-            _buildNavItem(2, Icons.receipt_long, 'Pesanan'),
-            _buildNavItem(3, Icons.person, 'Akun'),
+            _buildNavItem(Icons.store_outlined, 'Belanja', true),
+            _buildNavItem(Icons.receipt_long_outlined, 'Pesanan', false,
+                onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => const WholesaleOrderListScreen()),
+              );
+            }),
+            _buildNavItem(Icons.qr_code_scanner, 'Scan', false, onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => const WholesaleScanScreen()),
+              );
+            }),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildNavItem(int index, IconData icon, String label) {
-    final isSelected = _currentIndex == index;
-    final color = isSelected ? const Color(0xFFD70677) : const Color(0xFFD70677).withOpacity(0.5);
-
+  Widget _buildNavItem(IconData icon, String label, bool isSelected,
+      {VoidCallback? onTap}) {
+    final color = isSelected
+        ? const Color(0xFFE07A5F)
+        : const Color(0xFFE07A5F).withOpacity(0.5);
     return InkWell(
-      onTap: () => setState(() => _currentIndex = index),
+      onTap: onTap,
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: color, size: 26)
-              .animate(target: isSelected ? 1 : 0)
-              .scale(
-                begin: const Offset(1, 1),
-                end: const Offset(1.2, 1.2),
-                duration: 200.ms,
-                curve: Curves.easeOutBack,
-              )
-              .then()
-              .shimmer(duration: 1200.ms, delay: 2000.ms), // Subtle shimmer loop if active? No, just once.
+          Icon(icon, color: color),
           const SizedBox(height: 4),
           Text(
             label,
             style: GoogleFonts.poppins(
               color: color,
               fontSize: 12,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
             ),
-          ).animate().fadeIn(duration: 300.ms),
+          ),
         ],
       ),
     );

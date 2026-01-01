@@ -26,7 +26,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _confirmPassCtrl = TextEditingController();
   final _waCtrl = TextEditingController();
   String? _category;
-  
+
   bool _isLoading = false;
   String _statusMessage = 'Daftar Sekarang';
   bool _obscurePass = true;
@@ -70,7 +70,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     var msg = e.toString().trim();
     msg = msg.replaceFirst(RegExp(r'^Exception:\s*'), '');
     msg = msg.replaceFirst(RegExp(r'^Registration Failed:\s*'), '');
-    msg = msg.replaceFirst(RegExp(r'^Registration Failed:\s*Exception:\s*'), '');
+    msg =
+        msg.replaceFirst(RegExp(r'^Registration Failed:\s*Exception:\s*'), '');
     msg = msg.trim();
     return msg.isEmpty ? 'Terjadi kesalahan' : msg;
   }
@@ -171,7 +172,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _isLocationResolving = true);
     String? addr;
     try {
-      final placemarks = await placemarkFromCoordinates(p.latitude, p.longitude);
+      final placemarks =
+          await placemarkFromCoordinates(p.latitude, p.longitude);
       if (placemarks.isNotEmpty) {
         addr = _formatPlacemark(placemarks.first);
       }
@@ -207,15 +209,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!_isLocationVerified) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Silakan verifikasi lokasi di peta terlebih dahulu.')),
+          const SnackBar(
+              content:
+                  Text('Silakan verifikasi lokasi di peta terlebih dahulu.')),
         );
       }
       return;
     }
-    
+
     setState(() {
-       _isLoading = true;
-       _statusMessage = 'Mendaftarkan Akun...';
+      _isLoading = true;
+      _statusMessage = 'Mendaftarkan Akun...';
     });
 
     try {
@@ -223,20 +227,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       // 2. Call API
       await ApiService().register(
-        businessName: _nameCtrl.text, 
-        ownerName: _ownerCtrl.text,
-        email: _emailCtrl.text, 
-        password: _passCtrl.text,
-        waNumber: _waCtrl.text,
-        category: _category!, // [NEW] Guaranteed by validator
-        storeImageBase64: _pickedImageBase64,
-        lat: p.latitude,
-        long: p.longitude,
-        address: _locationAddress
-      );
-      
-      if(mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Registrasi Berhasil! Silakan Login.')));
+          businessName: _nameCtrl.text,
+          ownerName: _ownerCtrl.text,
+          email: _emailCtrl.text,
+          password: _passCtrl.text,
+          waNumber: _waCtrl.text,
+          category: _category!, // [NEW] Guaranteed by validator
+          storeImageBase64: _pickedImageBase64,
+          lat: p.latitude,
+          long: p.longitude,
+          address: _locationAddress);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Registrasi Berhasil! Silakan Login.')));
         Navigator.pop(context); // Go back to Login
       }
     } catch (e) {
@@ -254,39 +258,78 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Daftar Akun Baru')),
+      backgroundColor: const Color(0xFFFFF8F0),
+      appBar: AppBar(
+        title: Text('Daftar Akun Baru',
+            style: TextStyle(
+                fontWeight: FontWeight.bold, color: const Color(0xFFE07A5F))),
+        backgroundColor: Colors.transparent,
+        iconTheme: const IconThemeData(color: Color(0xFFE07A5F)),
+        elevation: 0,
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Form(
           key: _formKey,
           child: Column(
             children: [
-              const Icon(Icons.store_mall_directory, size: 80, color: Colors.indigo),
+              const Icon(Icons.store_mall_directory,
+                  size: 80, color: Color(0xFFE07A5F)),
               const SizedBox(height: 24),
               TextFormField(
                 controller: _nameCtrl,
-                decoration: const InputDecoration(labelText: 'Nama Bisnis / Toko', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                    labelText: 'Nama Bisnis / Toko',
+                    border: OutlineInputBorder(),
+                    focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: Color(0xFFE07A5F))),
+                    floatingLabelStyle: TextStyle(color: Color(0xFFE07A5F))),
                 validator: (v) => v!.isEmpty ? 'Wajib diisi' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _ownerCtrl,
-                decoration: const InputDecoration(labelText: 'Nama Pemilik', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                    labelText: 'Nama Pemilik',
+                    border: OutlineInputBorder(),
+                    focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: Color(0xFFE07A5F))),
+                    floatingLabelStyle: TextStyle(color: Color(0xFFE07A5F))),
                 validator: (v) => v!.trim().isEmpty ? 'Wajib diisi' : null,
               ),
               const SizedBox(height: 16),
               // [NEW] Category Dropdown
               DropdownButtonFormField<String>(
                 value: _category,
-                decoration: const InputDecoration(labelText: 'Kategori Usaha', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                    labelText: 'Kategori Usaha',
+                    border: OutlineInputBorder(),
+                    focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: Color(0xFFE07A5F))),
+                    floatingLabelStyle: TextStyle(color: Color(0xFFE07A5F))),
                 items: const [
-                  DropdownMenuItem(value: 'Apotik', child: Text('Apotik / Kesehatan', overflow: TextOverflow.ellipsis)),
-                  DropdownMenuItem(value: 'Kedai Makanan', child: Text('Kedai Makanan / Resto', overflow: TextOverflow.ellipsis)),
-                  DropdownMenuItem(value: 'Outlet Ponsel', child: Text('Outlet Ponsel / Pulsa', overflow: TextOverflow.ellipsis)),
-                  DropdownMenuItem(value: 'Toko Baju', child: Text('Toko Baju / Fashion', overflow: TextOverflow.ellipsis)),
-                  DropdownMenuItem(value: 'Kelontong', child: Text('Toko Kelontong / Sembako', overflow: TextOverflow.ellipsis)),
+                  DropdownMenuItem(
+                      value: 'Apotik',
+                      child: Text('Apotik / Kesehatan',
+                          overflow: TextOverflow.ellipsis)),
+                  DropdownMenuItem(
+                      value: 'Kedai Makanan',
+                      child: Text('Kedai Makanan / Resto',
+                          overflow: TextOverflow.ellipsis)),
+                  DropdownMenuItem(
+                      value: 'Outlet Ponsel',
+                      child: Text('Outlet Ponsel / Pulsa',
+                          overflow: TextOverflow.ellipsis)),
+                  DropdownMenuItem(
+                      value: 'Toko Baju',
+                      child: Text('Toko Baju / Fashion',
+                          overflow: TextOverflow.ellipsis)),
+                  DropdownMenuItem(
+                      value: 'Kelontong',
+                      child: Text('Toko Kelontong / Sembako',
+                          overflow: TextOverflow.ellipsis)),
                   DropdownMenuItem(value: 'Lainnya', child: Text('Lainnya')),
-                ], 
+                ],
                 isExpanded: true,
                 onChanged: (val) => setState(() => _category = val),
                 validator: (v) => v == null ? 'Pilih Kategori' : null,
@@ -295,18 +338,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
               TextFormField(
                 controller: _waCtrl,
                 keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(labelText: 'Nomor WhatsApp Owner', border: OutlineInputBorder(), hintText: '0812...'),
+                decoration: const InputDecoration(
+                    labelText: 'Nomor WhatsApp Owner',
+                    border: OutlineInputBorder(),
+                    hintText: '0812...'),
                 validator: (v) {
                   if (v == null || v.isEmpty) return 'Nomor tidak boleh kosong';
                   if (v.length < 9) return 'Nomor terlalu pendek';
-                  if (!RegExp(r'^[0-9]+$').hasMatch(v)) return 'Hanya angka yang diperbolehkan';
+                  if (!RegExp(r'^[0-9]+$').hasMatch(v))
+                    return 'Hanya angka yang diperbolehkan';
                   return null;
                 },
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _emailCtrl,
-                decoration: const InputDecoration(labelText: 'Email', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                    labelText: 'Email',
+                    border: OutlineInputBorder(),
+                    focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: Color(0xFFE07A5F))),
+                    floatingLabelStyle: TextStyle(color: Color(0xFFE07A5F))),
                 validator: (v) => v!.contains('@') ? null : 'Email tidak valid',
               ),
               const SizedBox(height: 16),
@@ -316,15 +368,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 decoration: InputDecoration(
                   labelText: 'Password',
                   border: const OutlineInputBorder(),
+                  focusedBorder: const OutlineInputBorder(
+                      borderSide: BorderSide(color: Color(0xFFE07A5F))),
+                  floatingLabelStyle:
+                      const TextStyle(color: Color(0xFFE07A5F)),
                   suffixIcon: IconButton(
-                    icon: Icon(_obscurePass ? Icons.visibility_off : Icons.visibility),
-                    onPressed: () => setState(() => _obscurePass = !_obscurePass),
+                    icon: Icon(
+                      _obscurePass ? Icons.visibility_off : Icons.visibility,
+                      color: const Color(0xFFE07A5F),
+                    ),
+                    onPressed: () =>
+                        setState(() => _obscurePass = !_obscurePass),
                   ),
                 ),
                 validator: (v) {
                   final val = (v ?? '').trim();
                   if (val.isEmpty) return 'Wajib diisi';
-                  if (!_isStrongPassword(val)) return 'Min 8 karakter, huruf & angka';
+                  if (!_isStrongPassword(val))
+                    return 'Min 8 karakter, huruf & angka';
                   return null;
                 },
               ),
@@ -336,8 +397,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   labelText: 'Ulangi Password',
                   border: const OutlineInputBorder(),
                   suffixIcon: IconButton(
-                    icon: Icon(_obscureConfirm ? Icons.visibility_off : Icons.visibility),
-                    onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
+                    icon: Icon(_obscureConfirm
+                        ? Icons.visibility_off
+                        : Icons.visibility),
+                    onPressed: () =>
+                        setState(() => _obscureConfirm = !_obscureConfirm),
                   ),
                 ),
                 validator: (v) {
@@ -370,7 +434,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ? const Icon(Icons.store, color: Colors.grey)
                             : ClipRRect(
                                 borderRadius: BorderRadius.circular(10),
-                                child: Image.memory(_pickedImageBytes!, fit: BoxFit.cover),
+                                child: Image.memory(_pickedImageBytes!,
+                                    fit: BoxFit.cover),
                               ),
                       ),
                       const SizedBox(width: 12),
@@ -416,7 +481,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: _isLocationLoading
-                      ? const Center(child: CircularProgressIndicator())
+                      ? const Center(
+                          child: CircularProgressIndicator(
+                              color: Color(0xFFE07A5F)))
                       : Stack(
                           children: [
                             FlutterMap(
@@ -424,12 +491,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               options: MapOptions(
                                 initialCenter: _locationPoint!,
                                 initialZoom: 16,
-                                onTap: (tapPosition, latLng) => _setLocationPoint(latLng),
+                                onTap: (tapPosition, latLng) =>
+                                    _setLocationPoint(latLng),
                               ),
                               children: [
                                 TileLayer(
-                                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                                  userAgentPackageName: 'com.example.rana_merchant',
+                                  urlTemplate:
+                                      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                  userAgentPackageName:
+                                      'com.example.rana_merchant',
                                 ),
                                 DragMarkers(
                                   markers: [
@@ -438,12 +508,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                       point: _locationPoint!,
                                       size: const Size.square(54),
                                       offset: const Offset(0, -24),
-                                      builder: (context, point, isDragging) => const Icon(
+                                      builder: (context, point, isDragging) =>
+                                          const Icon(
                                         Icons.location_on,
-                                        color: Colors.red,
+                                        color: Color(0xFFE07A5F),
                                         size: 54,
                                       ),
-                                      onDragEnd: (details, latLng) => _setLocationPoint(latLng),
+                                      onDragEnd: (details, latLng) =>
+                                          _setLocationPoint(latLng),
                                     ),
                                   ],
                                 ),
@@ -457,7 +529,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 borderRadius: BorderRadius.circular(12),
                                 child: InkWell(
                                   borderRadius: BorderRadius.circular(12),
-                                  onTap: (_isLocationLoading || _isLocationResolving)
+                                  onTap: (_isLocationLoading ||
+                                          _isLocationResolving)
                                       ? null
                                       : _initDefaultLocation,
                                   child: const Padding(
@@ -491,7 +564,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     Text(
                                       _isLocationResolving
                                           ? 'Mengambil alamat...'
-                                          : (_locationAddress ?? 'Geser pin untuk menentukan lokasi'),
+                                          : (_locationAddress ??
+                                              'Geser pin untuk menentukan lokasi'),
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
@@ -507,9 +581,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                         onPressed: _isLocationResolving
                                             ? null
                                             : () {
-                                                setState(() => _isLocationVerified = true);
+                                                setState(() =>
+                                                    _isLocationVerified = true);
                                               },
-                                        child: Text(_isLocationVerified ? 'Lokasi Terverifikasi' : 'Verifikasi Lokasi'),
+                                        style: FilledButton.styleFrom(
+                                          backgroundColor: _isLocationVerified
+                                              ? const Color(0xFF81B29A) // Sage Green for success
+                                              : const Color(0xFFE07A5F),
+                                        ),
+                                        child: Text(_isLocationVerified
+                                            ? 'Lokasi Terverifikasi'
+                                            : 'Verifikasi Lokasi'),
                                       ),
                                     ),
                                   ],
@@ -532,9 +614,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 height: 50,
                 child: FilledButton(
                   onPressed: _isLoading ? null : _handleRegister,
-                  child: _isLoading 
-                    ? Row(mainAxisAlignment: MainAxisAlignment.center, children: [ const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)), const SizedBox(width: 10), Text(_statusMessage)]) 
-                    : const Text('DAFTAR SEKARANG'),
+                  child: _isLoading
+                      ? Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                              const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                      color: Colors.white, strokeWidth: 2)),
+                              const SizedBox(width: 10),
+                              Text(_statusMessage)
+                            ])
+                      : const Text('DAFTAR SEKARANG'),
                 ),
               ),
             ],

@@ -64,7 +64,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Notifikasi')),
+      backgroundColor: const Color(0xFFFFF8F0),
+      appBar: AppBar(
+        title: const Text('Notifikasi'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
       body: RefreshIndicator(
         onRefresh: _load,
         child: _loading

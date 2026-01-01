@@ -160,14 +160,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       side: BorderSide(color: Colors.grey.shade200),
                     ),
                     child: ListTile(
-                      leading: const Icon(Icons.phone, color: Colors.indigo),
+                      leading:
+                          const Icon(Icons.phone, color: Color(0xFFE07A5F)),
                       title: const Text('Kontak pesanan'),
                       subtitle: _loadingPrefs
                           ? const Text('Memuat...')
                           : Text(
                               [
                                 if ((_buyerName ?? '').isNotEmpty) _buyerName!,
-                                if ((_buyerPhone ?? '').isNotEmpty) _buyerPhone!,
+                                if ((_buyerPhone ?? '').isNotEmpty)
+                                  _buyerPhone!,
                               ].join(' • ').isEmpty
                                   ? 'Belum diatur'
                                   : [
@@ -177,8 +179,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                         _buyerPhone!,
                                     ].join(' • '),
                             ),
-                      trailing: const Icon(Icons.chevron_right,
-                          color: Colors.grey),
+                      trailing:
+                          const Icon(Icons.chevron_right, color: Colors.grey),
                       onTap: () => _openContactEditor(),
                     ),
                   ),
@@ -221,6 +223,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Profil Saya'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -252,8 +256,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 await auth.logout();
               },
               style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.red,
-                side: const BorderSide(color: Colors.red),
+                foregroundColor: const Color(0xFFE07A5F),
+                side: const BorderSide(color: Color(0xFFE07A5F)),
                 minimumSize: const Size(double.infinity, 50),
               ),
               child: const Text('Keluar'),
@@ -266,7 +270,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildMenuItem(IconData icon, String title, {VoidCallback? onTap}) {
     return ListTile(
-      leading: Icon(icon, color: Colors.indigo),
+      leading: Icon(icon, color: const Color(0xFFE07A5F)),
       title: Text(title),
       trailing: const Icon(Icons.chevron_right, color: Colors.grey),
       onTap: onTap,

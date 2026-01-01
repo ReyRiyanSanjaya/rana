@@ -11,8 +11,8 @@ import 'package:rana_market/providers/favorites_provider.dart';
 import 'package:rana_market/providers/search_history_provider.dart';
 import 'package:rana_market/providers/reviews_provider.dart';
 
-const Color kBrandColor = Color(0xFFD70677);
-const Color kBeigeBackground = Color(0xFFFFF5EC);
+const Color kBrandColor = Color(0xFFE07A5F); // Soft Terra Cotta
+const Color kBeigeBackground = Color(0xFFFFF8F0); // Soft Beige
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -49,13 +49,13 @@ class RanaMarketApp extends StatelessWidget {
           scaffoldBackgroundColor: kBeigeBackground,
           textTheme: GoogleFonts.poppinsTextTheme(),
           appBarTheme: const AppBarTheme(
-            backgroundColor: kBrandColor,
+            backgroundColor: kBeigeBackground, // Soft Beige Header
             elevation: 0,
             centerTitle: false,
-            foregroundColor: Colors.white,
-            iconTheme: IconThemeData(color: Colors.white),
+            foregroundColor: kBrandColor,
+            iconTheme: IconThemeData(color: kBrandColor),
             titleTextStyle: TextStyle(
-              color: Colors.white,
+              color: kBrandColor,
               fontSize: 20,
               fontWeight: FontWeight.bold,
             ),

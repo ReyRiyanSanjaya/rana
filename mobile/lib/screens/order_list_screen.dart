@@ -11,10 +11,11 @@ class OrderListScreen extends StatefulWidget {
   State<OrderListScreen> createState() => _OrderListScreenState();
 }
 
-class _OrderListScreenState extends State<OrderListScreen> with SingleTickerProviderStateMixin {
+class _OrderListScreenState extends State<OrderListScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final OrderService _orderService = OrderService();
-  
+
   List<dynamic> _orders = [];
   bool _isLoading = true;
   String? _error;
@@ -27,7 +28,10 @@ class _OrderListScreenState extends State<OrderListScreen> with SingleTickerProv
   }
 
   Future<void> _loadOrders() async {
-    setState(() { _isLoading = true; _error = null; });
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
     try {
       final orders = await _orderService.getIncomingOrders();
       setState(() {
@@ -55,7 +59,7 @@ class _OrderListScreenState extends State<OrderListScreen> with SingleTickerProv
       return _orders.where((o) => o['orderStatus'] == 'PENDING').toList();
     }
     if (tab == 'Disiapkan') {
-       return _orders.where((o) => o['orderStatus'] == 'ACCEPTED').toList();
+      return _orders.where((o) => o['orderStatus'] == 'ACCEPTED').toList();
     }
     if (tab == 'Siap Ambil') {
       return _orders.where((o) => o['orderStatus'] == 'READY').toList();
@@ -69,43 +73,52 @@ class _OrderListScreenState extends State<OrderListScreen> with SingleTickerProv
   Future<void> _handleUpdateStatus(String orderId, String newStatus) async {
     try {
       await _orderService.updateOrderStatus(orderId, newStatus);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Status diperbarui: $newStatus')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Status diperbarui: $newStatus')));
       _loadOrders(); // Refresh
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal update: $e'), backgroundColor: Colors.red));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Gagal update: $e'),
+          backgroundColor: const Color(0xFFE07A5F)));
     }
   }
 
   Future<void> _handleScan() async {
     // Navigate to Scan Screen
-    final result = await Navigator.push(context, MaterialPageRoute(builder: (_) => const ScanScreen()));
-    
+    final result = await Navigator.push(
+        context, MaterialPageRoute(builder: (_) => const ScanScreen()));
+
     // Result is true if scan successful
     if (result == true) {
-       _loadOrders(); // Refresh to move item to 'Selesai'
-       _showSuccessDialog();
+      _loadOrders(); // Refresh to move item to 'Selesai'
+      _showSuccessDialog();
     }
   }
 
   void _showSuccessDialog() {
     showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        icon: const Icon(Icons.check_circle, color: Colors.green, size: 60),
-        title: const Text('Transaksi Selesai'),
-        content: const Text('Barang berhasil diambil oleh konsumen.'),
-        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))],
-      )
-    );
+        context: context,
+        builder: (_) => AlertDialog(
+              icon: const Icon(Icons.check_circle,
+                  color: Color(0xFF81B29A), size: 60),
+              title: const Text('Transaksi Selesai'),
+              content: const Text('Barang berhasil diambil oleh konsumen.'),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('OK'))
+              ],
+            ));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Daftar Pesanan (Pickup)', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
-        backgroundColor: const Color(0xFFD70677),
-        foregroundColor: Colors.white,
+        title: Text('Daftar Pesanan (Pickup)',
+            style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+        backgroundColor: const Color(0xFFFFF8F0),
+        foregroundColor: const Color(0xFFE07A5F),
         elevation: 0,
         actions: [
           IconButton(
@@ -115,11 +128,11 @@ class _OrderListScreenState extends State<OrderListScreen> with SingleTickerProv
         ],
         bottom: TabBar(
           controller: _tabController,
-          labelColor: const Color(0xFFD70677),
+          labelColor: const Color(0xFFE07A5F),
           unselectedLabelColor: Colors.grey,
           isScrollable: true,
           labelStyle: GoogleFonts.poppins(fontWeight: FontWeight.bold),
-          indicatorColor: const Color(0xFFD70677),
+          indicatorColor: const Color(0xFFE07A5F),
           tabs: const [
             Tab(text: 'Masuk'),
             Tab(text: 'Disiapkan'),
@@ -128,22 +141,29 @@ class _OrderListScreenState extends State<OrderListScreen> with SingleTickerProv
           ],
         ),
       ),
-      body: _isLoading 
-        ? const Center(child: CircularProgressIndicator()) 
-        : _error != null 
-          ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Text(_error!, style: const TextStyle(color: Colors.red), textAlign: TextAlign.center),
-              TextButton(onPressed: _loadOrders, child: const Text('Coba Lagi'))
-            ]))
-          : TabBarView(
-            controller: _tabController,
-            children: [
-              _buildOrderList('Masuk'),
-              _buildOrderList('Disiapkan'),
-              _buildOrderList('Siap Ambil'),
-              _buildOrderList('Selesai'),
-            ],
-          ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? Center(
+                  child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                      Text(_error!,
+                          style: const TextStyle(color: Color(0xFFE07A5F)),
+                          textAlign: TextAlign.center),
+                      TextButton(
+                          onPressed: _loadOrders,
+                          child: const Text('Coba Lagi'))
+                    ]))
+              : TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildOrderList('Masuk'),
+                    _buildOrderList('Disiapkan'),
+                    _buildOrderList('Siap Ambil'),
+                    _buildOrderList('Selesai'),
+                  ],
+                ),
     );
   }
 
@@ -161,9 +181,11 @@ class _OrderListScreenState extends State<OrderListScreen> with SingleTickerProv
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.shopping_bag_outlined, size: 80, color: Colors.grey.shade300),
+                Icon(Icons.shopping_bag_outlined,
+                    size: 80, color: Colors.grey.shade300),
                 const SizedBox(height: 16),
-                Text('Tidak ada pesanan $statusFilter', style: GoogleFonts.poppins(color: Colors.grey)),
+                Text('Tidak ada pesanan $statusFilter',
+                    style: GoogleFonts.poppins(color: Colors.grey)),
               ],
             ),
           ),
@@ -176,10 +198,11 @@ class _OrderListScreenState extends State<OrderListScreen> with SingleTickerProv
       child: ListView.separated(
         padding: const EdgeInsets.all(16),
         itemCount: filtered.length,
-        separatorBuilder: (_,__) => const SizedBox(height: 12),
+        separatorBuilder: (_, __) => const SizedBox(height: 12),
         itemBuilder: (context, index) => _OrderCard(
-          order: filtered[index], 
-          onUpdateStatus: (newStatus) => _handleUpdateStatus(filtered[index]['id'], newStatus),
+          order: filtered[index],
+          onUpdateStatus: (newStatus) =>
+              _handleUpdateStatus(filtered[index]['id'], newStatus),
           onScan: _handleScan,
         ),
       ),
@@ -192,19 +215,35 @@ class _OrderCard extends StatelessWidget {
   final Function(String) onUpdateStatus;
   final VoidCallback onScan;
 
-  const _OrderCard({required this.order, required this.onUpdateStatus, required this.onScan});
+  const _OrderCard(
+      {required this.order,
+      required this.onUpdateStatus,
+      required this.onScan});
 
   @override
   Widget build(BuildContext context) {
-    final fmtPrice = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+    final fmtPrice =
+        NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
     final status = order['orderStatus'];
     Color statusColor = Colors.grey;
     String displayStatus = status;
 
-    if (status == 'PENDING') { statusColor = Colors.blue; displayStatus = 'BARU'; }
-    if (status == 'ACCEPTED') { statusColor = Colors.orange; displayStatus = 'DISIAPKAN'; }
-    if (status == 'READY') { statusColor = Colors.green; displayStatus = 'SIAP AMBIL'; }
-    if (status == 'COMPLETED') { statusColor = Colors.grey; displayStatus = 'SELESAI'; }
+    if (status == 'PENDING') {
+      statusColor = Colors.blue;
+      displayStatus = 'BARU';
+    }
+    if (status == 'ACCEPTED') {
+      statusColor = Colors.orange;
+      displayStatus = 'DISIAPKAN';
+    }
+    if (status == 'READY') {
+      statusColor = Colors.green;
+      displayStatus = 'SIAP AMBIL';
+    }
+    if (status == 'COMPLETED') {
+      statusColor = Colors.grey;
+      displayStatus = 'SELESAI';
+    }
 
     // Safe access to items
     final List items = order['transactionItems'] ?? [];
@@ -221,29 +260,53 @@ class _OrderCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text((order['id'] as String).substring(0, 15), style: GoogleFonts.sourceCodePro(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey.shade700)),
+                Text((order['id'] as String).substring(0, 15),
+                    style: GoogleFonts.sourceCodePro(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                        color: Colors.grey.shade700)),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
-                  child: Text(displayStatus, style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 10)),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(6)),
+                  child: Text(displayStatus,
+                      style: TextStyle(
+                          color: statusColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 10)),
                 )
               ],
             ),
             const SizedBox(height: 12),
-            
+
             // Customer
             Row(
               children: [
-                const CircleAvatar(child: Icon(Icons.person, color: Colors.white), radius: 20, backgroundColor: Color(0xFFD70677)),
+                const CircleAvatar(
+                    child: Icon(Icons.person, color: Colors.white),
+                    radius: 20,
+                    backgroundColor: Color(0xFFE07A5F)),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(order['customerName'] ?? 'No Name', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16)),
-                      Text('${order['customerPhone'] ?? '-'}', style: GoogleFonts.poppins(color: Colors.grey, fontSize: 12)),
+                      Text(order['customerName'] ?? 'No Name',
+                          style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.bold, fontSize: 16)),
+                      Text('${order['customerPhone'] ?? '-'}',
+                          style: GoogleFonts.poppins(
+                              color: Colors.grey, fontSize: 12)),
                       if (order['pickupCode'] != null)
-                          Text('Kode: ${order['pickupCode']}', style: GoogleFonts.sourceCodePro(fontWeight: FontWeight.bold, color: Colors.indigo)),
+                        Text('Kode: ${order['pickupCode']}',
+                            style: GoogleFonts.sourceCodePro(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF3D405B), // Deep Blue
+                              letterSpacing: 2,
+                            )),
                     ],
                   ),
                 ),
@@ -261,71 +324,90 @@ class _OrderCard extends StatelessWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text("${item['quantity']}x ${product['name'] ?? 'Item'}", style: const TextStyle(fontWeight: FontWeight.w500)),
-                      Text(fmtPrice.format((item['price'] ?? 0) * (item['quantity'] ?? 1)), style: const TextStyle(color: Colors.grey)),
+                      Text("${item['quantity']}x ${product['name'] ?? 'Item'}",
+                          style: const TextStyle(fontWeight: FontWeight.w500)),
+                      Text(
+                          fmtPrice.format(
+                              (item['price'] ?? 0) * (item['quantity'] ?? 1)),
+                          style: const TextStyle(color: Colors.grey)),
                     ],
                   ),
                 );
               }).toList(),
             ),
-            const Divider(color: Color(0xFFD70677)),
+            const Divider(color: Color(0xFFE07A5F)),
             Align(
               alignment: Alignment.centerRight,
-              child: Text("Total: ${fmtPrice.format(order['totalAmount'] ?? 0)}", style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFFD70677))),
+              child: Text(
+                  "Total: ${fmtPrice.format(order['totalAmount'] ?? 0)}",
+                  style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Color(0xFFE07A5F))),
             ),
             const SizedBox(height: 16),
 
             // Action Buttons
             if (status == 'PENDING')
-               SizedBox(
+              SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  onPressed: () => onUpdateStatus('ACCEPTED'), 
-                  icon: const Icon(Icons.soup_kitchen),
-                  label: const Text('Siapkan Pesanan'),
-                  style: FilledButton.styleFrom(backgroundColor: const Color(0xFFD70677))
-                ),
+                    onPressed: () => onUpdateStatus('ACCEPTED'),
+                    icon: const Icon(Icons.soup_kitchen),
+                    label: const Text('Siapkan Pesanan'),
+                    style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFFE07A5F))),
               ),
 
             if (status == 'ACCEPTED')
-               SizedBox(
+              SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  onPressed: () => onUpdateStatus('READY'), 
-                  icon: const Icon(Icons.check_circle_outline),
-                  label: const Text('Selesai Disiapkan'),
-                  style: FilledButton.styleFrom(backgroundColor: Colors.orange.shade700)
-                ),
+                    onPressed: () => onUpdateStatus('READY'),
+                    icon: const Icon(Icons.check_circle_outline),
+                    label: const Text('Selesai Disiapkan'),
+                    style: FilledButton.styleFrom(
+                        backgroundColor: Colors.orange.shade700)),
               ),
 
             if (status == 'READY')
-               SizedBox(
+              SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  onPressed: onScan, 
+                  onPressed: onScan,
                   icon: const Icon(Icons.qr_code_scanner),
                   label: const Text('Scan QR Konsumen'),
-                  style: FilledButton.styleFrom(backgroundColor: Colors.green.shade700, padding: const EdgeInsets.all(16)),
+                  style: FilledButton.styleFrom(
+                      backgroundColor: Colors.green.shade700,
+                      padding: const EdgeInsets.all(16)),
                 ),
               ),
-            
+
             if (status == 'READY')
-               Padding(
-                 padding: const EdgeInsets.only(top: 8),
-                 child: Center(child: Text('Tunggu konsumen datang dan scan QR mereka.', style: TextStyle(color: Colors.grey.shade600, fontSize: 12, fontStyle: FontStyle.italic))),
-               ),
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Center(
+                    child: Text('Tunggu konsumen datang dan scan QR mereka.',
+                        style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 12,
+                            fontStyle: FontStyle.italic))),
+              ),
 
             if (status == 'COMPLETED')
-               Center(
-                 child: Row(
-                   mainAxisAlignment: MainAxisAlignment.center,
-                   children: const [
-                     Icon(Icons.task_alt, color: Colors.green),
-                     SizedBox(width: 8),
-                     Text('Transaksi Berhasil', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
-                   ],
-                 ),
-               )
+              Center(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: const [
+                    Icon(Icons.task_alt, color: Color(0xFF81B29A)),
+                    SizedBox(width: 8),
+                    Text('Transaksi Berhasil',
+                        style: TextStyle(
+                            color: Color(0xFF81B29A),
+                            fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              )
           ],
         ),
       ),

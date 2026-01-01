@@ -47,13 +47,13 @@ class _WholesaleOrderListScreenState extends State<WholesaleOrderListScreen> {
   Color _getStatusColor(String status) {
     switch (status) {
       case 'PENDING':
-        return Colors.orange;
+        return const Color(0xFFE07A5F);
       case 'PAID':
-        return Colors.teal;
+        return const Color(0xFFE07A5F);
       case 'PROCESSED':
-        return Colors.blue;
+        return const Color(0xFFE07A5F);
       case 'SHIPPED':
-        return Colors.purple;
+        return const Color(0xFFE07A5F);
       case 'DELIVERED':
         return Colors.green;
       case 'CANCELLED':
@@ -69,12 +69,14 @@ class _WholesaleOrderListScreenState extends State<WholesaleOrderListScreen> {
         NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
 
     return Scaffold(
+      backgroundColor: const Color(0xFFFFF8F0),
       appBar: AppBar(
         title: Text('Pesanan Kulakan',
             style: GoogleFonts.poppins(
-                fontWeight: FontWeight.bold, color: Colors.white)),
-        backgroundColor: const Color(0xFFD70677),
-        iconTheme: const IconThemeData(color: Colors.white),
+                fontWeight: FontWeight.bold, color: const Color(0xFFE07A5F))),
+        backgroundColor: Colors.transparent,
+        iconTheme: const IconThemeData(color: Color(0xFFE07A5F)),
+        elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.qr_code_scanner),
@@ -161,52 +163,59 @@ class _WholesaleOrderListScreenState extends State<WholesaleOrderListScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              DateFormat('dd MMM yyyy, HH:mm')
-                                  .format(DateTime.parse(order['createdAt'])),
+                              order['id'] ?? '-',
                               style: GoogleFonts.poppins(
-                                  fontSize: 12, color: Colors.grey),
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFFE07A5F)),
                             ),
                             Container(
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
-                                  color:
-                                      _getStatusColor(status)
-                                          .withValues(alpha: 26),
-                                  borderRadius: BorderRadius.circular(4),
-                                  border: Border.all(
-                                      color: _getStatusColor(status))),
-                              child: Text(status,
-                                  style: GoogleFonts.poppins(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      color: _getStatusColor(status))),
-                            )
+                                color: _getStatusColor(status).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                status,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: _getStatusColor(status),
+                                ),
+                              ),
+                            ),
                           ],
                         ),
-                        const Divider(),
-                        ...items
-                            .map((item) => Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 4),
-                                  child: Row(
-                                    children: [
-                                      Text("${item['quantity']}x ",
-                                          style: GoogleFonts.poppins(
-                                              fontWeight: FontWeight.bold)),
-                                      Expanded(
-                                          child: Text(
-                                              item['productName'] ?? 'Produk',
-                                              style: GoogleFonts.poppins(),
-                                              overflow: TextOverflow.ellipsis)),
-                                      Text(fmtPrice.format(item['price']),
-                                          style: GoogleFonts.poppins(
-                                              fontSize: 12,
-                                              color: Colors.grey)),
-                                    ],
-                                  ),
-                                ))
-                            .toList(),
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFF8F0),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Column(
+                            children: items.map((item) {
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 8.0),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.inventory_2_outlined,
+                                        size: 16, color: Color(0xFFE07A5F)),
+                                    const SizedBox(width: 8),
+                                    Text("${item['quantity']}x ",
+                                        style: GoogleFonts.poppins(
+                                            fontWeight: FontWeight.bold)),
+                                    Expanded(
+                                        child: Text(
+                                            item['productName'] ?? 'Produk',
+                                            style: GoogleFonts.poppins(),
+                                            overflow: TextOverflow.ellipsis)),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
                         const Divider(),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -217,7 +226,7 @@ class _WholesaleOrderListScreenState extends State<WholesaleOrderListScreen> {
                             Text(fmtPrice.format(total),
                                 style: GoogleFonts.poppins(
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.blue.shade900)),
+                                    color: const Color(0xFFE07A5F))),
                           ],
                         ),
                         if (status == 'SHIPPED' || status == 'PROCESSED') ...[
@@ -225,19 +234,19 @@ class _WholesaleOrderListScreenState extends State<WholesaleOrderListScreen> {
                           Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                                color: Colors.blue.shade50,
+                                color: const Color(0xFFE07A5F).withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(8)),
                             child: Row(
                               children: [
                                 const Icon(Icons.info_outline,
-                                    size: 16, color: Colors.blue),
+                                    size: 16, color: Color(0xFFE07A5F)),
                                 const SizedBox(width: 8),
                                 Expanded(
                                     child: Text(
                                         "Scan QR Code dari kurir saat barang sampai.",
                                         style: GoogleFonts.poppins(
                                             fontSize: 12,
-                                            color: Colors.blue.shade800))),
+                                            color: const Color(0xFFE07A5F)))),
                               ],
                             ),
                           )

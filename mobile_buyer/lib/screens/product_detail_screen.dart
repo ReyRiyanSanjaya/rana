@@ -109,7 +109,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             },
                           ),
                   ),
-
                   Padding(
                     padding: const EdgeInsets.all(16),
                     child: Column(
@@ -126,7 +125,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           style: const TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFFD70677)),
+                              color: Color(0xFFE07A5F)),
                         ),
                         const SizedBox(height: 8),
                         Consumer<ReviewsProvider>(
@@ -135,7 +134,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             return Row(
                               children: [
                                 Icon(Icons.star,
-                                    color: Colors.orange.shade400, size: 18),
+                                    color: Color(0xFFF2CC8F), size: 18),
                                 Text(avg.toStringAsFixed(1)),
                               ],
                             );
@@ -175,8 +174,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                     child: Row(
                                       children: [
                                         Icon(Icons.star,
-                                            size: 16,
-                                            color: Colors.orange.shade400),
+                                            size: 16, color: Color(0xFFF2CC8F)),
                                         const SizedBox(width: 4),
                                         Text('$star'),
                                         const SizedBox(width: 8),
@@ -188,7 +186,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                             minHeight: 8,
                                             backgroundColor:
                                                 Colors.grey.shade200,
-                                            color: Colors.orange.shade400,
+                                            color: Color(0xFFF2CC8F),
                                           ),
                                         ),
                                         const SizedBox(width: 8),
@@ -255,7 +253,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                 for (final r in list)
                                   ListTile(
                                     leading: Icon(Icons.star,
-                                        color: Colors.orange.shade400),
+                                        color: Color(0xFFF2CC8F)),
                                     title: Text(
                                         '${r['userName']} • ${(r['rating'] as int).toString()}'),
                                     subtitle: Text(r['comment'] ?? ''),
@@ -273,7 +271,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                               icon: Icon(
                                 Icons.star,
                                 color: _rating >= val
-                                    ? Colors.orange.shade400
+                                    ? Color(0xFFF2CC8F)
                                     : Colors.grey.shade400,
                               ),
                             );

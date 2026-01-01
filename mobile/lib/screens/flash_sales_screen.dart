@@ -98,7 +98,8 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
       initialTime: TimeOfDay.fromDateTime(now),
     );
     if (time == null) return;
-    final dt = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+    final dt =
+        DateTime(date.year, date.month, date.day, time.hour, time.minute);
     setState(() {
       if (isStart) {
         _startAt = dt;
@@ -113,7 +114,7 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Judul dan periode wajib diisi'),
-          backgroundColor: Colors.red,
+          backgroundColor: Color(0xFFE07A5F),
         ),
       );
       return;
@@ -328,8 +329,9 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
                       symbol: 'Rp ',
                       decimalDigits: 0,
                     ).format(product['sellingPrice'] ?? 0);
-                    final isSelected = _selectedProductId == product['id'].toString();
-                    
+                    final isSelected =
+                        _selectedProductId == product['id'].toString();
+
                     return InkWell(
                       onTap: () {
                         setState(() {
@@ -341,10 +343,13 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
                         margin: const EdgeInsets.only(bottom: 12),
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: isSelected ? Colors.blue.shade50 : Colors.grey.shade50,
+                          color: isSelected
+                              ? Colors.blue.shade50
+                              : Colors.grey.shade50,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: isSelected ? Colors.blue : Colors.grey.shade300,
+                            color:
+                                isSelected ? Colors.blue : Colors.grey.shade300,
                             width: isSelected ? 2 : 1,
                           ),
                         ),
@@ -367,9 +372,11 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
                                         width: 60,
                                         height: 60,
                                         fit: BoxFit.cover,
-                                        errorBuilder: (context, error, stackTrace) =>
-                                            const Icon(Icons.image_not_supported,
-                                                color: Colors.grey),
+                                        errorBuilder:
+                                            (context, error, stackTrace) =>
+                                                const Icon(
+                                                    Icons.image_not_supported,
+                                                    color: Colors.grey),
                                       ),
                                     )
                                   : const Icon(Icons.image_not_supported,
@@ -415,7 +422,7 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
                             if (isSelected)
                               const Icon(
                                 Icons.check_circle,
-                                color: Colors.blue,
+                                color: Color(0xFFE07A5F),
                                 size: 24,
                               ),
                           ],
@@ -460,7 +467,8 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Batalkan Flash Sale?'),
-        content: const Text('Apakah Anda yakin ingin membatalkan flash sale ini?'),
+        content:
+            const Text('Apakah Anda yakin ingin membatalkan flash sale ini?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -505,7 +513,7 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
     IconData icon;
     switch (status.toUpperCase()) {
       case 'PENDING':
-        color = Colors.orange;
+        color = const Color(0xFFE07A5F);
         icon = Icons.pending;
         break;
       case 'APPROVED':
@@ -522,7 +530,7 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
         icon = Icons.event_busy;
         break;
       default:
-        color = Colors.blue;
+        color = const Color(0xFFE07A5F);
         icon = Icons.info;
     }
     return Container(
@@ -554,7 +562,7 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
   Widget build(BuildContext context) {
     final fmt = DateFormat('dd/MM/yyyy HH:mm');
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
+      backgroundColor: const Color(0xFFFFF8F0),
       appBar: AppBar(
         title: Row(
           mainAxisSize: MainAxisSize.min,
@@ -575,35 +583,26 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
                 style: GoogleFonts.poppins(
                   fontWeight: FontWeight.bold,
                   fontSize: 18,
-                  color: Colors.white,
+                  color: const Color(0xFFE07A5F),
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
         ),
-        backgroundColor: const Color(0xFFD70677),
-        iconTheme: const IconThemeData(color: Colors.white),
+        backgroundColor: const Color(0xFFFFF8F0),
+        iconTheme: const IconThemeData(color: Color(0xFFE07A5F)),
         elevation: 0,
         centerTitle: true,
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF9F0013), Color(0xFFD70677), Color(0xFFE11D48)],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
-          ),
-        ),
       ),
       body: RefreshIndicator(
         onRefresh: _loadSales,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               // Create Flash Sale Card
               Container(
                 decoration: BoxDecoration(
@@ -651,8 +650,8 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
                       ],
                     ),
                     const SizedBox(height: 20),
-            TextField(
-              controller: _titleController,
+                    TextField(
+                      controller: _titleController,
                       decoration: InputDecoration(
                         labelText: 'Judul Flash Sale',
                         hintText: 'Contoh: Flash Sale Akhir Bulan',
@@ -670,9 +669,9 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
+                    Row(
+                      children: [
+                        Expanded(
                           child: InkWell(
                             onTap: () => _pickDateTime(isStart: true),
                             child: Container(
@@ -692,8 +691,8 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
                                         Icons.calendar_today,
                                         size: 18,
                                         color: Colors.grey.shade600,
-                ),
-                const SizedBox(width: 8),
+                                      ),
+                                      const SizedBox(width: 8),
                                       Flexible(
                                         child: Text(
                                           'Mulai',
@@ -723,7 +722,7 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
                           ),
                         ),
                         const SizedBox(width: 12),
-                Expanded(
+                        Expanded(
                           child: InkWell(
                             onTap: () => _pickDateTime(isStart: false),
                             child: Container(
@@ -752,11 +751,11 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
                                             fontSize: 12,
                                             color: Colors.grey.shade600,
                                           ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
                                   Text(
                                     _endAt == null
                                         ? 'Pilih Tanggal'
@@ -776,10 +775,10 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
                       ],
                     ),
                     const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _creating ? null : _createSale,
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _creating ? null : _createSale,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFFF6B6B),
                           foregroundColor: Colors.white,
@@ -795,8 +794,8 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
                                 width: 20,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  valueColor:
-                                      AlwaysStoppedAnimation<Color>(Colors.white),
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white),
                                 ),
                               )
                             : Row(
@@ -823,7 +822,7 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
                 ),
               ).animate().fadeIn(duration: 300.ms).slideY(begin: -0.1),
 
-            const SizedBox(height: 24),
+              const SizedBox(height: 24),
 
               // Add Item Card
               Container(
@@ -868,8 +867,8 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
                     ),
                     const SizedBox(height: 20),
                     // Flash Sale Dropdown - Simplified
-            DropdownButtonFormField<String>(
-              value: _selectedSaleId.isEmpty ? null : _selectedSaleId,
+                    DropdownButtonFormField<String>(
+                      value: _selectedSaleId.isEmpty ? null : _selectedSaleId,
                       decoration: InputDecoration(
                         labelText: 'Pilih Flash Sale',
                         prefixIcon: const Icon(Icons.local_offer),
@@ -885,9 +884,10 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
                         ),
                       ),
                       items: _sales.map((s) {
-                        final start = DateTime.tryParse(s['startAt'] ?? '') ?? DateTime.now();
+                        final start = DateTime.tryParse(s['startAt'] ?? '') ??
+                            DateTime.now();
                         return DropdownMenuItem<String>(
-                value: s['id'].toString(),
+                          value: s['id'].toString(),
                           child: Text(
                             '${s['title'] ?? s['id'].toString()} - ${fmt.format(start)}',
                             style: GoogleFonts.poppins(
@@ -898,7 +898,8 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
                           ),
                         );
                       }).toList(),
-              onChanged: (val) => setState(() => _selectedSaleId = val ?? ''),
+                      onChanged: (val) =>
+                          setState(() => _selectedSaleId = val ?? ''),
                     ),
                     const SizedBox(height: 16),
                     // Product Selection Button - Opens Dialog
@@ -918,7 +919,7 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
                           ),
                         ),
                         child: Row(
-              children: [
+                          children: [
                             const Icon(Icons.inventory_2, color: Colors.grey),
                             const SizedBox(width: 12),
                             Expanded(
@@ -962,8 +963,8 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-            Row(
-              children: [
+                    Row(
+                      children: [
                         Expanded(
                           child: TextField(
                             controller: _salePriceController,
@@ -1028,8 +1029,8 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
                       ),
                     ),
                     const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
+                    SizedBox(
+                      width: double.infinity,
                       child: ElevatedButton(
                         onPressed: _addItem,
                         style: ElevatedButton.styleFrom(
@@ -1063,9 +1064,12 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
                     ),
                   ],
                 ),
-              ).animate().fadeIn(duration: 300.ms, delay: 100.ms).slideY(begin: -0.1),
+              )
+                  .animate()
+                  .fadeIn(duration: 300.ms, delay: 100.ms)
+                  .slideY(begin: -0.1),
 
-            const SizedBox(height: 24),
+              const SizedBox(height: 24),
 
               // Sales List
               Row(
@@ -1122,7 +1126,7 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
                           color: Colors.grey.shade600,
                         ),
                       ),
-            const SizedBox(height: 8),
+                      const SizedBox(height: 8),
                       Text(
                         'Buat flash sale pertama Anda sekarang!',
                         style: GoogleFonts.poppins(
@@ -1133,10 +1137,12 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
                     ],
                   ),
                 ),
-            if (!_loading && _sales.isNotEmpty)
+              if (!_loading && _sales.isNotEmpty)
                 ..._sales.map((sale) {
-                  final start = DateTime.tryParse(sale['startAt'] ?? '') ?? DateTime.now();
-                  final end = DateTime.tryParse(sale['endAt'] ?? '') ?? DateTime.now();
+                  final start = DateTime.tryParse(sale['startAt'] ?? '') ??
+                      DateTime.now();
+                  final end =
+                      DateTime.tryParse(sale['endAt'] ?? '') ?? DateTime.now();
                   final items = (sale['items'] ?? []) as List<dynamic>;
                   final status = sale['status'] ?? 'PENDING';
                   return Container(
@@ -1152,9 +1158,9 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
                         ),
                       ],
                     ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Container(
                           padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
@@ -1187,7 +1193,7 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
                                     const SizedBox(height: 8),
                                     Row(
                                       mainAxisSize: MainAxisSize.min,
-                            children: [
+                                      children: [
                                         Icon(
                                           Icons.access_time,
                                           size: 16,
@@ -1219,8 +1225,10 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
                                     Padding(
                                       padding: const EdgeInsets.only(top: 8),
                                       child: TextButton.icon(
-                                        onPressed: () => _cancelSale(sale['id'].toString()),
-                                        icon: const Icon(Icons.cancel, size: 16),
+                                        onPressed: () =>
+                                            _cancelSale(sale['id'].toString()),
+                                        icon:
+                                            const Icon(Icons.cancel, size: 16),
                                         label: const Text('Batalkan'),
                                         style: TextButton.styleFrom(
                                           foregroundColor: Colors.red,
@@ -1235,8 +1243,8 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
                         Padding(
                           padding: const EdgeInsets.all(20),
                           child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
                               Row(
                                 children: [
                                   Icon(
@@ -1278,7 +1286,7 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
                                     ],
                                   ),
                                 ),
-                          if (items.isNotEmpty)
+                              if (items.isNotEmpty)
                                 ...items.map((it) {
                                   return Container(
                                     margin: const EdgeInsets.only(bottom: 12),
@@ -1300,7 +1308,8 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
                                               Text(
                                                 it['product']?['name']
                                                         ?.toString() ??
-                                                    it['productId']?.toString() ??
+                                                    it['productId']
+                                                        ?.toString() ??
                                                     '-',
                                                 style: GoogleFonts.poppins(
                                                   fontWeight: FontWeight.w600,
@@ -1312,63 +1321,77 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
                                                 runSpacing: 8,
                                                 children: [
                                                   Container(
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
+                                                    padding: const EdgeInsets
+                                                        .symmetric(
                                                       horizontal: 8,
                                                       vertical: 4,
                                                     ),
                                                     decoration: BoxDecoration(
-                                                      color: Colors.green.shade50,
+                                                      color:
+                                                          Colors.green.shade50,
                                                       borderRadius:
-                                                          BorderRadius.circular(6),
+                                                          BorderRadius.circular(
+                                                              6),
                                                     ),
                                                     child: Text(
                                                       'Rp ${NumberFormat('#,###').format((it['salePrice'] ?? 0).round())}',
-                                                      style: GoogleFonts.poppins(
+                                                      style:
+                                                          GoogleFonts.poppins(
                                                         fontSize: 12,
-                                                        fontWeight: FontWeight.w600,
-                                                        color: Colors.green.shade700,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        color: Colors
+                                                            .green.shade700,
                                                       ),
                                                     ),
                                                   ),
-                                                  if (it['maxQtyPerOrder'] != null &&
+                                                  if (it['maxQtyPerOrder'] !=
+                                                          null &&
                                                       it['maxQtyPerOrder'] > 0)
                                                     Container(
-                                                      padding:
-                                                          const EdgeInsets.symmetric(
+                                                      padding: const EdgeInsets
+                                                          .symmetric(
                                                         horizontal: 8,
                                                         vertical: 4,
                                                       ),
                                                       decoration: BoxDecoration(
-                                                        color: Colors.blue.shade50,
+                                                        color:
+                                                            Colors.blue.shade50,
                                                         borderRadius:
-                                                            BorderRadius.circular(6),
+                                                            BorderRadius
+                                                                .circular(6),
                                                       ),
                                                       child: Text(
                                                         'Max: ${it['maxQtyPerOrder']}',
-                                                        style: GoogleFonts.poppins(
+                                                        style:
+                                                            GoogleFonts.poppins(
                                                           fontSize: 12,
-                                                          color: Colors.blue.shade700,
+                                                          color: Colors
+                                                              .blue.shade700,
                                                         ),
                                                       ),
                                                     ),
                                                   if (it['saleStock'] != null)
                                                     Container(
-                                                      padding:
-                                                          const EdgeInsets.symmetric(
+                                                      padding: const EdgeInsets
+                                                          .symmetric(
                                                         horizontal: 8,
                                                         vertical: 4,
                                                       ),
                                                       decoration: BoxDecoration(
-                                                        color: Colors.orange.shade50,
+                                                        color: Colors
+                                                            .orange.shade50,
                                                         borderRadius:
-                                                            BorderRadius.circular(6),
+                                                            BorderRadius
+                                                                .circular(6),
                                                       ),
                                                       child: Text(
                                                         'Stock: ${it['saleStock']}',
-                                                        style: GoogleFonts.poppins(
+                                                        style:
+                                                            GoogleFonts.poppins(
                                                           fontSize: 12,
-                                                          color: Colors.orange.shade700,
+                                                          color: Colors
+                                                              .orange.shade700,
                                                         ),
                                                       ),
                                                     ),
@@ -1378,7 +1401,8 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
                                           ),
                                         ),
                                         IconButton(
-                                    icon: const Icon(Icons.delete_outline),
+                                          icon:
+                                              const Icon(Icons.delete_outline),
                                           color: Colors.red,
                                           onPressed: () => _deleteItem(
                                             sale['id'].toString(),
@@ -1389,14 +1413,14 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
                                     ),
                                   );
                                 }),
-                        ],
-                      ),
-                    ),
+                            ],
+                          ),
+                        ),
                       ],
-              ),
+                    ),
                   ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.1);
                 }),
-          ],
+            ],
           ),
         ),
       ),

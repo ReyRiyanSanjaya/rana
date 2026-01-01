@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kDebugMode;
-import 'package:url_launcher/url_launcher.dart';
-import 'package:flutter/services.dart'; // [NEW] Clipboard
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import 'package:rana_merchant/providers/subscription_provider.dart';
-import 'package:rana_merchant/data/remote/api_service.dart';
-import 'package:rana_merchant/providers/auth_provider.dart'; // [FIX] Added missing import
+import 'package:rana_merchant/providers/auth_provider.dart';
+import 'package:rana_merchant/screens/edit_profile_screen.dart';
 import 'package:rana_merchant/screens/printer_settings_screen.dart';
+import 'package:rana_merchant/screens/receipt_settings_screen.dart';
+import 'package:rana_merchant/screens/privacy_policy_screen.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -16,273 +16,304 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  Map<String, String> bankInfo = {};
-  Map<String, dynamic> userProfile = {}; // [NEW]
+  String _version = '1.0.0';
 
   @override
   void initState() {
     super.initState();
-    _loadSettings();
+    _loadVersion();
   }
 
-  Future<void> _loadSettings() async {
-    try {
-      final data = await ApiService().getSystemSettings();
-      final profile = await ApiService().getProfile(); 
-      if (mounted) {
-        setState(() {
-          bankInfo = data;
-          userProfile = profile;
-        });
-      }
-    } catch (e) {
-      debugPrint("Error loading settings: $e");
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal memuat profil: $e'), backgroundColor: Colors.red));
-      }
+  Future<void> _loadVersion() async {
+    final info = await PackageInfo.fromPlatform();
+    if (mounted) {
+      setState(() {
+        _version = info.version;
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            pinned: true,
-            backgroundColor: const Color(0xFFD70677),
-            iconTheme: const IconThemeData(color: Colors.white),
-            title: const Text('Pengaturan', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-            centerTitle: true,
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFF9F0013), Color(0xFFD70677), Color(0xFFE11D48)],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter
+      backgroundColor: const Color(0xFFF8FAFC), // Light Slate Background
+      body: Consumer<AuthProvider>(
+        builder: (context, auth, _) {
+          final user = auth.currentUser;
+          final businessName = user?['businessName'] ?? 'Nama Toko';
+          final ownerName = user?['name'] ?? 'Pemilik Toko';
+          final initial =
+              businessName.isNotEmpty ? businessName[0].toUpperCase() : 'T';
+
+          return CustomScrollView(
+            slivers: [
+              // 1. Professional App Bar
+              SliverAppBar(
+                pinned: true,
+                backgroundColor: Colors.white,
+                elevation: 0,
+                centerTitle: true,
+                title: Text(
+                  'Pengaturan',
+                  style: GoogleFonts.outfit(
+                      color: const Color(0xFF1E293B),
+                      fontWeight: FontWeight.bold),
+                ),
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.logout_rounded,
+                        color: Colors.redAccent),
+                    tooltip: 'Keluar',
+                    onPressed: () => _confirmLogout(context),
                   )
-                ),
-              ),
-            ),
-            actions: [
-                IconButton(
-                 onPressed: () {
-                   // Clear internal state
-                   Provider.of<AuthProvider>(context, listen: false).logout();
-                   // Clear any strict cache if needed, but wrapper handles nav
-                 }, 
-                 icon: const Icon(Icons.logout)
-               )
-            ],
-          ),
-          SliverList(
-            delegate: SliverChildListDelegate([
-              // Top Profile Card (Optional, can be added later)
-              
-              // ... Existing Items ...
-              const Padding(
-                padding: EdgeInsets.all(16.0),
-                child: Text('Perangkat & Printer', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo)),
-              ),
-              ListTile(
-                title: const Text('Printer Bluetooth'),
-                subtitle: const Text('Kelola koneksi printer thermal'),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PrinterSettingsScreen())),
-              ),
-              ListTile(
-                leading: const Icon(Icons.receipt),
-                title: const Text('Ukuran Kertas'),
-                subtitle: const Text('58mm (Standard)'),
-                onTap: () {},
-              ),
-              const Divider(),
-              
-              // [NEW] Bank Info Section
-              const Padding(
-                padding: EdgeInsets.all(16.0),
-                child: Text('Info Transfer Platform', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo)),
-              ),
-              if (bankInfo.isNotEmpty) ...[
-                ListTile(
-                  leading: const Icon(Icons.account_balance),
-                  title: Text(bankInfo['BANK_NAME'] ?? 'Bank'),
-                  subtitle: Text('${bankInfo['BANK_ACCOUNT_NUMBER'] ?? '-'} a.n ${bankInfo['BANK_ACCOUNT_NAME'] ?? '-'}'),
-                  trailing: IconButton(
-                    onPressed: () async {
-                      final bankName = bankInfo['BANK_NAME'] ?? '';
-                      final accNo = bankInfo['BANK_ACCOUNT_NUMBER'] ?? '';
-                      final accName = bankInfo['BANK_ACCOUNT_NAME'] ?? '';
-                      final text = [
-                        if (bankName.trim().isNotEmpty) bankName.trim(),
-                        if (accNo.trim().isNotEmpty) accNo.trim(),
-                        if (accName.trim().isNotEmpty) 'a.n ${accName.trim()}',
-                      ].join(' ');
-                      if (text.trim().isEmpty) return;
-                      await Clipboard.setData(ClipboardData(text: text));
-                      if (!mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Info bank disalin')),
-                      );
-                    },
-                    icon: const Icon(Icons.copy, size: 16),
-                  ),
-                ),
-                 ListTile(
-                  leading: const Icon(Icons.percent),
-                  title: const Text('Biaya Admin Platform'),
-                  subtitle: Text('${bankInfo['PLATFORM_FEE_PERCENTAGE'] ?? '0'}% per penarikan'),
-                ),
-              ] else 
-                const ListTile(title: Text('Memuat info bank...', style: TextStyle(color: Colors.grey))),
-                
-              const Divider(),
-    
-              // [NEW] Akun & Toko Section
-              const Padding(
-                padding: EdgeInsets.all(16.0),
-                child: Text('Akun & Toko', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo)),
-              ),
-              ListTile(
-                leading: const Icon(Icons.store),
-                title: const Text('Profil Toko'),
-                subtitle: Text(userProfile['tenant']?['name'] ?? userProfile['store']?['name'] ?? 'Memuat...'),
-              ),
-              // [NEW] Display Merchant ID
-
-          if (userProfile.isNotEmpty)
-            ListTile(
-              leading: const Icon(Icons.fingerprint, color: Color(0xFFD70677)),
-              title: const Text('ID Merchant (Store ID)', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFD70677))),
-                  subtitle: Text(userProfile['store']?['id'] ?? userProfile['tenant']?['id'] ?? 'Belum ada ID'),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.copy, size: 20),
-                    onPressed: () {
-                      final id = userProfile['store']?['id'] ?? userProfile['tenant']?['id'];
-                      if (id != null) {
-                        Clipboard.setData(ClipboardData(text: id));
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ID Merchant disalin')));
-                      }
-                    },
-                  ),
-                ),
-
-              // [NEW] Subscription Validity
-              Consumer<SubscriptionProvider>(
-                builder: (context, sub, _) {
-                  String statusText = 'Memuat...';
-                  Color statusColor = Colors.grey;
-                  String expiryText = '';
-
-                  if (sub.status == SubscriptionStatus.active) {
-                    statusText = 'PREMIUM';
-                    statusColor = Colors.green;
-                    if (sub.expiryDate != null) {
-                      expiryText = 'Aktif sampai: ${sub.expiryDate!.day}/${sub.expiryDate!.month}/${sub.expiryDate!.year}';
-                    }
-                  } else if (sub.status == SubscriptionStatus.trial) {
-                    statusText = 'TRIAL';
-                    statusColor = Colors.blue;
-                    if (sub.daysRemaining != null) {
-                      expiryText = 'Sisa ${sub.daysRemaining} hari';
-                    }
-                  } else if (sub.status == SubscriptionStatus.expired) {
-                    statusText = 'EXPIRED';
-                    statusColor = Colors.red;
-                  } else if (sub.status == SubscriptionStatus.pending) {
-                    statusText = 'PENDING';
-                    statusColor = Colors.orange;
-                  }
-
-                  return ListTile(
-                    leading: const Icon(Icons.stars, color: Colors.amber),
-                    title: Row(
-                       children: [
-                         const Text('Status Akun: '),
-                         Container(
-                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                           decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
-                           child: Text(statusText, style: TextStyle(fontWeight: FontWeight.bold, color: statusColor, fontSize: 12))
-                         )
-                       ],
-                    ),
-                    subtitle: expiryText.isNotEmpty ? Text(expiryText, style: const TextStyle(fontWeight: FontWeight.bold)) : null,
-                  );
-                }
-              ),
-
-               ListTile(
-                leading: const Icon(Icons.phone),
-                title: const Text('Nomor WA Owner (Laporan)'),
-                subtitle: Text(userProfile['store']?['waNumber'] ?? '-'),
-              ),
-              const Divider(),
-                ListTile(
-                  leading: const Icon(Icons.info_outline),
-                  title: const Text('Versi Aplikasi'),
-                  trailing: const Text('v1.0.0 (Beta)'),
-                ),
-                const Divider(),
-                ListTile(
-                  leading: const Icon(Icons.support_agent, color: Colors.green),
-                  title: const Text('Hubungi CS (Bantuan)', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
-                  subtitle: const Text('WhatsApp Administrator'),
-                  onTap: () async {
-                     final Uri url = Uri.parse('https://wa.me/628887992299?text=Halo%20Admin%20Rana%20POS,%20saya%20butuh%20bantuan');
-                     if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-                        if (context.mounted) {
-                           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Gagal membuka WhatsApp')));
-                        }
-                     }
-                  },
-                ),
-                if (kDebugMode) ...[
-                  const Divider(),
-                  const Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: Text('Debug Menu',
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold, color: Colors.red)),
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.bug_report, color: Colors.red),
-                    title: const Text('Cek Status Langganan Manual'),
-                    onTap: () async {
-                      final sub = Provider.of<SubscriptionProvider>(context,
-                          listen: false);
-                      try {
-                        await sub.codeCheckSubscription();
-                        if (!context.mounted) return;
-                        showDialog(
-                          context: context,
-                          builder: (_) => AlertDialog(
-                            title: const Text("Hasil Debug"),
-                            content: Text(
-                                "Status: ${sub.status}\nIsLocked: ${sub.isLocked}\nPackages: ${sub.packages.length}"),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: const Text("OK"),
-                              )
-                            ],
-                          ),
-                        );
-                      } catch (e) {
-                        if (!context.mounted) return;
-                        showDialog(
-                          context: context,
-                          builder: (_) => AlertDialog(
-                            title: const Text("Error"),
-                            content: Text(e.toString()),
-                          ),
-                        );
-                      }
-                    },
-                  ),
-                  const Divider(),
                 ],
-            ]),
+              ),
+
+              // 2. Profile Header Card
+              SliverToBoxAdapter(
+                child: Container(
+                  margin: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
+                      )
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 70,
+                        height: 70,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE07A5F).withOpacity(0.1),
+                          shape: BoxShape.circle,
+                          image: (user?['storeImage'] != null &&
+                                  user!['storeImage'].toString().isNotEmpty)
+                              ? DecorationImage(
+                                  image: NetworkImage(user['storeImage']),
+                                  fit: BoxFit.cover,
+                                )
+                              : null,
+                        ),
+                        alignment: Alignment.center,
+                        child: (user?['storeImage'] == null ||
+                                user!['storeImage'].toString().isEmpty)
+                            ? Text(
+                                initial,
+                                style: GoogleFonts.outfit(
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.bold,
+                                    color: const Color(0xFFE07A5F)),
+                              )
+                            : null,
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              businessName,
+                              style: GoogleFonts.outfit(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFF1E293B)),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              ownerName,
+                              style: GoogleFonts.outfit(
+                                  fontSize: 14, color: const Color(0xFF64748B)),
+                            ),
+                            const SizedBox(height: 8),
+                            InkWell(
+                              onTap: () {
+                                Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (_) => EditProfileScreen(
+                                            initialData: user ?? {})));
+                              },
+                              child: Row(
+                                children: [
+                                  Text(
+                                    'Edit Profil',
+                                    style: GoogleFonts.outfit(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: const Color(0xFFE07A5F)),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  const Icon(Icons.arrow_forward_ios,
+                                      size: 12, color: Color(0xFFE07A5F))
+                                ],
+                              ),
+                            )
+                          ],
+                        ),
+                      )
+                    ],
+                  ),
+                ),
+              ),
+
+              // 3. Settings Groups
+              SliverList(
+                delegate: SliverChildListDelegate([
+                  _buildSectionHeader('Toko & Perangkat'),
+                  _buildSettingsGroup([
+                    _buildSettingsItem(
+                      icon: Icons.print_rounded,
+                      title: 'Printer Bluetooth',
+                      subtitle: 'Atur koneksi printer struk',
+                      onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => const PrinterSettingsScreen())),
+                    ),
+                    _buildDivider(),
+                    _buildSettingsItem(
+                      icon: Icons.receipt_long_rounded,
+                      title: 'Pengaturan Struk',
+                      subtitle: 'Ukuran kertas, footer, dll',
+                      onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => const ReceiptSettingsScreen())),
+                    ),
+                  ]),
+                  _buildSectionHeader('Informasi & Bantuan'),
+                  _buildSettingsGroup([
+                    _buildSettingsItem(
+                      icon: Icons.privacy_tip_outlined,
+                      title: 'Kebijakan Privasi',
+                      onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => const PrivacyPolicyScreen())),
+                    ),
+                    _buildDivider(),
+                    _buildSettingsItem(
+                      icon: Icons.support_agent_rounded,
+                      title: 'Hubungi Bantuan',
+                      subtitle: 'WhatsApp Support',
+                      onTap: () {},
+                    ),
+                    _buildDivider(),
+                    _buildSettingsItem(
+                      icon: Icons.info_outline_rounded,
+                      title: 'Versi Aplikasi',
+                      trailing: Text('v$_version',
+                          style: GoogleFonts.outfit(color: Colors.grey)),
+                    ),
+                  ]),
+                  const SizedBox(height: 40),
+                  Center(
+                    child: Text(
+                      'Rana Merchant App\nMade with ❤️ for UMKM',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.outfit(
+                          color: Colors.grey[400], fontSize: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+                ]),
+              )
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 12),
+      child: Text(
+        title.toUpperCase(),
+        style: GoogleFonts.outfit(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.2,
+            color: const Color(0xFF94A3B8)),
+      ),
+    );
+  }
+
+  Widget _buildSettingsGroup(List<Widget> children) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: Column(children: children),
+    );
+  }
+
+  Widget _buildSettingsItem({
+    required IconData icon,
+    required String title,
+    String? subtitle,
+    Widget? trailing,
+    VoidCallback? onTap,
+  }) {
+    return ListTile(
+      onTap: onTap,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF1F5F9),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, color: const Color(0xFF64748B), size: 20),
+      ),
+      title: Text(title,
+          style: GoogleFonts.outfit(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              color: const Color(0xFF1E293B))),
+      subtitle: subtitle != null
+          ? Text(subtitle,
+              style: GoogleFonts.outfit(
+                  fontSize: 13, color: const Color(0xFF94A3B8)))
+          : null,
+      trailing: trailing ??
+          const Icon(Icons.arrow_forward_ios,
+              size: 14, color: Color(0xFFCBD5E1)),
+    );
+  }
+
+  Widget _buildDivider() {
+    return Divider(height: 1, thickness: 1, color: Colors.grey[100]);
+  }
+
+  void _confirmLogout(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Konfirmasi'),
+        content: const Text('Apakah Anda yakin ingin keluar dari aplikasi?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Provider.of<AuthProvider>(context, listen: false).logout();
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Keluar'),
           ),
         ],
       ),

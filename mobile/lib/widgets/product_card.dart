@@ -37,11 +37,12 @@ class ProductCard extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(20), // Slightly reduced for stroke look
+          borderRadius:
+              BorderRadius.circular(20), // Slightly reduced for stroke look
           border: Border.all(
-            color: quantity > 0 
-              ? const Color(0xFF4F46E5) // Primary Indigo
-              : Colors.grey.shade200, // Soft Grey Stroke
+            color: quantity > 0
+                ? const Color(0xFF4F46E5) // Primary Indigo
+                : Colors.grey.shade200, // Soft Grey Stroke
             width: quantity > 0 ? 2 : 1.5,
           ),
         ),
@@ -56,34 +57,47 @@ class ProductCard extends StatelessWidget {
                   Container(
                     decoration: BoxDecoration(
                       color: Colors.grey.shade50,
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(18)), // Match outer - border width
+                      borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(
+                              18)), // Match outer - border width
                     ),
-                    child: hasImage 
-                      ? ClipRRect(
-                          borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
-                          child: Image.network(
-                              imageUrl!,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_,__,___) => Center(child: Text(initial, style: GoogleFonts.poppins(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.grey.shade300)))
-                          ),
-                        )
-                      : Center(
-                          child: Text(initial, style: GoogleFonts.poppins(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.grey.shade300))
-                        ),
+                    child: hasImage
+                        ? ClipRRect(
+                            borderRadius: const BorderRadius.vertical(
+                                top: Radius.circular(18)),
+                            child: Image.network(imageUrl!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Center(
+                                    child: Text(initial,
+                                        style: GoogleFonts.poppins(
+                                            fontSize: 32,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.grey.shade300)))),
+                          )
+                        : Center(
+                            child: Text(initial,
+                                style: GoogleFonts.poppins(
+                                    fontSize: 32,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.grey.shade300))),
                   ),
                   if (quantity > 0)
                     Positioned(
                       right: 8,
                       top: 8,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF4F46E5),
+                          color: const Color(0xFFE07A5F),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
                           "${quantity}x",
-                          style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                          style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12),
                         ),
                       ).animate().scale(duration: 200.ms),
                     ),
@@ -102,12 +116,18 @@ class ProductCard extends StatelessWidget {
                       productName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 14, color: Colors.grey.shade800),
+                      style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                          color: Colors.grey.shade800),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       currency.format(product['sellingPrice'] ?? 0),
-                      style: GoogleFonts.poppins(color: const Color(0xFF4F46E5), fontWeight: FontWeight.bold, fontSize: 14),
+                      style: GoogleFonts.poppins(
+                          color: const Color(0xFFE07A5F),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14),
                     ),
                   ],
                 ),

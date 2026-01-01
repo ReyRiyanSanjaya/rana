@@ -2,6 +2,6 @@
 
 @layer base {
   body {
-    @apply bg-slate-50 text-slate-900;
+    @apply bg-[#FFF8F0] text-slate-800;
   }
 }
