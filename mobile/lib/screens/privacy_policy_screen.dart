@@ -1,8 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class PrivacyPolicyScreen extends StatelessWidget {
   const PrivacyPolicyScreen({super.key});
+
+  Future<void> _launchUrl(String urlString) async {
+    final Uri url = Uri.parse(urlString);
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      debugPrint('Could not launch $url');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -18,6 +26,14 @@ class PrivacyPolicyScreen extends StatelessWidget {
           icon: const Icon(Icons.arrow_back_ios_new, color: Color(0xFF1E293B)),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.open_in_browser, color: Color(0xFF1E293B)),
+            tooltip: 'Buka di Browser',
+            onPressed: () =>
+                _launchUrl('https://rana-app.com/privacy-policy'),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
@@ -54,7 +70,22 @@ class PrivacyPolicyScreen extends StatelessWidget {
             _buildSection(
               title: '5. Hubungi Kami',
               content:
-                  'Jika Anda memiliki pertanyaan tentang Kebijakan Privasi ini, silakan hubungi kami melalui fitur "Hubungi Bantuan" di dalam aplikasi.',
+                  'Jika Anda memiliki pertanyaan tentang Kebijakan Privasi ini, silakan hubungi kami melalui fitur "Hubungi Bantuan" di dalam aplikasi atau klik tombol di bawah ini.',
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => _launchUrl(
+                    'https://wa.me/628887992299?text=Halo%20Admin%20Rana%20POS,%20saya%20ingin%20bertanya%20tentang%20Kebijakan%20Privasi'),
+                icon: const Icon(Icons.chat_bubble_outline),
+                label: const Text('Chat WhatsApp Admin'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  foregroundColor: const Color(0xFF25D366),
+                  side: const BorderSide(color: Color(0xFF25D366)),
+                ),
+              ),
             ),
             const SizedBox(height: 20),
             Center(
@@ -66,6 +97,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
                 ),
               ),
             ),
+            const SizedBox(height: 30),
           ],
         ),
       ),

@@ -5,12 +5,16 @@ class MarketCartItem {
   final String productId;
   final String name;
   final double price;
+  final double? originalPrice;
+  final String? imageUrl;
   int quantity;
 
   MarketCartItem(
       {required this.productId,
       required this.name,
       required this.price,
+      this.originalPrice,
+      this.imageUrl,
       this.quantity = 1});
 }
 
@@ -30,6 +34,8 @@ class MarketCartProvider with ChangeNotifier {
   double? get activeStoreLat => _activeStoreLat;
   double? get activeStoreLong => _activeStoreLong;
   Map<String, MarketCartItem> get items => _items;
+  double _serviceFee = 0;
+  double get serviceFee => _serviceFee;
 
   double get totalAmount {
     var total = 0.0;
@@ -37,6 +43,30 @@ class MarketCartProvider with ChangeNotifier {
       total += item.price * item.quantity;
     });
     return total;
+  }
+
+  double get totalOriginalAmount {
+    var total = 0.0;
+    _items.forEach((key, item) {
+      total += (item.originalPrice ?? item.price) * item.quantity;
+    });
+    return total;
+  }
+
+  double get totalDiscount => totalOriginalAmount - totalAmount;
+
+  double get grandTotal => totalAmount + _serviceFee;
+
+  Future<void> fetchServiceFee() async {
+    try {
+      final config = await MarketApiService().getAppConfig();
+      if (config.containsKey('buyerServiceFee')) {
+        _serviceFee = (config['buyerServiceFee'] as num).toDouble();
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error fetching service fee: $e');
+    }
   }
 
   void addToCart(
@@ -48,6 +78,8 @@ class MarketCartProvider with ChangeNotifier {
     String? storeAddress,
     double? storeLat,
     double? storeLong,
+    double? originalPrice,
+    String? imageUrl,
   }) {
     // If adding from different store, confirm reset
     if (_activeStoreId != null && _activeStoreId != storeId) {
@@ -63,8 +95,23 @@ class MarketCartProvider with ChangeNotifier {
     if (_items.containsKey(productId)) {
       _items[productId]!.quantity += 1;
     } else {
-      _items[productId] =
-          MarketCartItem(productId: productId, name: name, price: price);
+      _items[productId] = MarketCartItem(
+          productId: productId,
+          name: name,
+          price: price,
+          originalPrice: originalPrice,
+          imageUrl: imageUrl);
+    }
+    notifyListeners();
+  }
+
+  void updateQuantity(String productId, int quantity) {
+    if (!_items.containsKey(productId)) return;
+    if (quantity <= 0) {
+      _items.remove(productId);
+      if (_items.isEmpty) clearCart();
+    } else {
+      _items[productId]!.quantity = quantity;
     }
     notifyListeners();
   }

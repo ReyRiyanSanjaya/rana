@@ -82,6 +82,24 @@ class _SupportScreenState extends State<SupportScreen> {
     );
   }
 
+  Future<void> _launchUrl(String urlString) async {
+    final Uri url = Uri.parse(urlString);
+    try {
+      if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+        debugPrint('Could not launch $url');
+      }
+    } catch (e) {
+      debugPrint('Error launching URL: $e');
+    }
+  }
+
+  String _formatDate(dynamic dateStr) {
+    if (dateStr == null) return '-';
+    final str = dateStr.toString();
+    if (str.length >= 10) return str.substring(0, 10);
+    return str;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -90,76 +108,114 @@ class _SupportScreenState extends State<SupportScreen> {
         onPressed: _createTicket,
         label: const Text('Buat Tiket Bantuan'),
         icon: const Icon(Icons.add),
+        backgroundColor: const Color(0xFFE07A5F),
       ),
-      body: isLoading 
-          ? const Center(child: CircularProgressIndicator()) 
-          : ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                // WhatsApp Card
-                Card(
-                  color: const Color(0xFF25D366),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  child: InkWell(
-                    onTap: () {
-                      final Uri url = Uri.parse(
-                          'https://wa.me/628887992299?text=Halo%20Admin%20Rana%20POS,%20saya%20butuh%20bantuan');
-                      launchUrl(url, mode: LaunchMode.externalApplication);
-                    },
-                    borderRadius: BorderRadius.circular(16),
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Row(
-                        children: [
-                           const Icon(Icons.chat, color: Colors.white, size: 32),
-                           const SizedBox(width: 16),
-                           Expanded(
-                             child: Column(
-                               crossAxisAlignment: CrossAxisAlignment.start,
-                               children: const [
-                                 Text('Chat WhatsApp Admin', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
-                                 SizedBox(height: 4),
-                                 Text('Respon cepat dalam 5 menit', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                               ],
-                             ),
-                           ),
-                           const Icon(Icons.arrow_forward, color: Colors.white70)
-                        ],
+      body: RefreshIndicator(
+        onRefresh: _fetch,
+        child: isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  // WhatsApp Card
+                  Card(
+                    color: const Color(0xFF25D366),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
+                    child: InkWell(
+                      onTap: () => _launchUrl(
+                          'https://wa.me/628887992299?text=Halo%20Admin%20Rana%20POS,%20saya%20butuh%20bantuan'),
+                      borderRadius: BorderRadius.circular(16),
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.chat,
+                                color: Colors.white, size: 32),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: const [
+                                  Text('Chat WhatsApp Admin',
+                                      style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 18)),
+                                  SizedBox(height: 4),
+                                  Text('Respon cepat dalam 5 menit',
+                                      style: TextStyle(
+                                          color: Colors.white70, fontSize: 12)),
+                                ],
+                              ),
+                            ),
+                            const Icon(Icons.arrow_forward,
+                                color: Colors.white70)
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 24),
-                const Text('Tiket Bantuan Saya', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                const SizedBox(height: 16),
+                  const SizedBox(height: 24),
+                  const Text('Tiket Bantuan Saya',
+                      style:
+                          TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                  const SizedBox(height: 16),
 
-                tickets.isEmpty 
-                  ? const Center(child: Padding(padding: EdgeInsets.all(32), child: Text('Belum ada tiket bantuan.')))
-                  : ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: tickets.length,
-                      itemBuilder: (context, index) {
-                        final ticket = tickets[index];
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          elevation: 2,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            leading: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: Colors.blue.withOpacity(0.1), shape: BoxShape.circle), child: const Icon(Icons.confirmation_number, color: Colors.blue)),
-                            title: Text(ticket['subject'] ?? 'No Subject', style: const TextStyle(fontWeight: FontWeight.bold)),
-                            subtitle: Text('${ticket['status']} • ${ticket['createdAt'].toString().substring(0, 10)}', style: TextStyle(color: ticket['status'] == 'OPEN' ? Colors.green : Colors.grey)),
-                            trailing: const Icon(Icons.chevron_right),
-                            onTap: () {
-                               Navigator.push(context, MaterialPageRoute(builder: (_) => TicketDetailScreen(ticketId: ticket['id'])));
-                            },
-                          ),
-                        );
-                      },
-                    ),
-              ],
-            ),
+                  tickets.isEmpty
+                      ? const Center(
+                          child: Padding(
+                              padding: EdgeInsets.all(32),
+                              child: Text('Belum ada tiket bantuan.')))
+                      : ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: tickets.length,
+                          itemBuilder: (context, index) {
+                            final ticket = tickets[index];
+                            final status = ticket['status'] ?? 'OPEN';
+                            final date = _formatDate(ticket['createdAt']);
+                            
+                            return Card(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              elevation: 2,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                              child: ListTile(
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 8),
+                                leading: Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                        color: Colors.blue.withOpacity(0.1),
+                                        shape: BoxShape.circle),
+                                    child: const Icon(Icons.confirmation_number,
+                                        color: Colors.blue)),
+                                title: Text(ticket['subject'] ?? 'No Subject',
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold)),
+                                subtitle: Text(
+                                    '$status • $date',
+                                    style: TextStyle(
+                                        color: status == 'OPEN'
+                                            ? Colors.green
+                                            : Colors.grey)),
+                                trailing: const Icon(Icons.chevron_right),
+                                onTap: () {
+                                  Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (_) => TicketDetailScreen(
+                                              ticketId: ticket['id'])));
+                                },
+                              ),
+                            );
+                          },
+                        ),
+                  const SizedBox(height: 80), // Space for FAB
+                ],
+              ),
+      ),
     );
   }
 }

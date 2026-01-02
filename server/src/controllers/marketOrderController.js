@@ -71,8 +71,17 @@ const createOrder = async (req, res) => {
 
         // [NEW] Generate Pickup Code
         let pickupCode = null;
-        if (fulfillmentType === 'PICKUP') {
-            pickupCode = crypto.randomBytes(3).toString('hex').toUpperCase(); // 6 Chars
+        if (fulfillmentType === 'PICKUP' || fulfillmentType === 'DELIVERY') {
+             pickupCode = crypto.randomBytes(3).toString('hex').toUpperCase(); // 6 Chars
+        }
+
+        // [NEW] Deduct Merchant Wallet (Service Fee)
+        // Since payment is "Bayar Ditempat" (Cash to Merchant), Merchant owes Platform the Fee.
+        if (buyerFee > 0) {
+            await prisma.store.update({
+                where: { id: storeId },
+                data: { balance: { decrement: buyerFee } }
+            });
         }
 
         const result = await prisma.transaction.create({
@@ -81,14 +90,14 @@ const createOrder = async (req, res) => {
                 tenantId: store.tenantId,
                 storeId: storeId,
                 totalAmount: totalAmount,
-                buyerFee: buyerFee, // [NEW]
-                platformFee: buyerFee, // [NEW] Initially just buyer fee, merchant fee deducted later
-                paymentMethod: 'ONLINE_SIMULATION', // Mocking Online Payment
-                amountPaid: totalAmount,
+                buyerFee: buyerFee, 
+                platformFee: buyerFee,
+                paymentMethod: 'CASH', // [UPDATED] Always CASH for "Bayar Ditempat"
+                amountPaid: 0, // Not paid yet
                 change: 0,
                 source: 'MARKET',
                 orderStatus: 'PENDING',
-                paymentStatus: 'UNPAID', // [UPDATED] Real Flow
+                paymentStatus: 'UNPAID', 
                 fulfillmentType: fulfillmentType || 'DELIVERY',
                 pickupCode: pickupCode,
                 customerName,

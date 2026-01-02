@@ -14,5 +14,6 @@ router.post('/notifications/read-all', verifyToken, systemController.markAllNoti
 
 // Public Settings for CMP/Content
 router.get('/cms-content', systemController.getPublicSettings);
+router.get('/config', systemController.getAppConfig);
 
 module.exports = router;

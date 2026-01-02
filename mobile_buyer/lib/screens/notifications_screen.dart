@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:rana_market/data/market_api_service.dart';
+import 'package:provider/provider.dart';
+import 'package:rana_market/providers/notifications_provider.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -9,56 +10,53 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
-  bool _loading = true;
-  List<Map<String, dynamic>> _items = [];
-
   @override
   void initState() {
     super.initState();
-    _load();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<NotificationsProvider>(context, listen: false).load();
+    });
   }
 
-  Future<void> _load() async {
-    setState(() => _loading = true);
-    final api = MarketApiService();
-    final anns = await api.getAnnouncements();
-    final notifs = await api.getNotifications();
+  String _formatTime(dynamic createdAt) {
+    if (createdAt == null) return '';
+    final dt = (createdAt is String)
+        ? DateTime.tryParse(createdAt)
+        : (createdAt is DateTime ? createdAt : null);
+    if (dt == null) return '';
 
-    final merged = <Map<String, dynamic>>[];
-    for (final a in anns.whereType<Map>()) {
-      final m = Map<String, dynamic>.from(a);
-      merged.add({
-        'title': m['title'] ?? '-',
-        'message': m['content'] ?? m['message'] ?? '',
-        'createdAt': m['createdAt'],
-        'source': 'ANNOUNCEMENT',
-      });
+    final diff = DateTime.now().difference(dt);
+    if (diff.inSeconds < 60) return 'Baru saja';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m yang lalu';
+    if (diff.inHours < 24) return '${diff.inHours}j yang lalu';
+    if (diff.inDays < 7) return '${diff.inDays}h yang lalu';
+    return '${dt.day}/${dt.month}/${dt.year}';
+  }
+
+  IconData _getIcon(String source) {
+    switch (source) {
+      case 'ANNOUNCEMENT':
+        return Icons.campaign_outlined;
+      case 'REALTIME':
+        return Icons.notifications_active_outlined;
+      case 'ORDER_UPDATE':
+        return Icons.shopping_bag_outlined;
+      default:
+        return Icons.notifications_none_outlined;
     }
-    for (final n in notifs.whereType<Map>()) {
-      final m = Map<String, dynamic>.from(n);
-      merged.add({
-        'title': m['title'] ?? '-',
-        'message': m['message'] ?? m['body'] ?? '',
-        'createdAt': m['createdAt'],
-        'source': 'NOTIFICATION',
-      });
+  }
+
+  Color _getColor(String source) {
+    switch (source) {
+      case 'ANNOUNCEMENT':
+        return Colors.orange;
+      case 'REALTIME':
+        return Colors.blue;
+      case 'ORDER_UPDATE':
+        return Colors.green;
+      default:
+        return Colors.grey;
     }
-
-    merged.sort((a, b) {
-      final ad = a['createdAt'];
-      final bd = b['createdAt'];
-      final at = (ad is String) ? DateTime.tryParse(ad) : (ad is DateTime ? ad : null);
-      final bt = (bd is String) ? DateTime.tryParse(bd) : (bd is DateTime ? bd : null);
-      final av = at?.millisecondsSinceEpoch ?? 0;
-      final bv = bt?.millisecondsSinceEpoch ?? 0;
-      return bv.compareTo(av);
-    });
-
-    if (!mounted) return;
-    setState(() {
-      _items = merged;
-      _loading = false;
-    });
   }
 
   @override
@@ -69,33 +67,131 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         title: const Text('Notifikasi'),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.done_all),
+            tooltip: 'Tandai semua dibaca',
+            onPressed: () {
+              Provider.of<NotificationsProvider>(context, listen: false)
+                  .markAllAsRead();
+            },
+          )
+        ],
       ),
-      body: RefreshIndicator(
-        onRefresh: _load,
-        child: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : _items.isEmpty
-                ? ListView(
-                    children: const [
-                      SizedBox(height: 200),
-                      Center(child: Text('Belum ada notifikasi')),
-                    ],
-                  )
-                : ListView.separated(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _items.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
-                    itemBuilder: (ctx, i) {
-                      final n = _items[i];
-                      return ListTile(
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        tileColor: Colors.white,
-                        title: Text((n['title'] ?? '-').toString()),
-                        subtitle: Text((n['message'] ?? '').toString()),
-                      );
-                    },
+      body: Consumer<NotificationsProvider>(
+        builder: (context, prov, _) {
+          if (prov.isLoading && prov.items.isEmpty) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (prov.items.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.notifications_off_outlined,
+                      size: 80, color: Colors.grey.shade300),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Belum ada notifikasi',
+                    style: TextStyle(
+                        fontSize: 18,
+                        color: Colors.grey.shade500,
+                        fontWeight: FontWeight.bold),
                   ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Pemberitahuan pesanan dan promo\nakan muncul di sini.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey.shade400),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return RefreshIndicator(
+            onRefresh: prov.load,
+            child: ListView.separated(
+              padding: const EdgeInsets.all(16),
+              itemCount: prov.items.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemBuilder: (ctx, i) {
+                final n = prov.items[i];
+                final source = (n['source'] ?? '').toString();
+                final isRead = n['isRead'] == true;
+
+                return Container(
+                  decoration: BoxDecoration(
+                    color: isRead ? Colors.white : Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.03),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      )
+                    ],
+                  ),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.all(16),
+                    leading: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: _getColor(source).withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(_getIcon(source),
+                          color: _getColor(source), size: 24),
+                    ),
+                    title: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            (n['title'] ?? '-').toString(),
+                            style: TextStyle(
+                              fontWeight:
+                                  isRead ? FontWeight.w600 : FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                        if (!isRead)
+                          Container(
+                            margin: const EdgeInsets.only(left: 8),
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                      ],
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 6),
+                        Text(
+                          (n['message'] ?? '').toString(),
+                          style: TextStyle(
+                              color: Colors.grey.shade700, height: 1.3),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _formatTime(n['createdAt']),
+                          style: TextStyle(
+                              color: Colors.grey.shade400, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          );
+        },
       ),
     );
   }

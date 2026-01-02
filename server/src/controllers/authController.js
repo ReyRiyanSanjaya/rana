@@ -107,10 +107,8 @@ const verifyWhatsAppNumberWithoutOtp = async (value) => {
 
 const isStrongPassword = (value) => {
     const password = (value || '').toString();
-    if (password.length < 8) return false;
-    const hasLetter = /[A-Za-z]/.test(password);
-    const hasNumber = /\d/.test(password);
-    return hasLetter && hasNumber;
+    if (password.length < 6) return false;
+    return true;
 };
 
 const saveStoreImage = (base64String, tenantId, storeId) => {

@@ -4,9 +4,10 @@ import 'package:flutter/foundation.dart';
 class MarketApiService {
   static final MarketApiService _instance = MarketApiService._internal();
   factory MarketApiService() => _instance;
-  
+
   late Dio _dio;
-  static const bool _isProduction = bool.fromEnvironment('RANA_PROD', defaultValue: kReleaseMode);
+  static const bool _isProduction =
+      bool.fromEnvironment('RANA_PROD', defaultValue: kReleaseMode);
   final String _baseUrl = _isProduction
       ? 'https://api.rana-app.com/api'
       : (kIsWeb ? 'http://localhost:4000/api' : 'http://10.0.2.2:4000/api');
@@ -17,8 +18,9 @@ class MarketApiService {
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 10),
     ));
-    
-    _dio.interceptors.add(LogInterceptor(responseBody: true, requestBody: true));
+
+    _dio.interceptors
+        .add(LogInterceptor(responseBody: true, requestBody: true));
   }
 
   Dio get dio => _dio;
@@ -27,7 +29,9 @@ class MarketApiService {
     final raw = value?.toString().trim() ?? '';
     if (raw.isEmpty) return '';
     if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
-    final base = _baseUrl.endsWith('/api') ? _baseUrl.substring(0, _baseUrl.length - 4) : _baseUrl;
+    final base = _baseUrl.endsWith('/api')
+        ? _baseUrl.substring(0, _baseUrl.length - 4)
+        : _baseUrl;
     if (raw.startsWith('/')) return '$base$raw';
     return '$base/$raw';
   }
@@ -41,7 +45,8 @@ class MarketApiService {
     return false;
   }
 
-  String _messageFromBody(dynamic body, {String fallback = 'Terjadi kesalahan'}) {
+  String _messageFromBody(dynamic body,
+      {String fallback = 'Terjadi kesalahan'}) {
     if (body is Map) {
       final dynamic msg = body['message'];
       if (msg is String && msg.trim().isNotEmpty) return msg;
@@ -57,13 +62,14 @@ class MarketApiService {
       final responseData = e.response?.data;
       final msg = _messageFromBody(
         responseData,
-        fallback: e.message?.trim().isNotEmpty == true ? e.message!.trim() : fallback,
+        fallback:
+            e.message?.trim().isNotEmpty == true ? e.message!.trim() : fallback,
       );
       return Exception(msg);
     }
     return Exception(e.toString());
   }
- 
+
   Future<List<dynamic>> getProductReviews(
     String productId, {
     int page = 1,
@@ -84,21 +90,24 @@ class MarketApiService {
       return [];
     }
   }
- 
-   Future<Map<String, dynamic>> addProductReview(String productId, {required int rating, required String comment}) async {
-     try {
-       final response = await _dio.post('/market/product/$productId/reviews', data: {
-         'rating': rating,
-         'comment': comment,
-       });
-       if (!_isSuccess(response.data)) {
-         throw Exception(_messageFromBody(response.data, fallback: 'Gagal menambahkan ulasan'));
-       }
-       return response.data['data'] ?? {};
-     } catch (e) {
-       throw _toApiException(e, fallback: 'Gagal menambahkan ulasan');
-     }
-   }
+
+  Future<Map<String, dynamic>> addProductReview(String productId,
+      {required int rating, required String comment}) async {
+    try {
+      final response =
+          await _dio.post('/market/product/$productId/reviews', data: {
+        'rating': rating,
+        'comment': comment,
+      });
+      if (!_isSuccess(response.data)) {
+        throw Exception(_messageFromBody(response.data,
+            fallback: 'Gagal menambahkan ulasan'));
+      }
+      return response.data['data'] ?? {};
+    } catch (e) {
+      throw _toApiException(e, fallback: 'Gagal menambahkan ulasan');
+    }
+  }
 
   void setToken(String? token) {
     if (token != null) {
@@ -110,20 +119,19 @@ class MarketApiService {
 
   Future<Map<String, dynamic>> login(String email, String password) async {
     try {
-      final response = await _dio.post('/auth/login', data: {
-        'email': email,
-        'password': password,
-        'role': 'BUYER'
-      });
-      
-      if (_isSuccess(response.data)) return Map<String, dynamic>.from(response.data['data'] ?? {});
+      final response = await _dio.post('/auth/login',
+          data: {'email': email, 'password': password, 'role': 'BUYER'});
+
+      if (_isSuccess(response.data))
+        return Map<String, dynamic>.from(response.data['data'] ?? {});
       throw Exception(_messageFromBody(response.data, fallback: 'Login gagal'));
     } catch (e) {
       throw _toApiException(e, fallback: 'Login gagal');
     }
   }
 
-  Future<Map<String, dynamic>> register(String name, String email, String phone, String password) async {
+  Future<Map<String, dynamic>> register(
+      String name, String email, String phone, String password) async {
     try {
       final response = await _dio.post('/auth/register', data: {
         'name': name,
@@ -132,9 +140,11 @@ class MarketApiService {
         'password': password,
         'role': 'BUYER'
       });
-      
-      if (_isSuccess(response.data)) return Map<String, dynamic>.from(response.data['data'] ?? {});
-      throw Exception(_messageFromBody(response.data, fallback: 'Daftar gagal'));
+
+      if (_isSuccess(response.data))
+        return Map<String, dynamic>.from(response.data['data'] ?? {});
+      throw Exception(
+          _messageFromBody(response.data, fallback: 'Daftar gagal'));
     } catch (e) {
       throw _toApiException(e, fallback: 'Daftar gagal');
     }
@@ -142,13 +152,12 @@ class MarketApiService {
 
   Future<List<dynamic>> getNearbyStores(double lat, double long) async {
     try {
-      final response = await _dio.get('/market/nearby', queryParameters: {
-        'lat': lat,
-        'long': long
-      });
-      
+      final response = await _dio
+          .get('/market/nearby', queryParameters: {'lat': lat, 'long': long});
+
       if (_isSuccess(response.data)) return response.data['data'] ?? [];
-      throw Exception(_messageFromBody(response.data, fallback: 'Gagal memuat toko terdekat'));
+      throw Exception(_messageFromBody(response.data,
+          fallback: 'Gagal memuat toko terdekat'));
     } catch (e) {
       debugPrint('Nearby Error: $e');
       return []; // Return empty on error for fail-soft
@@ -174,14 +183,13 @@ class MarketApiService {
     }
   }
 
-  Future<Map<String, dynamic>> createOrder({
-    required String storeId,
-    required List<Map<String, dynamic>> items,
-    required String customerName,
-    required String customerPhone,
-    required String deliveryAddress,
-    required String fulfillmentType
-  }) async {
+  Future<Map<String, dynamic>> createOrder(
+      {required String storeId,
+      required List<Map<String, dynamic>> items,
+      required String customerName,
+      required String customerPhone,
+      required String deliveryAddress,
+      required String fulfillmentType}) async {
     try {
       final response = await _dio.post('/market/order', data: {
         'storeId': storeId,
@@ -191,9 +199,10 @@ class MarketApiService {
         'deliveryAddress': deliveryAddress,
         'fulfillmentType': fulfillmentType
       });
-      
+
       if (!_isSuccess(response.data)) {
-        throw Exception(_messageFromBody(response.data, fallback: 'Gagal membuat pesanan'));
+        throw Exception(
+            _messageFromBody(response.data, fallback: 'Gagal membuat pesanan'));
       }
       return Map<String, dynamic>.from(response.data['data'] ?? {});
     } catch (e) {
@@ -204,17 +213,22 @@ class MarketApiService {
   Future<Map<String, dynamic>> getPaymentInfo() async {
     try {
       final response = await _dio.get('/market/config/payment');
-      if (_isSuccess(response.data)) return Map<String, dynamic>.from(response.data['data'] ?? {});
-      throw Exception(_messageFromBody(response.data, fallback: 'Gagal memuat konfigurasi pembayaran'));
+      if (_isSuccess(response.data))
+        return Map<String, dynamic>.from(response.data['data'] ?? {});
+      throw Exception(_messageFromBody(response.data,
+          fallback: 'Gagal memuat konfigurasi pembayaran'));
     } catch (e) {
       throw _toApiException(e, fallback: 'Gagal memuat konfigurasi pembayaran');
     }
   }
 
   Future<Map<String, dynamic>> confirmPayment(String orderId) async {
-     try {
-      final response = await _dio.post('/market/order/confirm', data: {'orderId': orderId});
-      if (!_isSuccess(response.data)) throw Exception(_messageFromBody(response.data, fallback: 'Gagal konfirmasi pembayaran'));
+    try {
+      final response =
+          await _dio.post('/market/order/confirm', data: {'orderId': orderId});
+      if (!_isSuccess(response.data))
+        throw Exception(_messageFromBody(response.data,
+            fallback: 'Gagal konfirmasi pembayaran'));
       return Map<String, dynamic>.from(response.data['data'] ?? {});
     } catch (e) {
       throw _toApiException(e, fallback: 'Gagal konfirmasi pembayaran');
@@ -239,16 +253,86 @@ class MarketApiService {
     }
   }
 
+  Future<List<dynamic>> getFlashSaleProducts(double lat, double long) async {
+    try {
+      final response = await _dio.get('/market/flashsales');
+      if (!_isSuccess(response.data)) return [];
+
+      final sales = response.data['data'] as List<dynamic>;
+      final allProducts = <Map<String, dynamic>>[];
+
+      for (final sale in sales) {
+        if (sale is! Map) continue;
+        final storeName = sale['store']?['name'] ?? 'Toko';
+        final storeAddress = sale['store']?['location'];
+        final storeLat = sale['store']?['latitude'];
+        final storeLong = sale['store']?['longitude'];
+        final storeId = sale['storeId'];
+        final endAt = sale['endAt']; // Get endAt from flash sale
+        final items = sale['items'] as List<dynamic>? ?? [];
+
+        for (final item in items) {
+          if (item is! Map) continue;
+          final product = item['product'];
+          if (product is! Map) continue;
+
+          final originalPrice = (product['sellingPrice'] as num).toDouble();
+          final salePrice = (item['salePrice'] as num).toDouble();
+
+          final map = <String, dynamic>{
+            'id': item['productId'], // Use productId as the ID for navigation
+            'name': product['name'],
+            'imageUrl': product['imageUrl'],
+            'originalPrice': originalPrice,
+            'sellingPrice': salePrice,
+            'discountPercentage': originalPrice > 0
+                ? ((originalPrice - salePrice) / originalPrice * 100).round()
+                : 0,
+            'storeId': storeId,
+            'storeName': storeName,
+            'storeAddress': storeAddress,
+            'storeLat': storeLat,
+            'storeLong': storeLong,
+            'flashSaleEndAt': endAt, // Add endAt to product map
+            // Add other fields needed for ProductDetailScreen if missing
+            'description': product['description'] ?? '',
+            'stock': item['saleStock'] ?? 0, // Flash sale stock
+          };
+
+          allProducts.add(map);
+        }
+      }
+
+      allProducts.shuffle();
+      return allProducts;
+    } catch (e) {
+      debugPrint('Flash Sale Error: $e');
+      return [];
+    }
+  }
+
   Future<List<dynamic>> getMyOrders({String? phone}) async {
     try {
       final normalized = phone?.toString().trim();
       if (normalized == null || normalized.isEmpty) return [];
-      final response = await _dio.get('/market/orders', queryParameters: {
-        'phone': normalized
-      });
+      final response = await _dio
+          .get('/market/orders', queryParameters: {'phone': normalized});
       return response.data['data'] ?? [];
     } catch (e) {
       return [];
+    }
+  }
+
+  Future<Map<String, dynamic>> getAppConfig() async {
+    try {
+      final response = await _dio.get('/system/config');
+      if (_isSuccess(response.data)) {
+        return response.data['data'];
+      }
+      return {};
+    } catch (e) {
+      debugPrint('Config Error: $e');
+      return {};
     }
   }
 }

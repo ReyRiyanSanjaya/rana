@@ -6,7 +6,8 @@ class AiService {
   final DatabaseHelper _db = DatabaseHelper.instance;
   final Dio _dio = Dio();
 
-  Future<Map<String, dynamic>> generateDailyInsight() async {
+  Future<Map<String, dynamic>> generateDailyInsight(
+      {double? lat, double? lng}) async {
     try {
       // 1. ANALYZE STOCK (Priority: CRITICAL)
       // Real data from local database
@@ -92,10 +93,12 @@ class AiService {
       }
 
       // 4. FETCH REAL WEATHER (Priority: LOW - Contextual)
-      // Free API from Open-Meteo (No Key required) - Location: Jakarta (Default)
+      // Free API from Open-Meteo (No Key required) - Location: User Location or Jakarta (Default)
       try {
+        final double latitude = lat ?? -6.2088;
+        final double longitude = lng ?? 106.8456;
         final weatherResponse = await _dio.get(
-            'https://api.open-meteo.com/v1/forecast?latitude=-6.2088&longitude=106.8456&current_weather=true');
+            'https://api.open-meteo.com/v1/forecast?latitude=$latitude&longitude=$longitude&current_weather=true');
         if (weatherResponse.statusCode == 200) {
           final weatherCode =
               weatherResponse.data['current_weather']['weathercode'];

@@ -20,6 +20,109 @@ class WholesaleMainScreen extends StatefulWidget {
 }
 
 class _WholesaleMainScreenState extends State<WholesaleMainScreen> {
+  int _selectedIndex = 0;
+
+  final List<Widget> _pages = [
+    const WholesaleShopView(),
+    const WholesaleOrderListScreen(),
+  ];
+
+  void _onItemTapped(int index) {
+    if (index == 2) {
+      _handleScan();
+    } else {
+      setState(() {
+        _selectedIndex = index;
+      });
+    }
+  }
+
+  Future<void> _handleScan() async {
+    final code = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const WholesaleScanScreen()),
+    );
+
+    if (code != null && mounted) {
+      try {
+        await ApiService().scanQrOrder(code);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Pesanan Berhasil Diterima!"),
+              backgroundColor: Color(0xFFE07A5F),
+            ),
+          );
+          // Refresh orders if on order screen?
+          // Since we use IndexedStack, the order screen might not auto refresh unless we tell it to.
+          // But for now let's just show success.
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFFFF8F0),
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: _pages,
+      ),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, -5),
+            ),
+          ],
+        ),
+        child: NavigationBar(
+          height: 70,
+          elevation: 0,
+          backgroundColor: Colors.white,
+          indicatorColor: const Color(0xFFE07A5F).withOpacity(0.2),
+          selectedIndex:
+              _selectedIndex > 1 ? 0 : _selectedIndex, // Prevent selecting Scan
+          onDestinationSelected: _onItemTapped,
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(Icons.store_outlined),
+              selectedIcon: Icon(Icons.store, color: Color(0xFFE07A5F)),
+              label: 'Belanja',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.receipt_long_outlined),
+              selectedIcon: Icon(Icons.receipt_long, color: Color(0xFFE07A5F)),
+              label: 'Pesanan',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.qr_code_scanner),
+              label: 'Scan',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class WholesaleShopView extends StatefulWidget {
+  const WholesaleShopView({super.key});
+
+  @override
+  State<WholesaleShopView> createState() => _WholesaleShopViewState();
+}
+
+class _WholesaleShopViewState extends State<WholesaleShopView> {
   bool _isLoading = false;
   List<WholesaleProduct> _products = [];
 
@@ -145,11 +248,15 @@ class _WholesaleMainScreenState extends State<WholesaleMainScreen> {
                                 ),
                               ),
                               child: Center(
-                                child: Icon(
-                                  Icons.inventory_2_outlined,
-                                  size: 48,
-                                  color: Colors.grey[400],
-                                ),
+                                child: product.image != null &&
+                                        product.image!.isNotEmpty
+                                    ? Image.network(product.image!,
+                                        fit: BoxFit.cover)
+                                    : Icon(
+                                        Icons.inventory_2_outlined,
+                                        size: 48,
+                                        color: Colors.grey[400],
+                                      ),
                               ),
                             ),
                           ),
@@ -217,65 +324,6 @@ class _WholesaleMainScreenState extends State<WholesaleMainScreen> {
                 },
               ),
             ),
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, -5),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _buildNavItem(Icons.store_outlined, 'Belanja', true),
-            _buildNavItem(Icons.receipt_long_outlined, 'Pesanan', false,
-                onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => const WholesaleOrderListScreen()),
-              );
-            }),
-            _buildNavItem(Icons.qr_code_scanner, 'Scan', false, onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => const WholesaleScanScreen()),
-              );
-            }),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem(IconData icon, String label, bool isSelected,
-      {VoidCallback? onTap}) {
-    final color = isSelected
-        ? const Color(0xFFE07A5F)
-        : const Color(0xFFE07A5F).withOpacity(0.5);
-    return InkWell(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: color),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: GoogleFonts.poppins(
-              color: color,
-              fontSize: 12,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

@@ -1,24 +1,22 @@
-// import 'package:audioplayers/audioplayers.dart'; // UNCOMMENT AFTER running 'flutter pub get'
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 
 class SoundService {
-  // static final AudioPlayer _player = AudioPlayer(); // UNCOMMENT AFTER running 'flutter pub get'
+  static final AudioPlayer _player = AudioPlayer();
 
   static Future<void> playBeep() async {
     try {
-      // await _player.play(AssetSource('sounds/beep.mp3'));
-      debugPrint('Sound: Beep (Run flutter pub get to enable real sound)'); 
+      await _player.play(AssetSource('sounds/beep.mp3'));
     } catch (e) {
-      // ignore
+      debugPrint('Sound Error: $e');
     }
   }
 
   static Future<void> playSuccess() async {
     try {
-       // await _player.play(AssetSource('sounds/success.mp3'));
-       debugPrint('Sound: Success (Run flutter pub get to enable real sound)');
+       await _player.play(AssetSource('sounds/success.mp3'));
     } catch (e) {
-      // ignore
+      debugPrint('Sound Error: $e');
     }
   }
 }

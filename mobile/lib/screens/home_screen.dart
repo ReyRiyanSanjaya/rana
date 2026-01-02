@@ -49,6 +49,7 @@ import 'package:rana_merchant/screens/promo_hub_screen.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:rana_merchant/services/realtime_service.dart';
 import 'package:rana_merchant/services/order_service.dart';
+import 'package:geolocator/geolocator.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -248,6 +249,16 @@ class _HomeScreenState extends State<HomeScreen> {
     final source = data['source']?.toString();
     if (source == 'MARKET') {
       _refreshNewOrdersCountFromApi();
+
+      // Play Sound
+      SoundService.playBeep();
+
+      // Show Notification
+      NotificationService().showNotification(
+          id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+          title: 'Pesanan Baru!',
+          body: 'Ada pesanan baru masuk. Segera proses!',
+          payload: 'NEW_ORDER');
     }
   }
 
@@ -257,8 +268,8 @@ class _HomeScreenState extends State<HomeScreen> {
       final int pendingCount = orders
           .where((o) =>
               o is Map &&
-              o['orderStatus'] == 'PENDING' &&
-              o['paymentStatus'] == 'PAID')
+              o['orderStatus'] ==
+                  'PENDING') // Count all PENDING orders (including COD)
           .length;
       if (!mounted) return;
       setState(() {
@@ -363,7 +374,27 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadInsight() async {
-    final insight = await AiService().generateDailyInsight();
+    double? lat;
+    double? lng;
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (serviceEnabled) {
+        LocationPermission permission = await Geolocator.checkPermission();
+        if (permission == LocationPermission.denied) {
+          permission = await Geolocator.requestPermission();
+        }
+        if (permission == LocationPermission.whileInUse ||
+            permission == LocationPermission.always) {
+          Position position = await Geolocator.getCurrentPosition();
+          lat = position.latitude;
+          lng = position.longitude;
+        }
+      }
+    } catch (e) {
+      debugPrint('Error getting location: $e');
+    }
+
+    final insight = await AiService().generateDailyInsight(lat: lat, lng: lng);
     if (mounted) setState(() => _aiInsight = insight);
   }
 
@@ -531,8 +562,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                    builder: (_) =>
-                                        const StockOpnameScreen()));
+                                    builder: (_) => const StockOpnameScreen()));
                           }
                           if (index == 4) {
                             Navigator.push(
@@ -594,7 +624,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 6, vertical: 2),
                                         decoration: BoxDecoration(
-                                          color: const Color(0xFFE07A5F),
+                                          color: Colors.red,
                                           borderRadius:
                                               BorderRadius.circular(999),
                                         ),
@@ -628,7 +658,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 6, vertical: 2),
                                         decoration: BoxDecoration(
-                                          color: const Color(0xFFE07A5F),
+                                          color: Colors.red,
                                           borderRadius:
                                               BorderRadius.circular(999),
                                         ),
@@ -652,10 +682,8 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                               label: const Text('Pesanan')),
                           const NavigationRailDestination(
-                              icon: Icon(
-                                  Icons.account_balance_wallet_outlined),
-                              selectedIcon:
-                                  Icon(Icons.account_balance_wallet),
+                              icon: Icon(Icons.account_balance_wallet_outlined),
+                              selectedIcon: Icon(Icons.account_balance_wallet),
                               label: Text('Dompet')),
                           const NavigationRailDestination(
                               icon: Icon(Icons.settings_outlined),
@@ -741,7 +769,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
                       _buildNavItem(0, Icons.home, 'Beranda'),
-                      _buildNavItem(1, Icons.shopping_bag_outlined, 'PO Online'),
+                      _buildNavItem(
+                          1, Icons.shopping_bag_outlined, 'PO Online'),
                       _buildNavItem(2, Icons.qr_code_scanner, 'Scan'),
                       _buildNavItem(3, Icons.bar_chart, 'Laporan'),
                       _buildNavItem(4, Icons.person, 'Akun'),
@@ -785,7 +814,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE07A5F),
+                      color: Colors.red,
                       borderRadius: BorderRadius.circular(999),
                     ),
                     constraints:
@@ -1399,8 +1428,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                 color: const Color(0xFFE07A5F),
                                 borderRadius: BorderRadius.circular(999),
                               ),
-                              constraints:
-                                  const BoxConstraints(minWidth: 20, minHeight: 20),
+                              constraints: const BoxConstraints(
+                                  minWidth: 20, minHeight: 20),
                               child: Center(
                                 child: Text(
                                   _newOrdersCount > 99
@@ -1416,8 +1445,9 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ),
                       ],
-                    ).animate(target: 1).scale(
-                        duration: 200.ms, curve: Curves.easeOutBack),
+                    )
+                        .animate(target: 1)
+                        .scale(duration: 200.ms, curve: Curves.easeOutBack),
                     const SizedBox(height: 12),
                     Text(label,
                         style: GoogleFonts.poppins(
@@ -2157,16 +2187,13 @@ class _HomeScreenState extends State<HomeScreen> {
           onTap: () {
             if (stock <= 0) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                    content: Text('Stok produk ini sudah habis')),
+                const SnackBar(content: Text('Stok produk ini sudah habis')),
               );
               return;
             }
             if (qty >= stock) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                    content:
-                        Text('Maksimal stok tersedia hanya $stock')),
+                SnackBar(content: Text('Maksimal stok tersedia hanya $stock')),
               );
               return;
             }
@@ -2543,10 +2570,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (success == true && context.mounted) {
       await _loadProducts();
-      SoundService.playSuccess(); 
+      SoundService.playSuccess();
       showDialog(
           context: context, builder: (_) => const TransactionSuccessDialog());
-      cart.clear(); 
+      cart.clear();
       return true;
     }
     return false;

@@ -6,6 +6,7 @@ import 'package:rana_merchant/screens/edit_profile_screen.dart';
 import 'package:rana_merchant/screens/printer_settings_screen.dart';
 import 'package:rana_merchant/screens/receipt_settings_screen.dart';
 import 'package:rana_merchant/screens/privacy_policy_screen.dart';
+import 'package:rana_merchant/screens/support_screen.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:rana_merchant/data/remote/api_service.dart';
 import 'package:intl/intl.dart';
@@ -206,8 +207,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _buildSettingsItem(
                       icon: Icons.support_agent_rounded,
                       title: 'Hubungi Bantuan',
-                      subtitle: 'WhatsApp Support',
-                      onTap: () {},
+                      subtitle: 'Pusat Bantuan & Chat Admin',
+                      onTap: () => Navigator.push(context,
+                          MaterialPageRoute(builder: (_) => const SupportScreen())),
                     ),
                     _buildDivider(),
                     _buildSettingsItem(

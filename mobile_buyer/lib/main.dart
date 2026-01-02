@@ -10,6 +10,7 @@ import 'package:rana_market/providers/auth_provider.dart';
 import 'package:rana_market/providers/favorites_provider.dart';
 import 'package:rana_market/providers/search_history_provider.dart';
 import 'package:rana_market/providers/reviews_provider.dart';
+import 'package:rana_market/providers/notifications_provider.dart';
 
 const Color kBrandColor = Color(0xFFE07A5F); // Soft Terra Cotta
 const Color kBeigeBackground = Color(0xFFFFF8F0); // Soft Beige
@@ -33,6 +34,7 @@ class RanaMarketApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => FavoritesProvider()),
         ChangeNotifierProvider(create: (_) => SearchHistoryProvider()),
         ChangeNotifierProvider(create: (_) => ReviewsProvider()),
+        ChangeNotifierProvider(create: (_) => NotificationsProvider()),
       ],
       child: MaterialApp(
         title: 'Rana Market',

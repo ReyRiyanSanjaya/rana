@@ -27,6 +27,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
+    if (_passCtrl.text.length < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Password minimal 6 karakter')));
+      return;
+    }
+
     setState(() => _isLoading = true);
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final navigator = Navigator.of(context);

@@ -13,6 +13,7 @@ const Settings = () => {
         BANK_ACCOUNT_NUMBER: '8735089123',
         BANK_ACCOUNT_NAME: 'PT RANA TEKNOLOGI INDONESIA',
         PLATFORM_FEE_PERCENTAGE: '',
+        BUYER_SERVICE_FEE: '0',
         DIGIFLAZZ_USERNAME: '',
         DIGIFLAZZ_MODE: 'production',
         DIGIFLAZZ_BASE_URL: '',
@@ -84,6 +85,7 @@ const Settings = () => {
                 api.post('/admin/settings', { key: 'BANK_ACCOUNT_NUMBER', value: settings.BANK_ACCOUNT_NUMBER, description: 'Account Number' }),
                 api.post('/admin/settings', { key: 'BANK_ACCOUNT_NAME', value: settings.BANK_ACCOUNT_NAME, description: 'Account Name' }),
                 api.post('/admin/settings', { key: 'PLATFORM_FEE_PERCENTAGE', value: settings.PLATFORM_FEE_PERCENTAGE, description: 'Platform Fee %' }),
+                api.post('/admin/settings', { key: 'BUYER_SERVICE_FEE', value: settings.BUYER_SERVICE_FEE, description: 'Buyer Service Fee' }),
             ]);
             alert("Bank & Fee Settings Saved!");
         } catch (error) {
@@ -264,8 +266,8 @@ const Settings = () => {
                 <Card className="p-6 h-fit">
                     <div className="flex items-start justify-between mb-6">
                         <div>
-                            <h3 className="font-semibold text-slate-900">Bank Transfer Details</h3>
-                            <p className="text-sm text-slate-500 mt-1">Information displayed to merchants for manual transfers (Wholesale/Kulakan).</p>
+                            <h3 className="font-semibold text-slate-900">Platform & Payment Details</h3>
+                            <p className="text-sm text-slate-500 mt-1">Configure bank info and platform fees.</p>
                         </div>
                         <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
                             <AlertCircle size={20} />
@@ -273,6 +275,35 @@ const Settings = () => {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="md:col-span-2 border-b pb-4 mb-2">
+                            <h4 className="font-medium text-slate-900 mb-3">Service Fees</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Platform Fee (%)</label>
+                                    <Input
+                                        type="number"
+                                        placeholder="5"
+                                        value={settings.PLATFORM_FEE_PERCENTAGE || ''}
+                                        onChange={(e) => handleChange('PLATFORM_FEE_PERCENTAGE', e.target.value)}
+                                    />
+                                    <p className="text-xs text-slate-500 mt-1">Deducted from merchant sales.</p>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Buyer Service Fee (Rp)</label>
+                                    <Input
+                                        type="number"
+                                        placeholder="1000"
+                                        value={settings.BUYER_SERVICE_FEE || ''}
+                                        onChange={(e) => handleChange('BUYER_SERVICE_FEE', e.target.value)}
+                                    />
+                                    <p className="text-xs text-slate-500 mt-1">Added to buyer transaction total.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="md:col-span-2">
+                             <h4 className="font-medium text-slate-900 mb-3">Bank Transfer Info</h4>
+                        </div>
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-1">Bank Name</label>
                             <Input
@@ -298,24 +329,6 @@ const Settings = () => {
                             />
                         </div>
                     </div>
-                    <div className="mt-4 pt-4 border-t border-slate-100">
-                        <h4 className="font-semibold text-slate-900 mb-3">Revenue & Fees</h4>
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Platform Fee (%)</label>
-                            <div className="relative">
-                                <Input
-                                    type="number"
-                                    placeholder="5"
-                                    className="pr-8"
-                                    value={settings.PLATFORM_FEE_PERCENTAGE || ''}
-                                    onChange={(e) => handleChange('PLATFORM_FEE_PERCENTAGE', e.target.value)}
-                                />
-                                <span className="absolute right-3 top-2.5 text-slate-400 text-sm">%</span>
-                            </div>
-                            <p className="text-xs text-slate-500 mt-1">This percentage will be automatically deducted from every approved withdrawal.</p>
-                        </div>
-                    </div>
-
                     <div className="pt-4 mt-2">
                         <Button
                             onClick={handleSaveBankInfo}

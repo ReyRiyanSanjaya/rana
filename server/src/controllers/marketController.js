@@ -75,9 +75,9 @@ const getActiveFlashSales = async (req, res) => {
                 endAt: { gte: now }
             },
             include: {
-                store: { select: { name: true } },
+                store: { select: { name: true, location: true, latitude: true, longitude: true } },
                 items: {
-                    include: { product: { select: { name: true, sellingPrice: true, imageUrl: true } } }
+                    include: { product: { select: { name: true, sellingPrice: true, imageUrl: true, description: true } } }
                 }
             },
             orderBy: { startAt: 'asc' }

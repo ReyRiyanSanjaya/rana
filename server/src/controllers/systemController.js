@@ -208,6 +208,45 @@ const getPublicSettings = async (req, res) => {
     }
 };
 
+const getAppConfig = async (req, res) => {
+    try {
+        const settings = await prisma.systemSettings.findMany({
+            where: {
+                key: { in: ['BUYER_SERVICE_FEE', 'PLATFORM_BANK_INFO', 'BANK_NAME', 'BANK_ACCOUNT_NUMBER', 'BANK_ACCOUNT_NAME'] }
+            }
+        });
+        
+        const config = {
+            buyerServiceFee: 0,
+            bankInfo: {}
+        };
+
+        const bankMap = {};
+
+        settings.forEach(s => {
+            if (s.key === 'BUYER_SERVICE_FEE') config.buyerServiceFee = parseInt(s.value) || 0;
+            if (['PLATFORM_BANK_INFO', 'BANK_NAME', 'BANK_ACCOUNT_NUMBER', 'BANK_ACCOUNT_NAME'].includes(s.key)) {
+                bankMap[s.key] = s.value;
+            }
+        });
+
+        // Construct Bank Info
+        if (bankMap.PLATFORM_BANK_INFO) {
+            config.bankInfo.text = bankMap.PLATFORM_BANK_INFO;
+        } else {
+             const parts = [];
+            if (bankMap.BANK_NAME) parts.push(bankMap.BANK_NAME);
+            if (bankMap.BANK_ACCOUNT_NUMBER) parts.push(bankMap.BANK_ACCOUNT_NUMBER);
+            if (bankMap.BANK_ACCOUNT_NAME) parts.push(`a.n ${bankMap.BANK_ACCOUNT_NAME}`);
+            config.bankInfo.text = parts.join(' ').trim();
+        }
+
+        successResponse(res, config);
+    } catch (error) {
+        errorResponse(res, "Failed to fetch app config", 500, error);
+    }
+};
+
 const getAllAnnouncements = async (req, res) => {
     try {
         const announcements = await prisma.announcement.findMany({
@@ -272,5 +311,6 @@ module.exports = {
     getAppMenus,
     getNotifications,
     markAllNotificationsRead,
-    getPublicSettings
+    getPublicSettings,
+    getAppConfig
 };

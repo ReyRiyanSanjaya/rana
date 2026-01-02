@@ -366,6 +366,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       try {
                         final cart = Provider.of<MarketCartProvider>(context,
                             listen: false);
+                        final originalPrice =
+                            (widget.product['originalPrice'] as num?)
+                                ?.toDouble();
 
                         // Add quantity times
                         for (var i = 0; i < _quantity; i++) {
@@ -378,6 +381,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             storeAddress: widget.storeAddress,
                             storeLat: widget.storeLat,
                             storeLong: widget.storeLong,
+                            originalPrice: originalPrice,
+                            imageUrl: imageUrl,
                           );
                         }
 
