@@ -154,7 +154,8 @@ const register = async (req, res) => {
             category,
             storeImageBase64,
             name,
-            phone
+            phone,
+            referralCode
         } = req.body;
 
         const normalizedEmail = normalizeEmail(email);
@@ -224,6 +225,32 @@ const register = async (req, res) => {
         // if (!isWaValid) return errorResponse(res, "Nomor WhatsApp tidak valid", 400);
 
         // 3. Transaction: Create Tenant + User + Default Store (with Loc)
+        let normalizedReferralCode = null;
+        let referralContext = null;
+
+        if (referralCode && typeof referralCode === 'string') {
+            normalizedReferralCode = referralCode.toString().trim().toUpperCase();
+            if (normalizedReferralCode) {
+                const codeRecord = await prisma.referralCode.findUnique({
+                    where: { code: normalizedReferralCode },
+                    include: { program: true }
+                });
+
+                if (!codeRecord || codeRecord.status !== 'ACTIVE') {
+                    return errorResponse(res, "Kode referral tidak valid", 400);
+                }
+
+                if (!codeRecord.program || codeRecord.program.status !== 'ACTIVE') {
+                    return errorResponse(res, "Program referral sudah tidak aktif", 400);
+                }
+
+                referralContext = {
+                    programId: codeRecord.program.id,
+                    referrerTenantId: codeRecord.tenantId
+                };
+            }
+        }
+
         const result = await prisma.$transaction(async (tx) => {
             const trialEndsAt = new Date();
             trialEndsAt.setDate(trialEndsAt.getDate() + 7);
@@ -267,6 +294,59 @@ const register = async (req, res) => {
                     store: { connect: { id: store.id } }
                 }
             });
+
+            if (referralContext) {
+                const program = await tx.referralProgram.findUnique({
+                    where: { id: referralContext.programId }
+                });
+
+                if (program && program.status === 'ACTIVE' && program.rewardL1 > 0) {
+                    const referral = await tx.referral.create({
+                        data: {
+                            programId: program.id,
+                            referrerTenantId: referralContext.referrerTenantId,
+                            refereeTenantId: tenant.id,
+                            status: 'COMPLETED'
+                        }
+                    });
+
+                    await tx.referralReward.create({
+                        data: {
+                            referralId: referral.id,
+                            programId: program.id,
+                            beneficiaryTenantId: referralContext.referrerTenantId,
+                            level: 1,
+                            amount: program.rewardL1,
+                            currency: 'IDR',
+                            status: 'RELEASED',
+                            releasedAt: new Date()
+                        }
+                    });
+
+                    const referrerStore = await tx.store.findFirst({
+                        where: { tenantId: referralContext.referrerTenantId }
+                    });
+
+                    if (referrerStore) {
+                        await tx.store.update({
+                            where: { id: referrerStore.id },
+                            data: { balance: { increment: program.rewardL1 } }
+                        });
+
+                        await tx.cashflowLog.create({
+                            data: {
+                                tenantId: referrerStore.tenantId,
+                                storeId: referrerStore.id,
+                                amount: program.rewardL1,
+                                type: 'CASH_IN',
+                                category: 'CAPITAL_IN',
+                                description: 'Referral reward',
+                                occurredAt: new Date()
+                            }
+                        });
+                    }
+                }
+            }
 
             return { tenant, user };
         });

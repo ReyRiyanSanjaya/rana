@@ -92,4 +92,9 @@ router.get('/transactions/export', adminController.exportTransactions); // [NEW]
 router.get('/flashsales', adminController.getFlashSales); // [NEW]
 router.put('/flashsales/:id/status', adminController.updateFlashSaleStatus); // [NEW]
 
+// Referral & Rewards Monitoring
+router.get('/referral/programs', adminController.getReferralPrograms);
+router.get('/referral/referrals', adminController.getReferrals);
+router.get('/referral/rewards', adminController.getReferralRewards);
+
 module.exports = router;

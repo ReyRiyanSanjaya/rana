@@ -9,6 +9,7 @@ const compression = require('compression');
 const reportRoutes = require('./routes/reportRoutes');
 const transactionRoutes = require('./routes/transactionRoutes');
 const authRoutes = require('./routes/authRoutes');
+const referralRoutes = require('./routes/referralRoutes');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
@@ -59,6 +60,7 @@ const wholesaleRoutes = require('./routes/wholesaleRoutes');
 app.use('/api/wholesale', wholesaleRoutes); // [NEW]
 app.use('/api/ppob', require('./routes/ppobRoutes')); // [NEW] Digital Products
 app.use('/api/blog', require('./routes/blogRoutes')); // [NEW] Blog System
+app.use('/api/referral', referralRoutes);
 
 // Error Handler
 app.use((err, req, res, next) => {

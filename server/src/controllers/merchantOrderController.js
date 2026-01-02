@@ -1,6 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const { successResponse, errorResponse } = require('../utils/response');
+const { emitToTenant } = require('../socket');
 
 // MERCHANT: Get Incoming Orders
 const getIncomingOrders = async (req, res) => {
@@ -29,6 +30,13 @@ const updateOrderStatus = async (req, res) => {
             where: { id: orderId },
             data: { orderStatus: status }
         });
+
+        try {
+            emitToTenant(order.tenantId, 'orders:updated', order);
+        } catch (e) {
+            console.error('Socket emit failed', e);
+        }
+
         return successResponse(res, order, `Order ${status}`);
     } catch (error) {
         return errorResponse(res, "Update Error", 500);

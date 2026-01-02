@@ -56,17 +56,22 @@ class _PaymentScreenState extends State<PaymentScreen> {
     // Quick cash suggestions
     final suggestions = [total, 20000.0, 50000.0, 100000.0];
 
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+      child: SingleChildScrollView(
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -161,12 +166,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
                             Provider.of<AuthProvider>(context, listen: false);
                         final user = auth.currentUser;
 
-                        // [FIX] Relaxed check. If storeId missing, we try to proceed or use tenantId
                         String? storeId = user?['storeId'];
                         String? tenantId = user?['tenantId'];
 
                         if (tenantId == null) {
-                          // Try getting from DB
                           final tenant =
                               await DatabaseHelper.instance.getTenantInfo();
                           tenantId = tenant?['id'];
@@ -177,14 +180,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
                               'Data sesi tidak valid. Silakan login ulang.');
                         }
 
-                        // If storeId is missing, use tenantId as fallback for now (assuming single store)
-                        // or 'DEFAULT_STORE' if backend can handle it.
-                        // Best effort:
-                        storeId ??= tenantId;
-
                         final cashierId = user?['id'] ?? 'OFFLINE_CASHIER';
 
-                        // Capture items before checkout
                         final items = List<Map<String, dynamic>>.from(
                             widget.cart.items.values.map((e) => {
                                   'name': e.name,
@@ -196,7 +193,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
                         await widget.cart.checkout(
                           tenantId,
-                          storeId,
+                          storeId ?? tenantId,
                           cashierId,
                           paymentMethod: method,
                           customerName: widget.cart.customerName,
@@ -205,7 +202,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
                         if (!mounted) return;
 
-                        // Prepare Data for Receipt
                         final txnData = {
                           'offlineId':
                               'TXN-${DateTime.now().millisecondsSinceEpoch}',
@@ -218,9 +214,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
                           'storeId': storeId
                         };
 
-                        Navigator.pop(context, true); // Close Payment Sheet
+                        Navigator.pop(context, true);
 
-                        // Show Success Dialog
                         showDialog(
                             context: context,
                             barrierDismissible: false,
@@ -244,7 +239,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
                                   actions: [
                                     OutlinedButton.icon(
                                       onPressed: () async {
-                                        // Print
                                         await PrinterService().printReceipt(
                                             txnData, items,
                                             storeName: 'RANA STORE');
@@ -288,7 +282,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       }
                     },
               style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF4F46E5),
+                  backgroundColor: Theme.of(context).colorScheme.primary,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12))),
@@ -303,7 +297,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
           ],
         ),
       ),
-    );
+    ),
+  ),
+  );
   }
 
   Widget _buildMethodCard(String id, IconData icon, bool selected) {

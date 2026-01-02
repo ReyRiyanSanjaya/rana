@@ -12,6 +12,7 @@ import 'package:flutter/foundation.dart'
     show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 import 'package:rana_merchant/providers/wholesale_cart_provider.dart'; // [NEW]
 import 'package:rana_merchant/providers/wallet_provider.dart'; // [NEW]
@@ -33,6 +34,7 @@ Future<void> main() async {
     databaseFactory = databaseFactoryFfi;
   }
 
+  await initializeDateFormatting('id_ID', null);
   await NotificationService().init();
 
   runApp(const RanaApp());

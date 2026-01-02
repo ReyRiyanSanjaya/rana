@@ -9,13 +9,37 @@ const getPaymentInfo = async (req, res) => {
             where: { key: 'PLATFORM_QRIS_URL' }
         });
 
-        const bank = await prisma.systemSettings.findUnique({
+        const bankSetting = await prisma.systemSettings.findUnique({
             where: { key: 'PLATFORM_BANK_INFO' }
         });
 
+        let bankInfo = bankSetting?.value ? bankSetting.value.trim() : '';
+
+        if (!bankInfo) {
+            const bankSettings = await prisma.systemSettings.findMany({
+                where: {
+                    key: {
+                        in: ['BANK_NAME', 'BANK_ACCOUNT_NUMBER', 'BANK_ACCOUNT_NAME']
+                    }
+                }
+            });
+
+            const bankMap = {};
+            bankSettings.forEach((s) => {
+                bankMap[s.key] = (s.value || '').trim();
+            });
+
+            const parts = [];
+            if (bankMap.BANK_NAME) parts.push(bankMap.BANK_NAME);
+            if (bankMap.BANK_ACCOUNT_NUMBER) parts.push(bankMap.BANK_ACCOUNT_NUMBER);
+            if (bankMap.BANK_ACCOUNT_NAME) parts.push(`a.n ${bankMap.BANK_ACCOUNT_NAME}`);
+
+            bankInfo = parts.join(' ').trim();
+        }
+
         return successResponse(res, {
             qrisUrl: qris?.value || 'https://placehold.co/400x400/png?text=QRIS+Rana',
-            bankInfo: bank?.value || 'BCA 1234567890 a.n Rana Platform'
+            bankInfo
         });
     } catch (error) {
         return errorResponse(res, "Failed to fetch payment info", 500);
@@ -153,6 +177,22 @@ const getNotifications = async (req, res) => {
     }
 };
 
+const markAllNotificationsRead = async (req, res) => {
+    try {
+        const { tenantId } = req.user;
+        if (!tenantId) return successResponse(res, null, "No tenant");
+
+        await prisma.notification.updateMany({
+            where: { tenantId, isRead: false },
+            data: { isRead: true }
+        });
+
+        successResponse(res, null, "Notifications marked as read");
+    } catch (error) {
+        errorResponse(res, "Failed to mark notifications as read", 500);
+    }
+};
+
 const getPublicSettings = async (req, res) => {
     try {
         const settings = await prisma.systemSettings.findMany({
@@ -231,5 +271,6 @@ module.exports = {
     deleteAnnouncement, // Admin
     getAppMenus,
     getNotifications,
+    markAllNotificationsRead,
     getPublicSettings
 };

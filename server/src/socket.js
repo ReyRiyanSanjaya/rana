@@ -1,7 +1,9 @@
 const socketIo = require('socket.io');
 const jwt = require('jsonwebtoken');
+const { PrismaClient } = require('@prisma/client');
 
 let io;
+const prisma = new PrismaClient();
 
 const initSocket = (server) => {
     io = socketIo(server, {
@@ -55,10 +57,45 @@ const initSocket = (server) => {
             });
         });
 
-        // Send Message (Directly via Socket or just Notification?)
-        // Let's support both. If client sends 'send_message', we can save to DB and emit. 
-        // But to keep consistency with existing logic, we might just listen for REST API triggers from Controller
-        // For now, let's just handle Typing.
+        socket.on('send_message', async ({ ticketId, message }) => {
+            try {
+                if (!ticketId || !message || typeof message !== 'string' || !message.trim()) {
+                    return;
+                }
+
+                const where = { id: ticketId };
+                if (socket.user.role !== 'ADMIN' && socket.user.tenantId) {
+                    where.tenantId = socket.user.tenantId;
+                }
+
+                const ticket = await prisma.supportTicket.findFirst({ where });
+                if (!ticket) return;
+
+                const isAdmin = socket.user.role === 'ADMIN';
+                const senderType = isAdmin ? 'ADMIN' : 'MERCHANT';
+
+                const newMessage = await prisma.ticketMessage.create({
+                    data: {
+                        ticketId,
+                        message: message.trim(),
+                        senderId: socket.user.userId,
+                        senderType,
+                        isAdmin
+                    }
+                });
+
+                if (!isAdmin && ticket.status === 'RESOLVED') {
+                    await prisma.supportTicket.update({
+                        where: { id: ticketId },
+                        data: { status: 'OPEN' }
+                    });
+                }
+
+                io.to(ticketId).emit('new_message', newMessage);
+            } catch (e) {
+                console.error('send_message error', e);
+            }
+        });
 
         socket.on('disconnect', () => {
             console.log('User disconnected');

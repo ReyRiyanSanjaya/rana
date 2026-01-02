@@ -37,12 +37,11 @@ class ProductCard extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius:
-              BorderRadius.circular(20), // Slightly reduced for stroke look
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: quantity > 0
-                ? const Color(0xFF4F46E5) // Primary Indigo
-                : Colors.grey.shade200, // Soft Grey Stroke
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).colorScheme.primary.withOpacity(0.2),
             width: quantity > 0 ? 2 : 1.5,
           ),
         ),
@@ -102,37 +101,45 @@ class ProductCard extends StatelessWidget {
                       ).animate().scale(duration: 200.ms),
                     ),
                 ],
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    productName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: Colors.grey.shade800),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    currency.format(product['sellingPrice'] ?? 0),
+                    style: GoogleFonts.poppins(
+                        color: const Color(0xFFE07A5F),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Stok: ${product['stock'] ?? 0}',
+                      style: GoogleFonts.poppins(
+                        fontSize: 11,
+                        color: Colors.grey.shade600,
+                      ),
+                  ),
+                ],
               ),
             ),
-            Expanded(
-              flex: 2,
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      productName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.poppins(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                          color: Colors.grey.shade800),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      currency.format(product['sellingPrice'] ?? 0),
-                      style: GoogleFonts.poppins(
-                          color: const Color(0xFFE07A5F),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+          ),
           ],
         ),
       ),

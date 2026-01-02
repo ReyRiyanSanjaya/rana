@@ -31,17 +31,18 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: _isLoading 
-        ? const Center(child: CircularProgressIndicator()) 
-        : _transactions.isEmpty 
+    final body = _isLoading
+        ? const Center(child: CircularProgressIndicator())
+        : _transactions.isEmpty
             ? RefreshIndicator(
                 onRefresh: _loadHistory,
                 child: CustomScrollView(
                   slivers: [
                     _buildSliverAppBar(),
                     const SliverFillRemaining(
-                      child: Center(child: Text('Belum ada transaksi', style: TextStyle(color: Colors.grey))),
+                      child: Center(
+                          child: Text('Belum ada transaksi',
+                              style: TextStyle(color: Colors.grey))),
                     )
                   ],
                 ),
@@ -58,28 +59,54 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           (context, index) {
                             final txn = _transactions[index];
                             final isSynced = txn['status'] == 'SYNCED';
-                            final date = DateTime.tryParse(txn['occurredAt'] ?? '') ?? DateTime.now();
-                            final dateStr = DateFormat('dd MMM HH:mm').format(date);
-            
-                            return Card(
-                              margin: const EdgeInsets.only(bottom: 8),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
-                              elevation: 2,
+                            final date =
+                                DateTime.tryParse(txn['occurredAt'] ?? '') ??
+                                    DateTime.now();
+                            final dateStr =
+                                DateFormat('dd MMM HH:mm').format(date);
+
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: const Color(0xFFE07A5F)
+                                      .withOpacity(0.12),
+                                  width: 1.5,
+                                ),
+                              ),
                               child: ListTile(
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 8),
                                 leading: CircleAvatar(
-                                  backgroundColor: isSynced ? Colors.green.shade50 : Colors.orange.shade50,
+                                  backgroundColor: isSynced
+                                      ? Colors.green.shade50
+                                      : Colors.orange.shade50,
                                   child: Icon(
-                                    isSynced ? Icons.check_circle : Icons.sync,
-                                    color: isSynced ? Colors.green : Colors.orange,
+                                    isSynced
+                                        ? Icons.check_circle
+                                        : Icons.sync,
+                                    color: isSynced
+                                        ? Colors.green
+                                        : Colors.orange,
                                     size: 20,
                                   ),
                                 ),
-                                title: Text('Order #${txn['offlineId'].toString().substring(0,8)}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                                subtitle: Text('$dateStr • Rp ${NumberFormat('#,##0', 'id_ID').format(txn['total'] ?? 0)}'),
-                                trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+                                title: Text(
+                                  'Order #${txn['offlineId'].toString().substring(0, 8)}',
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold),
+                                ),
+                                subtitle: Text(
+                                  '$dateStr • Rp ${NumberFormat('#,##0', 'id_ID').format(txn['total'] ?? 0)}',
+                                ),
+                                trailing: const Icon(
+                                  Icons.chevron_right,
+                                  color: Colors.grey,
+                                ),
                                 onTap: () {
-                                     // Show Detail logic
-                                     _showPhoneDialog(context, txn, []); // Passing empty items for now as they are not loaded in list
+                                  _showPhoneDialog(context, txn, []);
                                 },
                               ),
                             );
@@ -90,7 +117,21 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     ),
                   ],
                 ),
-              ),
+              );
+
+    return Scaffold(
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth < 900) return body;
+
+          return Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 800),
+              child: body,
+            ),
+          );
+        },
+      ),
     );
   }
 

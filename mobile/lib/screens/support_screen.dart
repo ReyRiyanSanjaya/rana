@@ -37,18 +37,27 @@ class _SupportScreenState extends State<SupportScreen> {
     final messageController = TextEditingController();
 
     await showDialog(
-      context: context, 
+      context: context,
       builder: (context) => AlertDialog(
-        title: const Text('New Ticket'),
+        title: const Text('Tiket Bantuan Baru'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Subject')),
-            TextField(controller: messageController, decoration: const InputDecoration(labelText: 'Message'), maxLines: 3),
+            TextField(
+                controller: titleController,
+                decoration:
+                    const InputDecoration(labelText: 'Judul keluhan/pertanyaan')),
+            TextField(
+                controller: messageController,
+                decoration:
+                    const InputDecoration(labelText: 'Ceritakan kendalamu di sini'),
+                maxLines: 3),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Batal')),
           ElevatedButton(
             onPressed: () async {
               if (titleController.text.isNotEmpty && messageController.text.isNotEmpty) {
@@ -58,12 +67,15 @@ class _SupportScreenState extends State<SupportScreen> {
                   await ApiService().createTicket(titleController.text, messageController.text);
                   await _fetch();
                 } catch (e) {
-                   if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+                   if (mounted) {
+                     ScaffoldMessenger.of(context).showSnackBar(
+                         SnackBar(content: Text('Gagal membuat tiket: $e')));
+                   }
                    setState(() => isLoading = false);
                 }
               }
-            }, 
-            child: const Text('Submit')
+            },
+            child: const Text('Kirim')
           )
         ],
       )
@@ -73,10 +85,10 @@ class _SupportScreenState extends State<SupportScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Support')),
+      appBar: AppBar(title: const Text('Bantuan & Support')),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _createTicket, 
-        label: const Text('New Ticket'),
+        onPressed: _createTicket,
+        label: const Text('Buat Tiket Bantuan'),
         icon: const Icon(Icons.add),
       ),
       body: isLoading 

@@ -1187,10 +1187,17 @@ class _PromoCalculatorSheetState extends State<_PromoCalculatorSheet> {
             onChanged: (_) => setState(() {}),
           ),
           const SizedBox(height: 14),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: const Color(0xFFE07A5F).withOpacity(0.15),
+                width: 1.5,
+              ),
+            ),
+            padding: const EdgeInsets.all(14),
+            child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _ResultRow(
@@ -1223,7 +1230,6 @@ class _PromoCalculatorSheetState extends State<_PromoCalculatorSheet> {
                 ],
               ),
             ),
-          ),
         ],
       ),
     );
@@ -1526,13 +1532,23 @@ class _PromoRecommendationsSheetState
                       );
                     }
                     if (items.isEmpty) {
-                      return Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(14),
-                          child: Text(
-                              'Belum ada data penjualan untuk rekomendasi.',
-                              style: GoogleFonts.poppins(
-                                  fontSize: 12, color: Colors.grey[700])),
+                      return Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color:
+                                const Color(0xFFE07A5F).withOpacity(0.15),
+                            width: 1.5,
+                          ),
+                        ),
+                        padding: const EdgeInsets.all(14),
+                        child: Text(
+                          'Belum ada data penjualan untuk rekomendasi.',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            color: Colors.grey[700],
+                          ),
                         ),
                       );
                     }
@@ -1542,11 +1558,24 @@ class _PromoRecommendationsSheetState
                         final qty = (p['totalQty'] as num?)?.toInt() ?? 0;
                         final revenue =
                             (p['totalRevenue'] as num?)?.toDouble() ?? 0.0;
+                        final profit =
+                            (p['totalProfit'] as num?)?.toDouble() ?? 0.0;
+                        final margin =
+                            (p['profitMargin'] as num?)?.toDouble() ?? 0.0;
+                        final marginPct = (margin * 100).round();
                         final stock = (p['stock'] as num?)?.toInt();
-                        return Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(14),
-                            child: Column(
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: const Color(0xFFE07A5F)
+                                  .withOpacity(0.15),
+                              width: 1.5,
+                            ),
+                          ),
+                          padding: const EdgeInsets.all(14),
+                          child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(name,
@@ -1554,7 +1583,7 @@ class _PromoRecommendationsSheetState
                                         fontWeight: FontWeight.w800)),
                                 const SizedBox(height: 6),
                                 Text(
-                                  'Terjual: $qty | Omzet: ${_formatRupiah(revenue)}${stock == null ? '' : ' | Stok: $stock'}',
+                                  'Terjual: $qty | Omzet: ${_formatRupiah(revenue)} | Profit: ${_formatRupiah(profit)} | Margin: $marginPct%${stock == null ? '' : ' | Stok: $stock'}',
                                   style: GoogleFonts.poppins(
                                       fontSize: 12, color: Colors.grey[700]),
                                 ),
@@ -1578,8 +1607,7 @@ class _PromoRecommendationsSheetState
                                 ),
                               ],
                             ),
-                          ),
-                        );
+                          );
                       }).toList(),
                     );
                   },
@@ -1601,13 +1629,23 @@ class _PromoRecommendationsSheetState
                       );
                     }
                     if (items.isEmpty) {
-                      return Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(14),
-                          child: Text(
-                              'Tidak ada produk unsold yang memenuhi kriteria.',
-                              style: GoogleFonts.poppins(
-                                  fontSize: 12, color: Colors.grey[700])),
+                      return Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color:
+                                const Color(0xFFE07A5F).withOpacity(0.15),
+                            width: 1.5,
+                          ),
+                        ),
+                        padding: const EdgeInsets.all(14),
+                        child: Text(
+                          'Tidak ada produk unsold yang memenuhi kriteria.',
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            color: Colors.grey[700],
+                          ),
                         ),
                       );
                     }
@@ -1616,10 +1654,18 @@ class _PromoRecommendationsSheetState
                         final name = (p['name'] ?? '').toString();
                         final stock = (p['stock'] as num?)?.toInt();
                         final price = (p['sellingPrice'] as num?)?.toDouble();
-                        return Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(14),
-                            child: Column(
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: const Color(0xFFE07A5F)
+                                  .withOpacity(0.15),
+                              width: 1.5,
+                            ),
+                          ),
+                          padding: const EdgeInsets.all(14),
+                          child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(name,
@@ -1651,8 +1697,7 @@ class _PromoRecommendationsSheetState
                                 ),
                               ],
                             ),
-                          ),
-                        );
+                          );
                       }).toList(),
                     );
                   },

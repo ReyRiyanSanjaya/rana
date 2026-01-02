@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:rana_market/data/market_api_service.dart';
@@ -5,13 +6,99 @@ import 'package:rana_market/providers/favorites_provider.dart';
 import 'package:rana_market/screens/product_detail_screen.dart';
 import 'package:rana_market/providers/reviews_provider.dart';
 
-class StoreDetailScreen extends StatelessWidget {
+class StoreDetailScreen extends StatefulWidget {
   final Map<String, dynamic> store;
   const StoreDetailScreen({super.key, required this.store});
 
   @override
+  State<StoreDetailScreen> createState() => _StoreDetailScreenState();
+}
+
+class _StoreDetailScreenState extends State<StoreDetailScreen> {
+  List<Map<String, dynamic>> _products = [];
+  bool _loading = true;
+  final TextEditingController _searchCtrl = TextEditingController();
+  String _query = '';
+  Timer? _debounce;
+
+  @override
+  void initState() {
+    super.initState();
+    _initProducts();
+  }
+
+  Future<void> _initProducts() async {
+    final initial = widget.store['products'] as List<dynamic>? ?? [];
+    _products = initial
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
+    setState(() {
+      _loading = true;
+    });
+    try {
+      final res =
+          await MarketApiService().getStoreCatalog(widget.store['id'] ?? '');
+      final list = res['products'] as List<dynamic>? ?? [];
+      if (!mounted) return;
+      setState(() {
+        _products = list
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _fetchProducts({String? search}) async {
+    setState(() {
+      _loading = true;
+    });
+    try {
+      final res = await MarketApiService()
+          .getStoreCatalog(widget.store['id'] ?? '', search: search);
+      final list = res['products'] as List<dynamic>? ?? [];
+      if (!mounted) return;
+      setState(() {
+        _products = list
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+      });
+    }
+  }
+
+  void _onSearchChanged(String value) {
+    _query = value.trim();
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 400), () {
+      _fetchProducts(search: _query.isEmpty ? null : _query);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final products = store['products'] as List<dynamic>? ?? [];
+    final store = widget.store;
+    final products = _products;
     return Scaffold(
       backgroundColor: const Color(0xFFFFF8F0),
       appBar: AppBar(
@@ -70,6 +157,27 @@ class StoreDetailScreen extends StatelessWidget {
             child: Text('Produk',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
           ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: TextField(
+              controller: _searchCtrl,
+              onChanged: _onSearchChanged,
+              decoration: const InputDecoration(
+                hintText: 'Cari menu/produk di toko ini',
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(12)),
+                ),
+                isDense: true,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (_loading)
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: LinearProgressIndicator(minHeight: 2),
+            ),
           Expanded(
             child: GridView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 16),

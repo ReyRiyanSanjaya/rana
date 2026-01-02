@@ -111,136 +111,157 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
           )
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // 1. Search Bar (Functional)
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    color: Colors.white,
-                    child: TextField(
-                      onChanged: (val) {
-                        _searchQuery = val;
-                        // Debounce or just search on submit? Let's search on submit or loose
-                        // For simplicity, let's just trigger refresh on submit or every few chars?
-                        // Actually, let's rely on client side filtering if the list is small, OR call API.
-                        // The ApiService has search params. Let's call API.
-                        _refreshProducts();
-                      },
-                      decoration: InputDecoration(
-                        hintText: 'Cari barang grosir...',
-                        prefixIcon: const Icon(Icons.search),
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: BorderSide.none),
-                        filled: true,
-                        fillColor: Colors.grey.shade100,
-                        contentPadding: const EdgeInsets.symmetric(
-                            vertical: 0, horizontal: 16),
-                      ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          if (_isLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final isWide = constraints.maxWidth >= 900;
+          final width = constraints.maxWidth;
+
+          int crossAxisCount = 2;
+          double childAspectRatio = 0.70;
+
+          if (width >= 1200) {
+            crossAxisCount = 5;
+            childAspectRatio = 0.78;
+          } else if (width >= 1000) {
+            crossAxisCount = 4;
+            childAspectRatio = 0.75;
+          } else if (width >= 800) {
+            crossAxisCount = 3;
+            childAspectRatio = 0.72;
+          }
+
+          final content = SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  color: Colors.white,
+                  child: TextField(
+                    onChanged: (val) {
+                      _searchQuery = val;
+                      _refreshProducts();
+                    },
+                    decoration: InputDecoration(
+                      hintText: 'Cari barang grosir...',
+                      prefixIcon: const Icon(Icons.search),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide.none),
+                      filled: true,
+                      fillColor: Colors.grey.shade100,
+                      contentPadding: const EdgeInsets.symmetric(
+                          vertical: 0, horizontal: 16),
                     ),
                   ),
-
-                  // 2. Banner
-                  SizedBox(
-                    height: 140,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      children: _banners.isEmpty
-                          ? [
-                              _buildBanner(
-                                  const Color(0xFFE07A5F),
-                                  "Diskon Juragan",
-                                  "Potongan 50rb!",
-                                  Icons.discount,
-                                  null),
-                              const SizedBox(width: 12),
-                              _buildBanner(
-                                  const Color(0xFFE07A5F),
-                                  "Gratis Ongkir",
-                                  "Min. Blj 1 Juta",
-                                  Icons.local_shipping,
-                                  null),
-                            ]
-                          : _banners
-                              .map((b) => Padding(
-                                    padding: const EdgeInsets.only(right: 12),
-                                    child: _buildBanner(
-                                        const Color(0xFFE07A5F),
-                                        b['title'],
-                                        b['description'] ?? '',
-                                        Icons.star,
-                                        b['imageUrl']),
-                                  ))
-                              .toList(),
-                    ),
-                  ),
-
-                  // 3. Categories (Functional)
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: _categories
-                            .map((c) => Padding(
-                                  padding: const EdgeInsets.only(right: 8),
-                                  child: ChoiceChip(
-                                    label: Text(c.toString()),
-                                    selected: _selectedCat == c,
-                                    onSelected: (val) {
-                                      setState(
-                                          () => _selectedCat = c.toString());
-                                      _refreshProducts();
-                                    },
-                                    selectedColor: const Color(0xFFE07A5F)
-                                        .withOpacity(0.2),
-                                    labelStyle: TextStyle(
-                                        color: _selectedCat == c
-                                            ? const Color(0xFFE07A5F)
-                                            : Colors.black87),
-                                  ),
+                ),
+                SizedBox(
+                  height: 140,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    children: _banners.isEmpty
+                        ? [
+                            _buildBanner(
+                                const Color(0xFFE07A5F),
+                                "Diskon Juragan",
+                                "Potongan 50rb!",
+                                Icons.discount,
+                                null),
+                            const SizedBox(width: 12),
+                            _buildBanner(
+                                const Color(0xFFE07A5F),
+                                "Gratis Ongkir",
+                                "Min. Blj 1 Juta",
+                                Icons.local_shipping,
+                                null),
+                          ]
+                        : _banners
+                            .map((b) => Padding(
+                                  padding: const EdgeInsets.only(right: 12),
+                                  child: _buildBanner(
+                                      const Color(0xFFE07A5F),
+                                      b['title'],
+                                      b['description'] ?? '',
+                                      Icons.star,
+                                      b['imageUrl']),
                                 ))
                             .toList(),
-                      ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: _categories
+                          .map((c) => Padding(
+                                padding: const EdgeInsets.only(right: 8),
+                                child: ChoiceChip(
+                                  label: Text(c.toString()),
+                                  selected: _selectedCat == c,
+                                  onSelected: (val) {
+                                    setState(() => _selectedCat = c.toString());
+                                    _refreshProducts();
+                                  },
+                                  selectedColor: const Color(0xFFE07A5F)
+                                      .withOpacity(0.2),
+                                  labelStyle: TextStyle(
+                                      color: _selectedCat == c
+                                          ? const Color(0xFFE07A5F)
+                                          : Colors.black87),
+                                ),
+                              ))
+                          .toList(),
                     ),
                   ),
-
-                  // 4. Product Grid
-                  if (_products.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.all(32),
-                      child: Center(
-                          child: Text('Barang tidak ditemukan',
-                              style: GoogleFonts.poppins(color: Colors.grey))),
-                    )
-                  else
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          childAspectRatio: 0.70, // Taller for better info
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                        ),
-                        itemCount: _products.length,
-                        itemBuilder: (context, index) =>
-                            _buildProductCard(_products[index]),
+                ),
+                if (_products.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Center(
+                        child: Text('Barang tidak ditemukan',
+                            style: GoogleFonts.poppins(color: Colors.grey))),
+                  )
+                else
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate:
+                          SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: crossAxisCount,
+                        childAspectRatio: childAspectRatio,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
                       ),
+                      itemCount: _products.length,
+                      itemBuilder: (context, index) =>
+                          _buildProductCard(_products[index]),
                     ),
-
-                  const SizedBox(height: 32),
-                ],
-              ),
+                  ),
+                const SizedBox(height: 32),
+              ],
             ),
+          );
+
+          if (!isWide) {
+            return content;
+          }
+
+          return Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 900),
+              child: content,
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -326,15 +347,13 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
       },
       child: Container(
         decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey.shade200),
-            boxShadow: [
-              BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 5,
-                  offset: const Offset(0, 2))
-            ]),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: const Color(0xFFE07A5F).withOpacity(0.15),
+            width: 1.5,
+          ),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -342,9 +361,9 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
+                    color: Colors.grey.shade50,
                     borderRadius:
-                        const BorderRadius.vertical(top: Radius.circular(12)),
+                        const BorderRadius.vertical(top: Radius.circular(18)),
                     image: (item['imageUrl'] != null && item['imageUrl'] != '')
                         ? DecorationImage(
                             image: NetworkImage(item['imageUrl']),

@@ -24,6 +24,7 @@ import Transactions from './pages/Transactions'; // [NEW]
 import ManageMenu from './pages/ManageMenu'; // [NEW]
 import AdminLayout from './components/AdminLayout';
 import FlashSales from './pages/FlashSales';
+import ReferralMonitoring from './pages/ReferralMonitoring';
 
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('adminToken');
@@ -159,6 +160,9 @@ function App() {
 
         <Route path="/blog" element={
           <ProtectedRoute><BlogManager /></ProtectedRoute>
+        } />
+        <Route path="/referrals" element={
+          <ProtectedRoute><ReferralMonitoring /></ProtectedRoute>
         } />
       </Routes>
     </Router>

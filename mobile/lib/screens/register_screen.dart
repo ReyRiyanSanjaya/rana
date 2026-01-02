@@ -25,6 +25,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passCtrl = TextEditingController();
   final _confirmPassCtrl = TextEditingController();
   final _waCtrl = TextEditingController();
+  final _referralCtrl = TextEditingController();
   String? _category;
 
   bool _isLoading = false;
@@ -35,6 +36,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Uint8List? _pickedImageBytes;
   String? _pickedImageBase64;
   final MapController _mapController = MapController();
+  StreamSubscription<Position>? _positionSub;
+  double? _bestAccuracy;
   LatLng? _locationPoint;
   String? _locationAddress;
   bool _isLocationLoading = true;
@@ -84,7 +87,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _passCtrl.dispose();
     _confirmPassCtrl.dispose();
     _waCtrl.dispose();
+    _referralCtrl.dispose();
     _locationDebounce?.cancel();
+    _positionSub?.cancel();
     super.dispose();
   }
 
@@ -124,17 +129,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     LatLng center = const LatLng(-6.200000, 106.816666);
     try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        throw Exception('Location service disabled');
+      }
+
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
       }
-      if (permission == LocationPermission.whileInUse ||
-          permission == LocationPermission.always) {
-        final pos = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high,
-        );
-        center = LatLng(pos.latitude, pos.longitude);
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        throw Exception('Location permission denied');
       }
+
+      final lastKnown = await Geolocator.getLastKnownPosition();
+      if (lastKnown != null) {
+        center = LatLng(lastKnown.latitude, lastKnown.longitude);
+      }
+      _startLocationStream();
     } catch (_) {}
 
     if (!mounted) return;
@@ -148,6 +161,48 @@ class _RegisterScreenState extends State<RegisterScreen> {
     } catch (_) {}
 
     _reverseGeocode(center);
+  }
+
+  void _cancelLocationStream() {
+    _positionSub?.cancel();
+    _positionSub = null;
+  }
+
+  void _startLocationStream() {
+    _positionSub?.cancel();
+    _bestAccuracy = null;
+    const settings = LocationSettings(
+      accuracy: LocationAccuracy.bestForNavigation,
+      distanceFilter: 0,
+    );
+    _positionSub =
+        Geolocator.getPositionStream(locationSettings: settings).listen((pos) {
+      if (!mounted) return;
+      if (_isLocationVerified) {
+        _cancelLocationStream();
+        return;
+      }
+      final acc = pos.accuracy;
+      if (acc.isNaN || acc <= 0) return;
+      if (_bestAccuracy != null && acc >= _bestAccuracy!) return;
+      _bestAccuracy = acc;
+      final p = LatLng(pos.latitude, pos.longitude);
+      setState(() {
+        _locationPoint = p;
+      });
+      _locationDebounce?.cancel();
+      _locationDebounce = Timer(const Duration(milliseconds: 450), () {
+        _reverseGeocode(p);
+      });
+      if (_bestAccuracy != null && _bestAccuracy! <= 15) {
+        _cancelLocationStream();
+      }
+    });
+    Future.delayed(const Duration(seconds: 20), () {
+      if (_positionSub != null) {
+        _cancelLocationStream();
+      }
+    });
   }
 
   String _formatPlacemark(Placemark p) {
@@ -186,6 +241,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   void _setLocationPoint(LatLng p) {
+    _cancelLocationStream();
     setState(() {
       _locationPoint = p;
       _isLocationVerified = false;
@@ -232,11 +288,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
           email: _emailCtrl.text,
           password: _passCtrl.text,
           waNumber: _waCtrl.text,
-          category: _category!, // [NEW] Guaranteed by validator
+          category: _category!,
           storeImageBase64: _pickedImageBase64,
           lat: p.latitude,
           long: p.longitude,
-          address: _locationAddress);
+          address: _locationAddress,
+          referralCode: _referralCtrl.text.isEmpty
+              ? null
+              : _referralCtrl.text.trim());
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -349,6 +408,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     return 'Hanya angka yang diperbolehkan';
                   return null;
                 },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _referralCtrl,
+                decoration: const InputDecoration(
+                    labelText: 'Kode Referral (opsional)',
+                    border: OutlineInputBorder(),
+                    focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: Color(0xFFE07A5F))),
+                    floatingLabelStyle: TextStyle(color: Color(0xFFE07A5F))),
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -558,32 +627,33 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   ],
                                 ),
                                 child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      _isLocationResolving
-                                          ? 'Mengambil alamat...'
-                                          : (_locationAddress ??
-                                              'Geser pin untuk menentukan lokasi'),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        color: Colors.grey.shade800,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 10),
-                                    SizedBox(
-                                      width: double.infinity,
-                                      height: 44,
-                                      child: FilledButton(
-                                        onPressed: _isLocationResolving
-                                            ? null
-                                            : () {
-                                                setState(() =>
-                                                    _isLocationVerified = true);
-                                              },
+                                      mainAxisSize: MainAxisSize.min,
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          _isLocationResolving
+                                              ? 'Mengambil alamat...'
+                                              : (_locationAddress ??
+                                                  'Geser pin untuk menentukan lokasi'),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            color: Colors.grey.shade800,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 10),
+                                        SizedBox(
+                                          width: double.infinity,
+                                          height: 44,
+                                          child: FilledButton(
+                                            onPressed: _isLocationResolving
+                                                ? null
+                                                : () {
+                                                    _cancelLocationStream();
+                                                    setState(() =>
+                                                        _isLocationVerified = true);
+                                                  },
                                         style: FilledButton.styleFrom(
                                           backgroundColor: _isLocationVerified
                                               ? const Color(0xFF81B29A) // Sage Green for success

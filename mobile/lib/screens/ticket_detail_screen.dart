@@ -85,13 +85,23 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
     if (_msgController.text.trim().isEmpty) return;
     final msg = _msgController.text;
     _msgController.clear();
-    
-    // Optimistic update? No, just reload for simplicity
+
+    if (socket != null && socket!.connected) {
+      try {
+        socket!.emit('send_message',
+            {'ticketId': widget.ticketId, 'message': msg.trim()});
+        return;
+      } catch (_) {}
+    }
+
     try {
       await ApiService().replyTicket(widget.ticketId, msg);
       _fetch();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to send')));
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Failed to send')));
+      }
     }
   }
 

@@ -20,7 +20,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 11, // [FIX] Increment version for migration - add syncedAt
+      version: 12,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
@@ -111,6 +111,14 @@ class DatabaseHelper {
         // Column likely exists
       }
     }
+
+    if (oldVersion < 12) {
+      try {
+        await db.execute('ALTER TABLE transactions ADD COLUMN syncedAt TEXT');
+      } catch (e) {
+        // Column likely exists
+      }
+    }
   }
 
   Future<void> _createDB(Database db, int version) async {
@@ -161,7 +169,8 @@ class DatabaseHelper {
         notes TEXT,         -- [NEW]
         status TEXT, -- PENDING, COMPLETED, VOID
         occurredAt TEXT,
-        syncStatus INTEGER DEFAULT 0 
+        syncStatus INTEGER DEFAULT 0,
+        syncedAt TEXT
       )
     ''');
 
@@ -493,7 +502,13 @@ class DatabaseHelper {
         p.stock as stock,
         p.sellingPrice as sellingPrice,
         SUM(ti.quantity) as totalQty,
-        SUM(ti.price * ti.quantity) as totalRevenue
+        SUM(ti.price * ti.quantity) as totalRevenue,
+        SUM((ti.price - ti.costPrice) * ti.quantity) as totalProfit,
+        CASE 
+          WHEN SUM(ti.price * ti.quantity) > 0 
+          THEN SUM((ti.price - ti.costPrice) * ti.quantity) / SUM(ti.price * ti.quantity)
+          ELSE 0
+        END as profitMargin
       FROM transaction_items ti
       JOIN transactions t ON ti.transactionOfflineId = t.offlineId
       JOIN products p ON ti.productId = p.id

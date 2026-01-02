@@ -103,25 +103,29 @@ class ApiService {
     required String email,
     required String password,
     required String waNumber,
-    required String category, // [NEW]
+    required String category,
     String? storeImageBase64,
     double? lat,
     double? long,
     String? address,
+    String? referralCode,
   }) async {
     try {
-      final response = await _dio.post('/auth/register', data: {
+      final payload = {
         'businessName': businessName,
         'ownerName': ownerName,
         'email': email,
         'password': password,
         'waNumber': waNumber,
-        'category': category, // [NEW]
+        'category': category,
         'storeImageBase64': storeImageBase64,
         'latitude': lat,
         'longitude': long,
-        'address': address
-      });
+        'address': address,
+        'referralCode': referralCode,
+      };
+
+      final response = await _dio.post('/auth/register', data: payload);
 
       if (response.data['status'] != 'success') {
         throw Exception(response.data['message']);
@@ -222,6 +226,32 @@ class ApiService {
           data: {'supplierName': supplierName, 'items': items});
     } catch (e) {
       throw Exception('Purchase failed: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> getReferralInfo() async {
+    try {
+      final response = await _dio.get('/referral/me',
+          options: Options(headers: {'Authorization': 'Bearer ${_token}'}));
+      if (_isSuccess(response.data)) {
+        return Map<String, dynamic>.from(response.data['data'] ?? {});
+      }
+      throw Exception(_messageFromBody(response.data));
+    } catch (e) {
+      throw Exception('Gagal memuat data referral: $e');
+    }
+  }
+
+  Future<List<dynamic>> getMyReferrals() async {
+    try {
+      final response = await _dio.get('/referral/me/referrals',
+          options: Options(headers: {'Authorization': 'Bearer ${_token}'}));
+      if (_isSuccess(response.data)) {
+        return List<dynamic>.from(response.data['data']['items'] ?? []);
+      }
+      throw Exception(_messageFromBody(response.data));
+    } catch (e) {
+      throw Exception('Gagal memuat daftar referral: $e');
     }
   }
 
@@ -612,13 +642,17 @@ class ApiService {
     }
   }
 
-  Future<void> scanQrOrder(String code) async {
+  Future<Map<String, dynamic>> scanQrOrder(String code) async {
     try {
       final response = await _dio.post('/wholesale/orders/scan',
           data: {'pickupCode': code},
           options: Options(headers: {'Authorization': 'Bearer ${_token}'}));
-      if (response.data['status'] != 'success')
+      if (response.data['status'] != 'success') {
         throw Exception(response.data['message']);
+      }
+      final data = response.data['data'];
+      if (data is Map) return Map<String, dynamic>.from(data);
+      return {};
     } catch (e) {
       throw Exception('Scan Order Failed: $e');
     }
@@ -861,6 +895,15 @@ class ApiService {
     } catch (e) {
       print('Failed to fetch notifications: $e');
       return [];
+    }
+  }
+
+  Future<void> markAllNotificationsRead() async {
+    try {
+      await _dio.post('/system/notifications/read-all',
+          options: Options(headers: {'Authorization': 'Bearer ${_token}'}));
+    } catch (e) {
+      print('Failed to mark notifications as read: $e');
     }
   }
 

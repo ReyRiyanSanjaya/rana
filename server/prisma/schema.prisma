@@ -43,6 +43,10 @@ model Tenant {
   notifications        Notification[] // [NEW]
   ppobTransactions     PpobTransaction[] // [NEW]
   flashSales           FlashSale[] // [FIX] Added relation
+  referralCodes        ReferralCode[]
+  referralsAsReferrer  Referral[]          @relation("TenantAsReferrer")
+  referralsAsReferee   Referral[]          @relation("TenantAsReferee")
+  referralRewards      ReferralReward[]    @relation("ReferralRewardTenant")
 }
 
 model Notification {
@@ -842,4 +846,108 @@ model PpobTransaction {
 
   @@index([tenantId, createdAt])
   @@index([storeId, createdAt])
+}
+
+enum ReferralProgramType {
+  SINGLE_LEVEL
+  MULTI_LEVEL
+}
+
+enum ReferralProgramStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  ENDED
+}
+
+enum ReferralCodeStatus {
+  ACTIVE
+  DISABLED
+  EXPIRED
+}
+
+enum ReferralStatus {
+  PENDING_REWARD
+  CANCELED
+  COMPLETED
+}
+
+enum ReferralRewardStatus {
+  CREATED
+  HOLD
+  ELIGIBLE
+  RELEASED
+  CANCELED
+  CLAWED_BACK
+}
+
+model ReferralProgram {
+  id           String                @id @default(uuid())
+  name         String
+  code         String                @unique
+  type         ReferralProgramType   @default(SINGLE_LEVEL)
+  status       ReferralProgramStatus @default(ACTIVE)
+  maxLevels    Int                   @default(1)
+  rewardL1     Float                 @default(0)
+  rewardL2     Float                 @default(0)
+  rewardL3     Float                 @default(0)
+  holdDays     Int                   @default(0)
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+
+  referralCodes ReferralCode[]
+  referrals     Referral[]
+  rewards       ReferralReward[]
+}
+
+model ReferralCode {
+  id        String             @id @default(uuid())
+  programId String
+  tenantId  String
+  code      String             @unique
+  status    ReferralCodeStatus @default(ACTIVE)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  program ReferralProgram @relation(fields: [programId], references: [id])
+  tenant  Tenant          @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+}
+
+model Referral {
+  id                String          @id @default(uuid())
+  programId         String
+  referrerTenantId  String
+  refereeTenantId   String
+  status            ReferralStatus  @default(PENDING_REWARD)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  program  ReferralProgram @relation(fields: [programId], references: [id])
+  referrer Tenant          @relation("TenantAsReferrer", fields: [referrerTenantId], references: [id])
+  referee  Tenant          @relation("TenantAsReferee", fields: [refereeTenantId], references: [id])
+  rewards  ReferralReward[]
+}
+
+model ReferralReward {
+  id                   String               @id @default(uuid())
+  referralId           String
+  programId            String
+  beneficiaryTenantId  String
+  level                Int
+  amount               Float
+  currency             String               @default("IDR")
+  status               ReferralRewardStatus @default(HOLD)
+  holdUntil            DateTime?
+  releasedAt           DateTime?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+
+  referral          Referral        @relation(fields: [referralId], references: [id])
+  program           ReferralProgram @relation(fields: [programId], references: [id])
+  beneficiaryTenant Tenant          @relation("ReferralRewardTenant", fields: [beneficiaryTenantId], references: [id])
+
+  @@index([beneficiaryTenantId])
+  @@index([status])
 }

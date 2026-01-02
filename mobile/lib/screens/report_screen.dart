@@ -6,6 +6,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:rana_merchant/data/local/database_helper.dart';
 import 'package:rana_merchant/data/remote/api_service.dart'; // [FIX] Added import
 import 'package:rana_merchant/screens/expense_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ReportScreen extends StatefulWidget {
   const ReportScreen({super.key});
@@ -28,6 +29,8 @@ class _ReportScreenState extends State<ReportScreen> {
   List<Map<String, dynamic>> _expenseCategories = []; // [NEW]
   int _touchedIndex = -1; // [NEW] For Pie Chart interaction
   int _touchedExpenseIndex = -1; // [NEW] For Expense Pie Chart interaction
+  int? _dailyTarget;
+  double _todaySales = 0;
 
   final currency =
       NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
@@ -36,6 +39,7 @@ class _ReportScreenState extends State<ReportScreen> {
   void initState() {
     super.initState();
     _fetchData();
+    _loadDailyTarget();
   }
 
   Future<void> _fetchData() async {
@@ -48,11 +52,10 @@ class _ReportScreenState extends State<ReportScreen> {
       final end =
           DateTime(_endDate.year, _endDate.month, _endDate.day, 23, 59, 59);
 
-      // [FIX] Use Local Data as Source of Truth for Reports (Offline First)
-      // This ensures data entered visually in the app appears immediately in reports.
       final localSummary =
           await DatabaseHelper.instance.getSalesReport(start: start, end: end);
-      final top = await DatabaseHelper.instance.getTopSellingProducts(limit: 5);
+      final top = await DatabaseHelper.instance.getTopSellingProductsDetailed(
+          limit: 5, start: start, end: end);
       final categories = await DatabaseHelper.instance
           .getSalesByCategory(start: start, end: end);
       final payments = await DatabaseHelper.instance
@@ -61,6 +64,14 @@ class _ReportScreenState extends State<ReportScreen> {
           await DatabaseHelper.instance.getLowStockProducts(threshold: 5);
       final expenses =
           await DatabaseHelper.instance.getExpenses(start: start, end: end);
+
+      final today = DateTime.now();
+      final todayStart =
+          DateTime(today.year, today.month, today.day, 0, 0, 0);
+      final todayEnd =
+          DateTime(today.year, today.month, today.day, 23, 59, 59);
+      final todaySummary = await DatabaseHelper.instance
+          .getSalesReport(start: todayStart, end: todayEnd);
 
       // Process Expense Categories
       final expenseCatMap = <String, double>{};
@@ -92,6 +103,8 @@ class _ReportScreenState extends State<ReportScreen> {
           _lowStock = List<Map<String, dynamic>>.from(lowStock);
           _expenses = List<Map<String, dynamic>>.from(expenses);
           _expenseCategories = processedExpenseCats;
+          _todaySales =
+              (todaySummary['grossSales'] as num?)?.toDouble() ?? 0.0;
           _isLoading = false;
         });
       }
@@ -111,7 +124,8 @@ class _ReportScreenState extends State<ReportScreen> {
 
     final summary =
         await DatabaseHelper.instance.getSalesReport(start: start, end: end);
-    final top = await DatabaseHelper.instance.getTopSellingProducts(limit: 5);
+    final top = await DatabaseHelper.instance.getTopSellingProductsDetailed(
+        limit: 5, start: start, end: end);
     final categories = await DatabaseHelper.instance
         .getSalesByCategory(start: start, end: end);
     final payments = await DatabaseHelper.instance
@@ -136,6 +150,375 @@ class _ReportScreenState extends State<ReportScreen> {
         _isLoading = false;
       });
     }
+  }
+
+  Future<void> _loadDailyTarget() async {
+    final prefs = await SharedPreferences.getInstance();
+    final value = prefs.getInt('daily_sales_target');
+    if (!mounted) return;
+    setState(() {
+      _dailyTarget = value;
+    });
+  }
+
+  Future<void> _saveDailyTarget(int? target) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (target == null || target <= 0) {
+      await prefs.remove('daily_sales_target');
+    } else {
+      await prefs.setInt('daily_sales_target', target);
+    }
+    if (!mounted) return;
+    setState(() {
+      _dailyTarget = target;
+    });
+  }
+
+  void _showDailyTargetSheet() {
+    final controller = TextEditingController(
+        text: _dailyTarget != null && _dailyTarget! > 0
+            ? _dailyTarget!.toString()
+            : '');
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        final bottom = MediaQuery.of(context).viewInsets.bottom;
+        return Padding(
+          padding: EdgeInsets.only(bottom: bottom),
+          child: Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(2)),
+                  ),
+                ),
+                const Text(
+                  'Target Penjualan Harian',
+                  style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Masukkan target omzet harian yang ingin dicapai.',
+                  style: TextStyle(fontSize: 13, color: Colors.grey),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: controller,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Target harian (Rp)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _saveDailyTarget(null);
+                        },
+                        child: const Text('Hapus Target'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: () {
+                          final raw = controller.text.replaceAll('.', '');
+                          final parsed = int.tryParse(raw);
+                          Navigator.pop(context);
+                          _saveDailyTarget(parsed);
+                        },
+                        child: const Text('Simpan'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDailyTargetCard() {
+    final target = _dailyTarget ?? 0;
+    final progress =
+        target > 0 ? (_todaySales / target).clamp(0.0, 2.0) : 0.0;
+    final progressPct =
+        target > 0 ? (_todaySales / target * 100).clamp(0.0, 999.0) : 0.0;
+    final todayLabel = DateFormat('EEEE, dd MMM', 'id_ID').format(
+      DateTime.now(),
+    );
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Target Hari Ini',
+                    style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    todayLabel,
+                    style: const TextStyle(
+                        fontSize: 12, color: Colors.grey),
+                  ),
+                ],
+              ),
+              TextButton(
+                onPressed: _showDailyTargetSheet,
+                child: const Text('Atur Target'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (target <= 0)
+            const Text(
+              'Belum ada target harian. Atur dulu supaya progress bisa dipantau.',
+              style: TextStyle(fontSize: 13, color: Colors.grey),
+            )
+          else ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Tercapai',
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                          fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      currency.format(_todaySales),
+                      style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF3D405B)),
+                    ),
+                  ],
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    const Text(
+                      'Target',
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                          fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      currency.format(target),
+                      style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFFE07A5F)),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 10,
+                backgroundColor: const Color(0xFFF3F4F6),
+                valueColor: const AlwaysStoppedAnimation(Color(0xFFE07A5F)),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                '${progressPct.toStringAsFixed(0)}%',
+                style: const TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey,
+                    fontWeight: FontWeight.w500),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInsightsCard() {
+    final items = <String>[];
+    final grossSales =
+        (_summary['grossSales'] as num?)?.toDouble() ?? 0.0;
+    final netProfit =
+        (_summary['netProfit'] as num?)?.toDouble() ?? 0.0;
+
+    if (grossSales > 0) {
+      final marginPct = (netProfit / grossSales * 100);
+      items.add(
+          'Margin bersih periode ini sekitar ${marginPct.toStringAsFixed(1)}%.');
+      if (marginPct < 5) {
+        items.add(
+            'Margin masih tipis, pertimbangkan naikkan harga atau negosiasi ulang harga beli.');
+      } else if (marginPct > 25) {
+        items.add(
+            'Margin cukup sehat, bisa coba promo agresif di produk tertentu untuk dorong volume.');
+      }
+    }
+
+    if (_topProducts.isNotEmpty) {
+      final top = _topProducts.first;
+      final name = top['name'] ?? '';
+      final qty = (top['totalQty'] as num?)?.toInt() ?? 0;
+      items.add(
+          'Produk terlaris: $name ($qty terjual). Pastikan stok aman dan jadikan produk utama di etalase dan promosi.');
+    }
+
+    if (_expenseCategories.isNotEmpty) {
+      final topExp = _expenseCategories.first;
+      final label = _getCategoryLabel(topExp['category']);
+      final total = (topExp['total'] as num?)?.toDouble() ?? 0.0;
+      items.add(
+          'Pengeluaran terbesar ada di kategori $label (${currency.format(total)}). Cek apakah ada biaya yang bisa dipangkas.');
+    }
+
+    if (_paymentMethods.length > 1) {
+      double totalAmount = 0;
+      double nonCash = 0;
+      for (final pm in _paymentMethods) {
+        final amount =
+            (pm['totalAmount'] as num?)?.toDouble() ?? 0.0;
+        totalAmount += amount;
+        if (pm['paymentMethod'] != 'CASH') {
+          nonCash += amount;
+        }
+      }
+      if (totalAmount > 0 && nonCash > 0) {
+        final share = nonCash / totalAmount * 100;
+        items.add(
+            'Pembayaran non-tunai menyumbang sekitar ${share.toStringAsFixed(1)}% omzet. Pertimbangkan dorong metode ini untuk pencatatan lebih rapi.');
+      }
+    }
+
+    if (_lowStock.isNotEmpty) {
+      final names = _lowStock
+          .take(3)
+          .map((e) => e['name']?.toString() ?? '')
+          .where((e) => e.trim().isNotEmpty)
+          .toList();
+      if (names.isNotEmpty) {
+        items.add(
+            'Stok menipis untuk: ${names.join(', ')}. Segera lakukan pembelian ulang agar tidak kehabisan saat permintaan naik.');
+      }
+    }
+
+    if (items.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: const [
+              Icon(Icons.lightbulb_outline,
+                  color: Color(0xFFE07A5F)),
+              SizedBox(width: 8),
+              Text(
+                'Insight dari data periode ini',
+                style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...items.map(
+            (text) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '• ',
+                    style: TextStyle(fontSize: 13),
+                  ),
+                  Expanded(
+                    child: Text(
+                      text,
+                      style: const TextStyle(
+                          fontSize: 13, color: Colors.black87),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _pickDateRange() async {
@@ -492,12 +875,28 @@ class _ReportScreenState extends State<ReportScreen> {
                     padding: const EdgeInsets.all(20),
                     sliver: SliverList(
                       delegate: SliverChildListDelegate([
+                        _buildDailyTargetCard()
+                            .animate()
+                            .fadeIn(duration: 500.ms)
+                            .slideY(begin: 0.2, end: 0),
+
+                        const SizedBox(height: 16),
+
                         _buildSummaryCards()
                             .animate()
                             .fadeIn(duration: 600.ms)
                             .slideY(begin: 0.2, end: 0),
 
                         const SizedBox(height: 16),
+
+                        const SizedBox(height: 16),
+
+                        _buildInsightsCard()
+                            .animate()
+                            .fadeIn(delay: 150.ms)
+                            .slideY(begin: 0.2, end: 0),
+
+                        const SizedBox(height: 24),
 
                         Row(
                           children: [
@@ -840,41 +1239,75 @@ class _ReportScreenState extends State<ReportScreen> {
                             border: Border.all(color: Colors.grey[200]!),
                           ),
                           child: Column(
-                            children: _topProducts.isEmpty
-                                ? [
-                                    const Padding(
-                                        padding: EdgeInsets.all(24),
-                                        child: Text('Belum ada data penjualan'))
-                                  ]
-                                : _topProducts.asMap().entries.map((entry) {
-                                    final index = entry.key;
-                                    final item = entry.value;
-                                    return ListTile(
-                                      leading: CircleAvatar(
-                                        backgroundColor: index < 3
-                                            ? const Color(0xFFFFF8F0) // Beige
-                                            : const Color(0xFFF3F4F6),
-                                        child: Text('${index + 1}',
-                                            style: TextStyle(
-                                                color: index < 3
-                                                    ? const Color(
-                                                        0xFFE07A5F) // Terra Cotta
-                                                    : Colors.grey,
-                                                fontWeight: FontWeight.bold)),
-                                      ),
-                                      title: Text(item['name'],
-                                          style: const TextStyle(
-                                              fontWeight: FontWeight.w600)),
-                                      subtitle: Text(
-                                          '${item['totalQty']} items terjual'),
-                                      trailing: Text(
-                                          currency.format(item['totalRevenue']),
-                                          style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              color: Color(
-                                                  0xFF3D405B))), // Deep Blue
-                                    );
-                                  }).toList(),
+                            children: [
+                              SizedBox(
+                                height: 220,
+                                child: _buildProductSalesChart(),
+                              ),
+                              const Divider(height: 1),
+                              Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  children: _topProducts.isEmpty
+                                      ? [
+                                          const Padding(
+                                            padding: EdgeInsets.all(8),
+                                            child: Text(
+                                              'Belum ada data penjualan produk',
+                                              textAlign: TextAlign.center,
+                                            ),
+                                          )
+                                        ]
+                                      : _topProducts.asMap().entries.map((entry) {
+                                          final index = entry.key;
+                                          final item = entry.value;
+                                          return ListTile(
+                                            dense: true,
+                                            contentPadding: EdgeInsets.zero,
+                                            leading: CircleAvatar(
+                                              backgroundColor: index < 3
+                                                  ? const Color(0xFFFFF8F0)
+                                                  : const Color(0xFFF3F4F6),
+                                              child: Text(
+                                                '${index + 1}',
+                                                style: TextStyle(
+                                                  color: index < 3
+                                                      ? const Color(0xFFE07A5F)
+                                                      : Colors.grey,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                            ),
+                                            title: Text(
+                                              item['name'],
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                            subtitle: Text(
+                                              '${item['totalQty']} terjual',
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey,
+                                              ),
+                                            ),
+                                            trailing: Text(
+                                              currency
+                                                  .format(item['totalRevenue']),
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                color: Color(0xFF3D405B),
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          );
+                                        }).toList(),
+                                ),
+                              ),
+                            ],
                           ),
                         ).animate().fadeIn(delay: 600.ms),
 
@@ -935,6 +1368,157 @@ class _ReportScreenState extends State<ReportScreen> {
           ),
         );
       }).toList(),
+    );
+  }
+
+  Widget _buildProductSalesChart() {
+    if (_topProducts.isEmpty) {
+      return const Center(child: Text('Belum ada data grafik produk'));
+    }
+
+    final spots = <BarChartGroupData>[];
+    double maxRevenue = 0;
+    final colors = [
+      const Color(0xFFE07A5F),
+      const Color(0xFF81B29A),
+      const Color(0xFFF2CC8F),
+      const Color(0xFF3D405B),
+      const Color(0xFFE07A5F),
+    ];
+
+    for (int i = 0; i < _topProducts.length; i++) {
+      final item = _topProducts[i];
+      final revenue = (item['totalRevenue'] as num?)?.toDouble() ?? 0.0;
+      if (revenue > maxRevenue) {
+        maxRevenue = revenue;
+      }
+      spots.add(
+        BarChartGroupData(
+          x: i,
+          barRods: [
+            BarChartRodData(
+              toY: revenue,
+              gradient: LinearGradient(
+                colors: [
+                  colors[i % colors.length],
+                  colors[i % colors.length].withOpacity(0.7),
+                ],
+                begin: Alignment.bottomCenter,
+                end: Alignment.topCenter,
+              ),
+              borderRadius: BorderRadius.circular(6),
+              width: 14,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return BarChart(
+      BarChartData(
+        alignment: BarChartAlignment.spaceAround,
+        maxY: maxRevenue <= 0 ? 1 : maxRevenue * 1.2,
+        gridData: FlGridData(
+          show: true,
+          drawVerticalLine: false,
+          horizontalInterval: maxRevenue <= 0 ? 1 : maxRevenue / 4,
+          getDrawingHorizontalLine: (value) => FlLine(
+            color: const Color(0xFFF3F4F6),
+            strokeWidth: 1,
+          ),
+        ),
+        barTouchData: BarTouchData(
+          enabled: true,
+          touchTooltipData: BarTouchTooltipData(
+            tooltipPadding:
+                const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            tooltipRoundedRadius: 8,
+            getTooltipItem: (group, groupIndex, rod, rodIndex) {
+              final item = _topProducts[groupIndex];
+              final name = item['name'] as String? ?? '';
+              final qty = (item['totalQty'] as num?)?.toInt() ?? 0;
+              final revenue = (item['totalRevenue'] as num?)?.toDouble() ?? 0.0;
+              return BarTooltipItem(
+                '$name\n',
+                const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 11),
+                children: [
+                  TextSpan(
+                    text: '${currency.format(revenue)}\n',
+                    style: const TextStyle(
+                        color: Colors.white70,
+                        fontWeight: FontWeight.w500,
+                        fontSize: 10),
+                  ),
+                  TextSpan(
+                    text: '$qty terjual',
+                    style: const TextStyle(
+                        color: Colors.white70,
+                        fontWeight: FontWeight.w400,
+                        fontSize: 10),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+        titlesData: FlTitlesData(
+          topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false)),
+         rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false)),
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 40,
+              getTitlesWidget: (value, meta) {
+                return Padding(
+                  padding: const EdgeInsets.only(right: 4),
+                  child: Text(
+                    value == 0
+                        ? '0'
+                        : '${(value / 1000).round()}k',
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: Colors.grey,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              getTitlesWidget: (value, meta) {
+                final idx = value.toInt();
+                if (idx < 0 || idx >= _topProducts.length) {
+                  return const SizedBox.shrink();
+                }
+                final name = _topProducts[idx]['name'] as String? ?? '';
+                return Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    name,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: Colors.grey,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                  ),
+                );
+              },
+              reservedSize: 40,
+            ),
+          ),
+        ),
+        borderData: FlBorderData(show: false),
+        barGroups: spots,
+      ),
     );
   }
 

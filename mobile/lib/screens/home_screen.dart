@@ -47,6 +47,8 @@ import 'package:flutter/services.dart';
 import 'package:rana_merchant/screens/flash_sales_screen.dart';
 import 'package:rana_merchant/screens/promo_hub_screen.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:rana_merchant/services/realtime_service.dart';
+import 'package:rana_merchant/services/order_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -60,6 +62,8 @@ class _HomeScreenState extends State<HomeScreen> {
   bool isLoading = true;
   String _selectedCategory = 'All';
   int _bottomNavIndex = 0;
+  int _newOrdersCount = 0;
+  int _unreadNotificationCount = 0;
   String? _storeName;
   String? _storeContact;
   final List<GlobalKey<NavigatorState>> _tabNavigatorKeys =
@@ -72,6 +76,8 @@ class _HomeScreenState extends State<HomeScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey =
       GlobalKey<ScaffoldState>(); // [FIX] Added Key
   Timer? _autoSyncTimer;
+  final RealtimeService _realtimeService = RealtimeService();
+  final OrderService _orderService = OrderService();
 
   // [NEW] Icon Mapper
   IconData _getIcon(String name) {
@@ -196,13 +202,17 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() => _isScrolled = false);
     });
 
-    // [NEW] Auto-Sync Loop
     _autoSyncTimer = Timer.periodic(const Duration(seconds: 30), (timer) async {
       final isOnline = await ConnectivityService().hasInternetConnection();
       if (isOnline && !SyncService().isSyncing) {
         await SyncService().syncTransactions();
       }
     });
+
+    _refreshNewOrdersCountFromApi();
+    _refreshNotificationBadge();
+    _realtimeService.init();
+    _realtimeService.addTransactionListener(_handleRealtimeOrderEvent);
   }
 
   Future<void> _loadStoreInfo() async {
@@ -220,6 +230,8 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     _autoSyncTimer?.cancel();
     _scrollController.dispose();
+    _realtimeService.removeTransactionListener(_handleRealtimeOrderEvent);
+    _realtimeService.dispose();
     super.dispose();
   }
 
@@ -229,6 +241,43 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     setState(() => _bottomNavIndex = idx);
+  }
+
+  void _handleRealtimeOrderEvent(Map<String, dynamic> data) {
+    if (!mounted) return;
+    final source = data['source']?.toString();
+    if (source == 'MARKET') {
+      _refreshNewOrdersCountFromApi();
+    }
+  }
+
+  Future<void> _refreshNewOrdersCountFromApi() async {
+    try {
+      final orders = await _orderService.getIncomingOrders();
+      final int pendingCount = orders
+          .where((o) =>
+              o is Map &&
+              o['orderStatus'] == 'PENDING' &&
+              o['paymentStatus'] == 'PAID')
+          .length;
+      if (!mounted) return;
+      setState(() {
+        _newOrdersCount = pendingCount;
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _refreshNotificationBadge() async {
+    try {
+      final notifs = await ApiService().fetchNotifications();
+      final int unreadCount = notifs
+          .where((n) => n is Map && (n['isRead'] == false || n['isRead'] == 0))
+          .length;
+      if (!mounted) return;
+      setState(() {
+        _unreadNotificationCount = unreadCount;
+      });
+    } catch (_) {}
   }
 
   Future<T?> _pushInActiveNavigator<T>(Widget screen) {
@@ -463,8 +512,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         minWidth: 72,
                         labelType: NavigationRailLabelType.all,
                         onDestinationSelected: (int index) {
-                          // ... navigation logic ...
-                          if (index == 1)
+                          if (index == 1) {
                             Navigator.push(
                                 context,
                                 MaterialPageRoute(
@@ -472,72 +520,148 @@ class _HomeScreenState extends State<HomeScreen> {
                                         const AddProductScreen())).then((val) {
                               if (val == true) _loadProducts();
                             });
-                          if (index == 2)
+                          }
+                          if (index == 2) {
                             Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                     builder: (_) => const ReportScreen()));
-                          if (index == 3)
+                          }
+                          if (index == 3) {
                             Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                    builder: (_) => const StockOpnameScreen()));
-                          if (index == 4)
+                                    builder: (_) =>
+                                        const StockOpnameScreen()));
+                          }
+                          if (index == 4) {
                             Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                     builder: (_) => const OrderListScreen()));
-                          if (index == 5)
+                          }
+                          if (index == 5) {
                             Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                     builder: (_) => const WalletScreen()));
-                          if (index == 6)
+                          }
+                          if (index == 6) {
                             Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                     builder: (_) => const SettingsScreen()));
-                          if (index == 7)
+                          }
+                          if (index == 7) {
                             Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                     builder: (_) => const PromoHubScreen()));
+                          }
                         },
                         leading: Padding(
                           padding: const EdgeInsets.symmetric(vertical: 24),
                           child: Icon(Icons.store,
                               color: Theme.of(context).primaryColor, size: 32),
                         ),
-                        destinations: const [
-                          NavigationRailDestination(
+                        destinations: [
+                          const NavigationRailDestination(
                               icon: Icon(Icons.point_of_sale_outlined),
                               selectedIcon: Icon(Icons.point_of_sale),
                               label: Text('POS')),
-                          NavigationRailDestination(
+                          const NavigationRailDestination(
                               icon: Icon(Icons.add_box_outlined),
                               selectedIcon: Icon(Icons.add_box),
                               label: Text('Tambah')),
-                          NavigationRailDestination(
+                          const NavigationRailDestination(
                               icon: Icon(Icons.bar_chart_outlined),
                               selectedIcon: Icon(Icons.bar_chart),
                               label: Text('Laporan')),
-                          NavigationRailDestination(
+                          const NavigationRailDestination(
                               icon: Icon(Icons.inventory_2_outlined),
                               selectedIcon: Icon(Icons.inventory_2),
                               label: Text('Stock')),
                           NavigationRailDestination(
-                              icon: Icon(Icons.shopping_bag_outlined),
-                              selectedIcon: Icon(Icons.shopping_bag),
-                              label: Text('Pesanan')),
-                          NavigationRailDestination(
-                              icon: Icon(Icons.account_balance_wallet_outlined),
-                              selectedIcon: Icon(Icons.account_balance_wallet),
+                              icon: Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  const Icon(Icons.shopping_bag_outlined),
+                                  if (_newOrdersCount > 0)
+                                    Positioned(
+                                      right: -2,
+                                      top: -2,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFE07A5F),
+                                          borderRadius:
+                                              BorderRadius.circular(999),
+                                        ),
+                                        constraints: const BoxConstraints(
+                                            minWidth: 18, minHeight: 18),
+                                        child: Center(
+                                          child: Text(
+                                            _newOrdersCount > 99
+                                                ? '99+'
+                                                : _newOrdersCount.toString(),
+                                            style: GoogleFonts.poppins(
+                                              color: Colors.white,
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              selectedIcon: Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  const Icon(Icons.shopping_bag),
+                                  if (_newOrdersCount > 0)
+                                    Positioned(
+                                      right: -2,
+                                      top: -2,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFE07A5F),
+                                          borderRadius:
+                                              BorderRadius.circular(999),
+                                        ),
+                                        constraints: const BoxConstraints(
+                                            minWidth: 18, minHeight: 18),
+                                        child: Center(
+                                          child: Text(
+                                            _newOrdersCount > 99
+                                                ? '99+'
+                                                : _newOrdersCount.toString(),
+                                            style: GoogleFonts.poppins(
+                                              color: Colors.white,
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              label: const Text('Pesanan')),
+                          const NavigationRailDestination(
+                              icon: Icon(
+                                  Icons.account_balance_wallet_outlined),
+                              selectedIcon:
+                                  Icon(Icons.account_balance_wallet),
                               label: Text('Dompet')),
-                          NavigationRailDestination(
+                          const NavigationRailDestination(
                               icon: Icon(Icons.settings_outlined),
                               selectedIcon: Icon(Icons.settings),
                               label: Text('Setting')),
-                          NavigationRailDestination(
+                          const NavigationRailDestination(
                               icon: Icon(Icons.local_offer_outlined),
                               selectedIcon: Icon(Icons.local_offer),
                               label: Text('Promosi')),
@@ -601,11 +725,15 @@ class _HomeScreenState extends State<HomeScreen> {
                   height: 80,
                   decoration: BoxDecoration(
                     color: Colors.white,
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(24),
+                      topRight: Radius.circular(24),
+                    ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, -4),
+                        color: Colors.black.withOpacity(0.04),
+                        blurRadius: 18,
+                        offset: const Offset(0, -6),
                       ),
                     ],
                   ),
@@ -613,7 +741,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
                       _buildNavItem(0, Icons.home, 'Beranda'),
-                      _buildNavItem(1, Icons.history, 'Transaksi'),
+                      _buildNavItem(1, Icons.shopping_bag_outlined, 'PO Online'),
                       _buildNavItem(2, Icons.qr_code_scanner, 'Scan'),
                       _buildNavItem(3, Icons.bar_chart, 'Laporan'),
                       _buildNavItem(4, Icons.person, 'Akun'),
@@ -640,12 +768,44 @@ class _HomeScreenState extends State<HomeScreen> {
           _tabNavigatorKeys[index].currentState?.popUntil((r) => r.isFirst);
           return;
         }
-        setState(() => _bottomNavIndex = index);
+        _switchTab(index);
       },
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, color: color, size: 26)
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Icon(icon, color: color, size: 26),
+              if (index == 1 && _newOrdersCount > 0)
+                Positioned(
+                  right: -6,
+                  top: -4,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE07A5F),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    constraints:
+                        const BoxConstraints(minWidth: 18, minHeight: 18),
+                    child: Center(
+                      child: Text(
+                        _newOrdersCount > 99
+                            ? '99+'
+                            : _newOrdersCount.toString(),
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          )
               .animate(target: isSelected ? 1 : 0)
               .scale(
                 begin: const Offset(1, 1),
@@ -799,13 +959,47 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       actions: [
         IconButton(
-            onPressed: () {
-              Navigator.push(
+            onPressed: () async {
+              await Navigator.push(
                   context,
                   MaterialPageRoute(
                       builder: (_) => const NotificationScreen()));
+              if (!mounted) return;
+              _refreshNotificationBadge();
             },
-            icon: const Icon(Icons.notifications_outlined, color: Colors.white),
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Icon(Icons.notifications_outlined, color: Colors.white),
+                if (_unreadNotificationCount > 0)
+                  Positioned(
+                    right: -4,
+                    top: -4,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.redAccent,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      constraints:
+                          const BoxConstraints(minWidth: 18, minHeight: 18),
+                      child: Center(
+                        child: Text(
+                          _unreadNotificationCount > 99
+                              ? '99+'
+                              : _unreadNotificationCount.toString(),
+                          style: GoogleFonts.outfit(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
             style: IconButton.styleFrom(
                 backgroundColor: Colors.white.withOpacity(0.2))),
         const SizedBox(width: 8),
@@ -1108,12 +1302,23 @@ class _HomeScreenState extends State<HomeScreen> {
             }
           }
 
+          final width = MediaQuery.of(context).size.width;
+          int crossAxisCount = 4;
+
+          if (width >= 1100) {
+            crossAxisCount = 6;
+          } else if (width >= 800) {
+            crossAxisCount = 5;
+          } else if (width <= 360) {
+            crossAxisCount = 3;
+          }
+
           return GridView.builder(
             physics: const NeverScrollableScrollPhysics(),
             shrinkWrap: true,
             padding: const EdgeInsets.symmetric(horizontal: 24),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 4,
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: crossAxisCount,
                 mainAxisSpacing: 24,
                 crossAxisSpacing: 16,
                 childAspectRatio: 0.8),
@@ -1163,25 +1368,56 @@ class _HomeScreenState extends State<HomeScreen> {
                 },
                 child: Column(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(24),
-                          boxShadow: [
-                            BoxShadow(
-                                color: color.withOpacity(0.15),
-                                blurRadius: 12,
-                                offset: const Offset(0, 6)),
-                            BoxShadow(
-                                color: Colors.white,
-                                blurRadius: 0,
-                                spreadRadius: -2) // Inner glow trick
-                          ]),
-                      child: Icon(icon, color: color, size: 28),
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(24),
+                              boxShadow: [
+                                BoxShadow(
+                                    color: color.withOpacity(0.15),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 6)),
+                                BoxShadow(
+                                    color: Colors.white,
+                                    blurRadius: 0,
+                                    spreadRadius: -2)
+                              ]),
+                          child: Icon(icon, color: color, size: 28),
+                        ),
+                        if (route == '/orders' && _newOrdersCount > 0)
+                          Positioned(
+                            right: -4,
+                            top: -4,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE07A5F),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              constraints:
+                                  const BoxConstraints(minWidth: 20, minHeight: 20),
+                              child: Center(
+                                child: Text(
+                                  _newOrdersCount > 99
+                                      ? '99+'
+                                      : _newOrdersCount.toString(),
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
                     ).animate(target: 1).scale(
-                        duration: 200.ms,
-                        curve: Curves.easeOutBack), // Slight bounce on load
+                        duration: 200.ms, curve: Curves.easeOutBack),
                     const SizedBox(height: 12),
                     Text(label,
                         style: GoogleFonts.poppins(
@@ -1914,11 +2150,27 @@ class _HomeScreenState extends State<HomeScreen> {
         final product = _filteredProducts[index];
         final qty = cart.items[product['id']]?.quantity ?? 0;
 
+        final stock = (product['stock'] ?? 0) as int;
         return ProductCard(
           product: product,
           quantity: qty,
           onTap: () {
-            SoundService.playBeep(); // [NEW] Sound
+            if (stock <= 0) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                    content: Text('Stok produk ini sudah habis')),
+              );
+              return;
+            }
+            if (qty >= stock) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                    content:
+                        Text('Maksimal stok tersedia hanya $stock')),
+              );
+              return;
+            }
+            SoundService.playBeep();
             cart.addItem(
                 product['id'], product['name'], product['sellingPrice']);
           },
@@ -2068,8 +2320,33 @@ class _HomeScreenState extends State<HomeScreen> {
                             child: Column(
                               children: [
                                 InkWell(
-                                    onTap: () => cart.addItem(
-                                        item.productId, item.name, item.price),
+                                    onTap: () {
+                                      final product = products.firstWhere(
+                                          (p) => p['id'] == item.productId,
+                                          orElse: () => {});
+                                      final stock =
+                                          (product['stock'] ?? 0) as int;
+                                      if (stock <= 0) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          const SnackBar(
+                                              content: Text(
+                                                  'Stok produk ini sudah habis')),
+                                        );
+                                        return;
+                                      }
+                                      if (item.quantity >= stock) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                              content: Text(
+                                                  'Maksimal stok tersedia hanya $stock')),
+                                        );
+                                        return;
+                                      }
+                                      cart.addItem(item.productId, item.name,
+                                          item.price);
+                                    },
                                     child: const Padding(
                                         padding: EdgeInsets.all(4),
                                         child: Icon(Icons.keyboard_arrow_up,
@@ -2109,6 +2386,20 @@ class _HomeScreenState extends State<HomeScreen> {
                                       ),
                                     );
                                     if (result != null) {
+                                      final product = products.firstWhere(
+                                          (p) => p['id'] == item.productId,
+                                          orElse: () => {});
+                                      final stock =
+                                          (product['stock'] ?? 0) as int;
+                                      if (stock > 0 && result > stock) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                              content: Text(
+                                                  'Jumlah melebihi stok ($stock).')),
+                                        );
+                                        return;
+                                      }
                                       cart.setItemQuantity(
                                           item.productId, result);
                                     }
@@ -2251,10 +2542,11 @@ class _HomeScreenState extends State<HomeScreen> {
             )));
 
     if (success == true && context.mounted) {
-      SoundService.playSuccess(); // [NEW] Sound
+      await _loadProducts();
+      SoundService.playSuccess(); 
       showDialog(
           context: context, builder: (_) => const TransactionSuccessDialog());
-      cart.clear(); // Clear AFTER success
+      cart.clear(); 
       return true;
     }
     return false;

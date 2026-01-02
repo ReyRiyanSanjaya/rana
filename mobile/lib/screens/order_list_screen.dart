@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:rana_merchant/screens/scan_screen.dart';
 import 'package:rana_merchant/services/order_service.dart';
+import 'package:rana_merchant/services/realtime_service.dart';
 
 class OrderListScreen extends StatefulWidget {
   const OrderListScreen({super.key});
@@ -15,6 +16,7 @@ class _OrderListScreenState extends State<OrderListScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final OrderService _orderService = OrderService();
+  final RealtimeService _realtimeService = RealtimeService();
 
   List<dynamic> _orders = [];
   bool _isLoading = true;
@@ -25,6 +27,7 @@ class _OrderListScreenState extends State<OrderListScreen>
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
     _loadOrders();
+    _realtimeService.addTransactionListener(_handleRealtimeTransaction);
   }
 
   Future<void> _loadOrders() async {
@@ -50,6 +53,7 @@ class _OrderListScreenState extends State<OrderListScreen>
 
   @override
   void dispose() {
+    _realtimeService.removeTransactionListener(_handleRealtimeTransaction);
     _tabController.dispose();
     super.dispose();
   }
@@ -83,15 +87,41 @@ class _OrderListScreenState extends State<OrderListScreen>
     }
   }
 
+  void _handleRealtimeTransaction(Map<String, dynamic> data) {
+    if (!mounted) return;
+    _loadOrders();
+  }
+
   Future<void> _handleScan() async {
-    // Navigate to Scan Screen
     final result = await Navigator.push(
         context, MaterialPageRoute(builder: (_) => const ScanScreen()));
 
-    // Result is true if scan successful
-    if (result == true) {
-      _loadOrders(); // Refresh to move item to 'Selesai'
-      _showSuccessDialog();
+    if (result is Map<String, dynamic>) {
+      final String? orderId = result['id'] as String?;
+      final String? pickupCode = result['pickupCode'] as String?;
+
+      await _loadOrders();
+
+      Map<String, dynamic>? matched;
+      if (orderId != null) {
+        try {
+          matched =
+              _orders.whereType<Map<String, dynamic>>().firstWhere((o) => o['id'] == orderId);
+        } catch (_) {}
+      }
+      if (matched == null && pickupCode != null) {
+        try {
+          matched = _orders
+              .whereType<Map<String, dynamic>>()
+              .firstWhere((o) => o['pickupCode'] == pickupCode);
+        } catch (_) {}
+      }
+
+      if (matched != null) {
+        _showOrderDetail(matched);
+      } else {
+        _showSuccessDialog();
+      }
     }
   }
 
@@ -109,6 +139,59 @@ class _OrderListScreenState extends State<OrderListScreen>
                     child: const Text('OK'))
               ],
             ));
+  }
+
+  void _showOrderDetail(Map<String, dynamic> order) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 12,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Detail Pesanan Pickup',
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFFE07A5F),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _OrderCard(
+                  order: order,
+                  onUpdateStatus: (_) {},
+                  onScan: () {},
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -141,29 +224,44 @@ class _OrderListScreenState extends State<OrderListScreen>
           ],
         ),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? Center(
-                  child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isWide = constraints.maxWidth >= 900;
+          final content = _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _error != null
+                  ? Center(
+                      child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                          Text(_error!,
+                              style:
+                                  const TextStyle(color: Color(0xFFE07A5F)),
+                              textAlign: TextAlign.center),
+                          TextButton(
+                              onPressed: _loadOrders,
+                              child: const Text('Coba Lagi'))
+                        ]))
+                  : TabBarView(
+                      controller: _tabController,
                       children: [
-                      Text(_error!,
-                          style: const TextStyle(color: Color(0xFFE07A5F)),
-                          textAlign: TextAlign.center),
-                      TextButton(
-                          onPressed: _loadOrders,
-                          child: const Text('Coba Lagi'))
-                    ]))
-              : TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildOrderList('Masuk'),
-                    _buildOrderList('Disiapkan'),
-                    _buildOrderList('Siap Ambil'),
-                    _buildOrderList('Selesai'),
-                  ],
-                ),
+                        _buildOrderList('Masuk'),
+                        _buildOrderList('Disiapkan'),
+                        _buildOrderList('Siap Ambil'),
+                        _buildOrderList('Selesai'),
+                      ],
+                    );
+
+          if (!isWide) return content;
+
+          return Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 900),
+              child: content,
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -248,168 +346,199 @@ class _OrderCard extends StatelessWidget {
     // Safe access to items
     final List items = order['transactionItems'] ?? [];
 
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text((order['id'] as String).substring(0, 15),
-                    style: GoogleFonts.sourceCodePro(
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: const Color(0xFFE07A5F).withOpacity(0.15),
+          width: 1.5,
+        ),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                (order['id'] as String).substring(0, 15),
+                style: GoogleFonts.sourceCodePro(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  displayStatus,
+                  style: TextStyle(
+                    color: statusColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 10,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              const CircleAvatar(
+                child: Icon(Icons.person, color: Colors.white),
+                radius: 20,
+                backgroundColor: Color(0xFFE07A5F),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      order['customerName'] ?? 'No Name',
+                      style: GoogleFonts.poppins(
                         fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    Text(
+                      '${order['customerPhone'] ?? '-'}',
+                      style: GoogleFonts.poppins(
+                        color: Colors.grey,
                         fontSize: 12,
-                        color: Colors.grey.shade700)),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(6)),
-                  child: Text(displayStatus,
-                      style: TextStyle(
-                          color: statusColor,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 10)),
-                )
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            // Customer
-            Row(
-              children: [
-                const CircleAvatar(
-                    child: Icon(Icons.person, color: Colors.white),
-                    radius: 20,
-                    backgroundColor: Color(0xFFE07A5F)),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(order['customerName'] ?? 'No Name',
-                          style: GoogleFonts.poppins(
-                              fontWeight: FontWeight.bold, fontSize: 16)),
-                      Text('${order['customerPhone'] ?? '-'}',
-                          style: GoogleFonts.poppins(
-                              color: Colors.grey, fontSize: 12)),
-                      if (order['pickupCode'] != null)
-                        Text('Kode: ${order['pickupCode']}',
-                            style: GoogleFonts.sourceCodePro(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: const Color(0xFF3D405B), // Deep Blue
-                              letterSpacing: 2,
-                            )),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const Divider(height: 24),
-
-            // Items
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: items.map<Widget>((item) {
-                final product = item['product'] ?? {};
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text("${item['quantity']}x ${product['name'] ?? 'Item'}",
-                          style: const TextStyle(fontWeight: FontWeight.w500)),
+                      ),
+                    ),
+                    if (order['pickupCode'] != null)
                       Text(
-                          fmtPrice.format(
-                              (item['price'] ?? 0) * (item['quantity'] ?? 1)),
-                          style: const TextStyle(color: Colors.grey)),
-                    ],
-                  ),
-                );
-              }).toList(),
-            ),
-            const Divider(color: Color(0xFFE07A5F)),
-            Align(
-              alignment: Alignment.centerRight,
-              child: Text(
-                  "Total: ${fmtPrice.format(order['totalAmount'] ?? 0)}",
-                  style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: Color(0xFFE07A5F))),
-            ),
-            const SizedBox(height: 16),
-
-            // Action Buttons
-            if (status == 'PENDING')
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                    onPressed: () => onUpdateStatus('ACCEPTED'),
-                    icon: const Icon(Icons.soup_kitchen),
-                    label: const Text('Siapkan Pesanan'),
-                    style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFFE07A5F))),
-              ),
-
-            if (status == 'ACCEPTED')
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                    onPressed: () => onUpdateStatus('READY'),
-                    icon: const Icon(Icons.check_circle_outline),
-                    label: const Text('Selesai Disiapkan'),
-                    style: FilledButton.styleFrom(
-                        backgroundColor: Colors.orange.shade700)),
-              ),
-
-            if (status == 'READY')
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: onScan,
-                  icon: const Icon(Icons.qr_code_scanner),
-                  label: const Text('Scan QR Konsumen'),
-                  style: FilledButton.styleFrom(
-                      backgroundColor: Colors.green.shade700,
-                      padding: const EdgeInsets.all(16)),
-                ),
-              ),
-
-            if (status == 'READY')
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Center(
-                    child: Text('Tunggu konsumen datang dan scan QR mereka.',
-                        style: TextStyle(
-                            color: Colors.grey.shade600,
-                            fontSize: 12,
-                            fontStyle: FontStyle.italic))),
-              ),
-
-            if (status == 'COMPLETED')
-              Center(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
-                    Icon(Icons.task_alt, color: Color(0xFF81B29A)),
-                    SizedBox(width: 8),
-                    Text('Transaksi Berhasil',
-                        style: TextStyle(
-                            color: Color(0xFF81B29A),
-                            fontWeight: FontWeight.bold)),
+                        'Kode: ${order['pickupCode']}',
+                        style: GoogleFonts.sourceCodePro(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF3D405B),
+                          letterSpacing: 2,
+                        ),
+                      ),
                   ],
                 ),
-              )
-          ],
-        ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: items.map<Widget>((item) {
+              final product = item['product'] ?? {};
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "${item['quantity']}x ${product['name'] ?? 'Item'}",
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Text(
+                      fmtPrice.format(
+                        (item['price'] ?? 0) * (item['quantity'] ?? 1),
+                      ),
+                      style: const TextStyle(color: Colors.grey),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+          const Divider(color: Color(0xFFE07A5F)),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              "Total: ${fmtPrice.format(order['totalAmount'] ?? 0)}",
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: const Color(0xFFE07A5F),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (status == 'PENDING')
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: () => onUpdateStatus('ACCEPTED'),
+                icon: const Icon(Icons.soup_kitchen),
+                label: const Text('Siapkan Pesanan'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFFE07A5F),
+                ),
+              ),
+            ),
+          if (status == 'ACCEPTED')
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: () => onUpdateStatus('READY'),
+                icon: const Icon(Icons.check_circle_outline),
+                label: const Text('Selesai Disiapkan'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.orange.shade700,
+                ),
+              ),
+            ),
+          if (status == 'READY')
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: onScan,
+                icon: const Icon(Icons.qr_code_scanner),
+                label: const Text('Scan QR Konsumen'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.green.shade700,
+                  padding: const EdgeInsets.all(16),
+                ),
+              ),
+            ),
+          if (status == 'READY')
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Center(
+                child: Text(
+                  'Tunggu konsumen datang dan scan QR mereka.',
+                  style: TextStyle(
+                    color: Colors.grey.shade600,
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
+            ),
+          if (status == 'COMPLETED')
+            Center(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: const [
+                  Icon(Icons.task_alt, color: Color(0xFF81B29A)),
+                  SizedBox(width: 8),
+                  Text(
+                    'Transaksi Berhasil',
+                    style: TextStyle(
+                      color: Color(0xFF81B29A),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
       ),
     );
   }

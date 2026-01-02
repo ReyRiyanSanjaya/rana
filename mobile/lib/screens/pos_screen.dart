@@ -77,6 +77,17 @@ class _PosScreenState extends State<PosScreen> {
     var cart = Provider.of<CartProvider>(context);
     final currency =
         NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+    final screenWidth = MediaQuery.of(context).size.width;
+    int gridCrossAxisCount = 2;
+    double gridChildAspectRatio = 0.8;
+
+    if (screenWidth >= 1200) {
+      gridCrossAxisCount = 4;
+      gridChildAspectRatio = 0.9;
+    } else if (screenWidth >= 800) {
+      gridCrossAxisCount = 3;
+      gridChildAspectRatio = 0.9;
+    }
 
     return Scaffold(
       backgroundColor: const Color(0xFFFFF8F0), // Soft Beige
@@ -95,12 +106,12 @@ class _PosScreenState extends State<PosScreen> {
               color: const Color(0xFFE07A5F).withOpacity(0.1), height: 1.0),
         ),
         actions: [
-          _buildActionButton(Icons.qr_code_scanner, () async {
+          _buildActionButton(context, Icons.qr_code_scanner, () async {
             await Navigator.push(
                 context, MaterialPageRoute(builder: (_) => const ScanScreen()));
           }),
           const SizedBox(width: 8),
-          _buildActionButton(Icons.sync, () async {
+          _buildActionButton(context, Icons.sync, () async {
             ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Sinkronisasi data...')));
             try {
@@ -119,7 +130,9 @@ class _PosScreenState extends State<PosScreen> {
           const SizedBox(width: 8),
           Stack(
             children: [
-              _buildActionButton(Icons.shopping_bag_outlined,
+              _buildActionButton(
+                  context,
+                  Icons.shopping_bag_outlined,
                   () => _showCartSheet(context, cart)),
               if (cart.itemCount > 0)
                 Positioned(
@@ -149,6 +162,17 @@ class _PosScreenState extends State<PosScreen> {
             decoration: BoxDecoration(
               color: Colors.white,
               border: Border(bottom: BorderSide(color: Colors.grey.shade100)),
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(24),
+                bottomRight: Radius.circular(24),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 12,
+                  offset: const Offset(0, 6),
+                ),
+              ],
             ),
             child: Column(
               children: [
@@ -249,9 +273,9 @@ class _PosScreenState extends State<PosScreen> {
                     : GridView.builder(
                         padding: const EdgeInsets.all(16),
                         gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          childAspectRatio: 0.8,
+                            SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: gridCrossAxisCount,
+                          childAspectRatio: gridChildAspectRatio,
                           crossAxisSpacing: 16,
                           mainAxisSpacing: 16,
                         ),
@@ -259,10 +283,27 @@ class _PosScreenState extends State<PosScreen> {
                         itemBuilder: (ctx, i) {
                           final product = _filteredProducts[i];
                           final qty = cart.items[product['id']]?.quantity ?? 0;
+                          final stock = (product['stock'] ?? 0) as int;
                           return ProductCard(
                             product: product,
                             quantity: qty,
                             onTap: () {
+                              if (stock <= 0) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content:
+                                          Text('Stok produk ini sudah habis')),
+                                );
+                                return;
+                              }
+                              if (qty >= stock) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                      content: Text(
+                                          'Maksimal stok tersedia hanya $stock')),
+                                );
+                                return;
+                              }
                               SoundService.playBeep();
                               cart.addItem(product['id'], product['name'],
                                   product['sellingPrice']);
@@ -284,18 +325,21 @@ class _PosScreenState extends State<PosScreen> {
               foregroundColor: Colors.white,
               elevation: 4,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16)),
+                  borderRadius: BorderRadius.circular(24)),
             ).animate().slideY(begin: 1, curve: Curves.easeOutBack)
           : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
 
-  Widget _buildActionButton(IconData icon, VoidCallback onTap) {
+  Widget _buildActionButton(
+      BuildContext context, IconData icon, VoidCallback onTap) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(
+            color:
+                Theme.of(context).colorScheme.primary.withOpacity(0.15)),
         borderRadius: BorderRadius.circular(12),
       ),
       child: IconButton(
@@ -311,14 +355,19 @@ class _PosScreenState extends State<PosScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => Container(
-        height: MediaQuery.of(context).size.height * 0.85,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          children: [
+      builder: (_) {
+        final media = MediaQuery.of(context);
+        final isTablet = media.size.width >= 800;
+        final sheetHeightFactor = isTablet ? 0.7 : 0.85;
+
+        return Container(
+          height: media.size.height * sheetHeightFactor,
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            children: [
             // Handle Bar
             Center(
               child: Container(
@@ -379,12 +428,16 @@ class _PosScreenState extends State<PosScreen> {
                   cart.setCustomerName(result);
                 },
                 borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey.shade300),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .primary
+                              .withOpacity(0.15)),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   child: Row(
                     children: [
                       const Icon(Icons.person_outline,
@@ -434,7 +487,11 @@ class _PosScreenState extends State<PosScreen> {
                         child: Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade200),
+                            border: Border.all(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .primary
+                                    .withOpacity(0.15)),
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: Row(
@@ -516,6 +573,20 @@ class _PosScreenState extends State<PosScreen> {
                                         ),
                                       );
                                       if (newQty != null) {
+                                        final product = _products.firstWhere(
+                                            (p) => p['id'] == item.productId,
+                                            orElse: () => {});
+                                        final stock =
+                                            (product['stock'] ?? 0) as int;
+                                        if (stock > 0 && newQty > stock) {
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(
+                                                content: Text(
+                                                    'Jumlah melebihi stok ($stock).')),
+                                          );
+                                          return;
+                                        }
                                         cart.setItemQuantity(
                                             item.productId, newQty);
                                       }
@@ -533,8 +604,33 @@ class _PosScreenState extends State<PosScreen> {
                                   IconButton(
                                     icon: const Icon(Icons.add_circle_outline,
                                         color: Color(0xFFE07A5F)),
-                                    onPressed: () => cart.addItem(
-                                        item.productId, item.name, item.price),
+                                    onPressed: () {
+                                      final product = _products.firstWhere(
+                                          (p) => p['id'] == item.productId,
+                                          orElse: () => {});
+                                      final stock =
+                                          (product['stock'] ?? 0) as int;
+                                      if (stock <= 0) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          const SnackBar(
+                                              content: Text(
+                                                  'Stok produk ini sudah habis')),
+                                        );
+                                        return;
+                                      }
+                                      if (item.quantity >= stock) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                              content: Text(
+                                                  'Maksimal stok tersedia hanya $stock')),
+                                        );
+                                        return;
+                                      }
+                                      cart.addItem(item.productId, item.name,
+                                          item.price);
+                                    },
                                   ),
                                 ],
                               )
@@ -594,7 +690,10 @@ class _PosScreenState extends State<PosScreen> {
                           builder: (_) => PaymentScreen(cart: cart),
                         );
                         if (result == true) {
-                          if (context.mounted) Navigator.pop(context);
+                          if (context.mounted) {
+                            Navigator.pop(context);
+                            await _loadProducts();
+                          }
                         }
                       },
                       style: FilledButton.styleFrom(
@@ -613,7 +712,8 @@ class _PosScreenState extends State<PosScreen> {
             )
           ],
         ),
-      ),
+      );
+      },
     );
   }
 }

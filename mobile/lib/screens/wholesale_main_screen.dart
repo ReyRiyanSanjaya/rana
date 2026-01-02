@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
-import 'package:rana_merchant/data/local/database_helper.dart';
 import 'package:rana_merchant/screens/wholesale_cart_screen.dart';
 import 'package:rana_merchant/screens/wholesale_order_list_screen.dart';
-import 'package:rana_merchant/providers/auth_provider.dart';
 import 'package:rana_merchant/screens/purchase_screen.dart';
 import 'package:rana_merchant/screens/settings_screen.dart';
 import 'package:rana_merchant/providers/wholesale_cart_provider.dart';
@@ -22,35 +20,13 @@ class WholesaleMainScreen extends StatefulWidget {
 }
 
 class _WholesaleMainScreenState extends State<WholesaleMainScreen> {
-  int _currentIndex = 0;
-  String? _tenantId;
   bool _isLoading = false;
   List<WholesaleProduct> _products = [];
 
   @override
   void initState() {
     super.initState();
-    _loadTenantId();
     _loadProducts();
-  }
-
-  Future<void> _loadTenantId() async {
-    final auth = context.read<AuthProvider>();
-    final userTenantId = auth.currentUser?['tenantId']?.toString();
-    if (userTenantId != null && userTenantId.isNotEmpty) {
-      setState(() {
-        _tenantId = userTenantId;
-      });
-      return;
-    }
-
-    final db = DatabaseHelper.instance;
-    final tenant = await db.getTenantInfo();
-    final dbTenantId = tenant?['id']?.toString();
-    setState(() {
-      _tenantId =
-          (dbTenantId != null && dbTenantId.isNotEmpty) ? dbTenantId : null;
-    });
   }
 
   Future<void> _loadProducts() async {
@@ -140,30 +116,40 @@ class _WholesaleMainScreenState extends State<WholesaleMainScreen> {
                 itemCount: _products.length,
                 itemBuilder: (context, index) {
                   final product = _products[index];
-                  return Card(
-                    elevation: 0,
-                    color: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(color: Colors.grey[200]!),
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .primary
+                            .withOpacity(0.2),
+                        width: 1.5,
+                      ),
                     ),
                     child: InkWell(
                       onTap: () {
                         // Show product details
                       },
+                      borderRadius: BorderRadius.circular(20),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(
                             child: Container(
                               decoration: BoxDecoration(
-                                color: Colors.grey[100],
+                                color: Colors.grey.shade50,
                                 borderRadius: const BorderRadius.vertical(
-                                    top: Radius.circular(12)),
+                                  top: Radius.circular(18),
+                                ),
                               ),
                               child: Center(
-                                child: Icon(Icons.inventory_2_outlined,
-                                    size: 48, color: Colors.grey[400]),
+                                child: Icon(
+                                  Icons.inventory_2_outlined,
+                                  size: 48,
+                                  color: Colors.grey[400],
+                                ),
                               ),
                             ),
                           ),

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Store, Map, BarChart, ShoppingBag, LogOut, Search, Bell, Settings, Command, Wallet, CreditCard, Package, Megaphone, MessageSquare, Smartphone, Shield, Layout, FileText, List } from 'lucide-react';
+import { LayoutDashboard, Store, Map, BarChart, ShoppingBag, LogOut, Search, Bell, Settings, Command, Wallet, CreditCard, Package, Megaphone, MessageSquare, Smartphone, Shield, Layout, FileText, List, Gift } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Button } from './ui/Button';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
@@ -88,6 +88,7 @@ const AdminLayout = ({ children }) => {
         { icon: Wallet, label: 'Withdrawals', to: '/withdrawals' },
         { icon: CreditCard, label: 'Top Ups', to: '/topups' }, // [NEW]
         { icon: CreditCard, label: 'Subscriptions', to: '/subscriptions' },
+        { icon: Gift, label: 'Referrals', to: '/referrals' },
     ];
 
     const systemItems = [

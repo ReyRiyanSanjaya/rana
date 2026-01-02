@@ -31,7 +31,6 @@ class SyncService {
         
         final payload = {
            'offlineId': offlineId,
-           'storeId': txn['storeId'],
            'cashierId': txn['cashierId'],
            'totalAmount': txn['totalAmount'],
            'paymentMethod': txn['paymentMethod'] ?? 'CASH',
@@ -48,6 +47,9 @@ class SyncService {
         
         await db.markSynced(offlineId);
       }
+
+      // After all transactions are synced, refresh products from server
+      await api.fetchAndSaveProducts();
       
     } catch (e) {
       if (kDebugMode) debugPrint('Sync Error: $e');

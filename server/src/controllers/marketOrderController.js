@@ -1,7 +1,8 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const { successResponse, errorResponse } = require('../utils/response');
-const crypto = require('crypto'); // [NEW]
+const crypto = require('crypto');
+const { emitToTenant } = require('../socket');
 
 // BUYER: Create Order
 const createOrder = async (req, res) => {
@@ -105,6 +106,12 @@ const createOrder = async (req, res) => {
             include: { transactionItems: true }
         });
 
+        try {
+            emitToTenant(store.tenantId, 'orders:updated', result);
+        } catch (e) {
+            console.error('Socket emit failed', e);
+        }
+
         return successResponse(res, result, "Order Placed - Waiting for Payment");
     } catch (error) {
         console.error(error);
@@ -140,7 +147,23 @@ const confirmPayment = async (req, res) => {
             });
         }
 
-        // Trigger Notification to Merchant here if needed
+        try {
+            emitToTenant(order.tenantId, 'orders:updated', order);
+        } catch (e) {
+            console.error('Socket emit failed', e);
+        }
+
+        try {
+            await prisma.notification.create({
+                data: {
+                    tenantId: order.tenantId,
+                    title: 'Pembayaran pesanan marketplace dikonfirmasi',
+                    body: `Order ${order.id} telah dibayar oleh pelanggan`
+                }
+            });
+        } catch (e) {
+            console.error('Create notification failed', e);
+        }
 
         return successResponse(res, order, "Payment Confirmed");
     } catch (error) {

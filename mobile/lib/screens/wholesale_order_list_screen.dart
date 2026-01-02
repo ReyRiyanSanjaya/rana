@@ -39,7 +39,9 @@ class _WholesaleOrderListScreenState extends State<WholesaleOrderListScreen> {
         id = tenant['id'];
       }
     }
-    if (id.isEmpty) return [];
+    if (id.isEmpty) {
+      return <dynamic>[];
+    }
 
     return ApiService().getMyWholesaleOrders(id);
   }
@@ -85,78 +87,307 @@ class _WholesaleOrderListScreenState extends State<WholesaleOrderListScreen> {
               final code = await Navigator.push(
                 context,
                 MaterialPageRoute(
-                    builder: (context) => const WholesaleScanScreen()),
+                  builder: (context) => const WholesaleScanScreen(),
+                ),
               );
 
               if (code != null && context.mounted) {
                 try {
-                  await ApiService().scanQrOrder(code);
+                  final scannedOrder = await ApiService().scanQrOrder(code);
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
                         content: Text("Pesanan Berhasil Diterima!"),
-                        backgroundColor: Colors.green));
+                        backgroundColor: Colors.green,
+                      ),
+                    );
                     _refreshOrders();
+                    final orders = await _fetchOrders();
+                    final String? orderId = scannedOrder['id'] as String?;
+                    Map<String, dynamic>? detailed;
+                    if (orderId != null) {
+                      try {
+                        detailed = orders
+                            .whereType<Map<String, dynamic>>()
+                            .firstWhere((o) => o['id'] == orderId);
+                      } catch (_) {}
+                    }
+                    if (detailed != null) {
+                      if (!mounted) return;
+                      _showOrderDetail(detailed);
+                    }
                   }
                 } catch (e) {
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
                         content: Text("Gagal Scan: $e"),
-                        backgroundColor: Colors.red));
+                        backgroundColor: Colors.red,
+                      ),
+                    );
                   }
                 }
               }
             },
-          )
+          ),
         ],
       ),
-      body: FutureBuilder<List<dynamic>>(
-        future: _ordersFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return Center(
-                child: Text('Gagal memuat pesanan: ${snapshot.error}'));
-          }
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.history, size: 64, color: Colors.grey),
-                  const SizedBox(height: 16),
-                  Text('Belum ada pesanan kulakan',
-                      style: GoogleFonts.poppins(color: Colors.grey)),
-                ],
-              ),
-            );
-          }
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isWide = constraints.maxWidth >= 900;
 
-          final orders = snapshot.data!;
-          // Sort by date desc
-          orders.sort((a, b) => DateTime.parse(b['createdAt'])
-              .compareTo(DateTime.parse(a['createdAt'])));
+          final child = FutureBuilder<List<dynamic>>(
+            future: _ordersFuture,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError) {
+                return Center(
+                    child:
+                        Text('Gagal memuat pesanan: ${snapshot.error}'));
+              }
+              if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.history,
+                          size: 64, color: Colors.grey),
+                      const SizedBox(height: 16),
+                      Text('Belum ada pesanan kulakan',
+                          style:
+                              GoogleFonts.poppins(color: Colors.grey)),
+                    ],
+                  ),
+                );
+              }
 
-          return RefreshIndicator(
-            onRefresh: () async => _refreshOrders(),
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: orders.length,
-              itemBuilder: (context, index) {
-                final order = orders[index];
-                final items = order['items'] as List;
-                final status = order['status'] ?? 'PENDING';
-                final total = order['totalAmount'] ?? 0;
+              final orders = snapshot.data!;
+              orders.sort((a, b) => DateTime.parse(b['createdAt'])
+                  .compareTo(DateTime.parse(a['createdAt'])));
 
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                  elevation: 2,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
+              return RefreshIndicator(
+                onRefresh: () async => _refreshOrders(),
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: orders.length,
+                  itemBuilder: (context, index) {
+                    final order = orders[index];
+                    final items = order['items'] as List;
+                    final status = order['status'] ?? 'PENDING';
+                    final total = order['totalAmount'] ?? 0;
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: const Color(0xFFE07A5F).withOpacity(0.15),
+                          width: 1.5,
+                        ),
+                      ),
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                order['id'] ?? '-',
+                                style: GoogleFonts.poppins(
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFFE07A5F),
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: _getStatusColor(status)
+                                      .withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  status,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: _getStatusColor(status),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFF8F0),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              children: items.map((item) {
+                                return Padding(
+                                  padding:
+                                      const EdgeInsets.only(bottom: 8.0),
+                                  child: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.inventory_2_outlined,
+                                        size: 16,
+                                        color: Color(0xFFE07A5F),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        "${item['quantity']}x ",
+                                        style: GoogleFonts.poppins(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: Text(
+                                          item['productName'] ?? 'Produk',
+                                          style: GoogleFonts.poppins(),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Total Belanja',
+                                style: GoogleFonts.poppins(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                fmtPrice.format(total),
+                                style: GoogleFonts.poppins(
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFFE07A5F),
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (status == 'SHIPPED' || status == 'PROCESSED')
+                            const SizedBox(height: 12),
+                          if (status == 'SHIPPED' || status == 'PROCESSED')
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE07A5F)
+                                    .withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.info_outline,
+                                    size: 16,
+                                    color: Color(0xFFE07A5F),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      "Scan QR Code dari kurir saat barang sampai.",
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 12,
+                                        color: const Color(0xFFE07A5F),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
+          );
+
+          if (!isWide) return child;
+
+          return Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 900),
+              child: child,
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _showOrderDetail(Map<String, dynamic> order) {
+    final fmtPrice =
+        NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+    final List items = order['items'] ?? [];
+    final status = order['status'] ?? 'PENDING';
+    final total = order['totalAmount'] ?? 0;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 12,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Detail Pesanan Kulakan',
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFFE07A5F),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: const Color(0xFFE07A5F).withOpacity(0.15),
+                      width: 1.5,
+                    ),
+                  ),
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
@@ -191,12 +422,13 @@ class _WholesaleOrderListScreenState extends State<WholesaleOrderListScreen> {
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
                             color: const Color(0xFFFFF8F0),
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(12),
                           ),
                           child: Column(
                             children: items.map((item) {
                               return Padding(
-                                padding: const EdgeInsets.only(bottom: 8.0),
+                                padding:
+                                    const EdgeInsets.only(bottom: 8.0),
                                 child: Row(
                                   children: [
                                     const Icon(Icons.inventory_2_outlined,
@@ -209,7 +441,8 @@ class _WholesaleOrderListScreenState extends State<WholesaleOrderListScreen> {
                                         child: Text(
                                             item['productName'] ?? 'Produk',
                                             style: GoogleFonts.poppins(),
-                                            overflow: TextOverflow.ellipsis)),
+                                            overflow:
+                                                TextOverflow.ellipsis)),
                                   ],
                                 ),
                               );
@@ -229,37 +462,14 @@ class _WholesaleOrderListScreenState extends State<WholesaleOrderListScreen> {
                                     color: const Color(0xFFE07A5F))),
                           ],
                         ),
-                        if (status == 'SHIPPED' || status == 'PROCESSED') ...[
-                          const SizedBox(height: 12),
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                                color: const Color(0xFFE07A5F).withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8)),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.info_outline,
-                                    size: 16, color: Color(0xFFE07A5F)),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                    child: Text(
-                                        "Scan QR Code dari kurir saat barang sampai.",
-                                        style: GoogleFonts.poppins(
-                                            fontSize: 12,
-                                            color: const Color(0xFFE07A5F)))),
-                              ],
-                            ),
-                          )
-                        ]
                       ],
                     ),
                   ),
-                );
-              },
+              ],
             ),
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 }

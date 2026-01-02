@@ -141,22 +141,24 @@ const approveWithdrawal = async (req, res) => {
         const percentFallbackSetting = await prisma.systemSettings.findUnique({ where: { key: 'PLATFORM_FEE_PERCENTAGE' } });
         const minCapSetting = await prisma.systemSettings.findUnique({ where: { key: 'MERCHANT_FEE_CAP_MIN' } });
         const maxCapSetting = await prisma.systemSettings.findUnique({ where: { key: 'MERCHANT_FEE_CAP_MAX' } });
-        const feeVal = feeValSetting ? parseFloat(feeValSetting.value) : 0;
+        const amount = Number(withdrawal.amount) || 0;
+        const feeVal = feeValSetting ? parseFloat(feeValSetting.value) || 0 : 0;
         const feeType = feeTypeSetting ? String(feeTypeSetting.value) : undefined;
         let feeAmount = 0;
         if (feeType === 'PERCENT') {
-            feeAmount = (withdrawal.amount * feeVal) / 100;
+            feeAmount = (amount * feeVal) / 100;
         } else if (feeType === 'FLAT') {
             feeAmount = feeVal;
         } else {
-            const feePercent = percentFallbackSetting ? parseFloat(percentFallbackSetting.value) : 0;
-            feeAmount = (withdrawal.amount * feePercent) / 100;
+            const feePercent = percentFallbackSetting ? parseFloat(percentFallbackSetting.value) || 0 : 0;
+            feeAmount = (amount * feePercent) / 100;
         }
         const minCap = minCapSetting ? parseFloat(minCapSetting.value) : undefined;
         const maxCap = maxCapSetting ? parseFloat(maxCapSetting.value) : undefined;
         if (minCap !== undefined && feeAmount < minCap) feeAmount = minCap;
         if (maxCap !== undefined && feeAmount > maxCap) feeAmount = maxCap;
-        const netAmount = withdrawal.amount - feeAmount;
+        if (!Number.isFinite(feeAmount)) feeAmount = 0;
+        const netAmount = amount - feeAmount;
 
         // 3. Create Platform Revenue Log if fee exists
         if (feeAmount > 0) {
@@ -212,6 +214,124 @@ const getTopUps = async (req, res) => {
         return successResponse(res, topups);
     } catch (error) {
         return errorResponse(res, "Failed to fetch top-ups", 500, error);
+    }
+};
+
+const getReferralPrograms = async (req, res) => {
+    try {
+        const programs = await prisma.referralProgram.findMany({
+            orderBy: { createdAt: 'desc' }
+        });
+        return successResponse(res, programs);
+    } catch (error) {
+        return errorResponse(res, "Failed to fetch referral programs", 500, error);
+    }
+};
+
+const getReferrals = async (req, res) => {
+    try {
+        const { programId, referrerTenantId, refereeTenantId, status } = req.query;
+        const where = {};
+        if (programId) where.programId = programId;
+        if (referrerTenantId) where.referrerTenantId = referrerTenantId;
+        if (refereeTenantId) where.refereeTenantId = refereeTenantId;
+        if (status) where.status = status;
+
+        const referrals = await prisma.referral.findMany({
+            where,
+            include: {
+                program: true,
+                referrer: { select: { id: true, name: true } },
+                referee: { select: { id: true, name: true } },
+                rewards: true
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        const mapped = referrals.map((r) => ({
+            id: r.id,
+            createdAt: r.createdAt,
+            status: r.status,
+            program: {
+                id: r.program.id,
+                name: r.program.name,
+                code: r.program.code
+            },
+            referrer: r.referrer ? { id: r.referrer.id, name: r.referrer.name } : null,
+            referee: r.referee ? { id: r.referee.id, name: r.referee.name } : null,
+            rewards: r.rewards.map((rw) => ({
+                id: rw.id,
+                level: rw.level,
+                amount: rw.amount,
+                currency: rw.currency,
+                status: rw.status,
+                releasedAt: rw.releasedAt
+            }))
+        }));
+
+        return successResponse(res, mapped);
+    } catch (error) {
+        return errorResponse(res, "Failed to fetch referrals", 500, error);
+    }
+};
+
+const getReferralRewards = async (req, res) => {
+    try {
+        const { status, beneficiaryTenantId, programId } = req.query;
+        const where = {};
+        if (status) where.status = status;
+        if (beneficiaryTenantId) where.beneficiaryTenantId = beneficiaryTenantId;
+        if (programId) {
+            where.referral = { programId };
+        }
+
+        const rewards = await prisma.referralReward.findMany({
+            where,
+            include: {
+                referral: {
+                    include: {
+                        program: true,
+                        referrer: { select: { id: true, name: true } },
+                        referee: { select: { id: true, name: true } }
+                    }
+                },
+                beneficiaryTenant: { select: { id: true, name: true } }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        const mapped = rewards.map((rw) => ({
+            id: rw.id,
+            createdAt: rw.createdAt,
+            level: rw.level,
+            amount: rw.amount,
+            currency: rw.currency,
+            status: rw.status,
+            holdUntil: rw.holdUntil,
+            releasedAt: rw.releasedAt,
+            referral: {
+                id: rw.referral.id,
+                status: rw.referral.status,
+                program: {
+                    id: rw.referral.program.id,
+                    name: rw.referral.program.name,
+                    code: rw.referral.program.code
+                },
+                referrer: rw.referral.referrer
+                    ? { id: rw.referral.referrer.id, name: rw.referral.referrer.name }
+                    : null,
+                referee: rw.referral.referee
+                    ? { id: rw.referral.referee.id, name: rw.referral.referee.name }
+                    : null
+            },
+            beneficiary: rw.beneficiaryTenant
+                ? { id: rw.beneficiaryTenant.id, name: rw.beneficiaryTenant.name }
+                : null
+        }));
+
+        return successResponse(res, mapped);
+    } catch (error) {
+        return errorResponse(res, "Failed to fetch referral rewards", 500, error);
     }
 };
 
@@ -1472,6 +1592,9 @@ module.exports = {
     getTopUps,
     approveTopUp,
     rejectTopUp,
+    getReferralPrograms,
+    getReferrals,
+    getReferralRewards,
     getAllTransactions, // [NEW]
     exportTransactions, // [NEW]
     // [NEW] Flash Sales Admin

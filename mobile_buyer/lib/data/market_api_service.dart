@@ -155,6 +155,25 @@ class MarketApiService {
     }
   }
 
+  Future<Map<String, dynamic>> getStoreCatalog(String storeId,
+      {String? search}) async {
+    try {
+      final response = await _dio.get(
+        '/market/store/$storeId/catalog',
+        queryParameters: {
+          if (search != null && search.trim().isNotEmpty) 'search': search
+        },
+      );
+      if (_isSuccess(response.data)) {
+        return Map<String, dynamic>.from(response.data['data'] ?? {});
+      }
+      throw Exception(_messageFromBody(response.data,
+          fallback: 'Gagal memuat katalog toko'));
+    } catch (e) {
+      throw _toApiException(e, fallback: 'Gagal memuat katalog toko');
+    }
+  }
+
   Future<Map<String, dynamic>> createOrder({
     required String storeId,
     required List<Map<String, dynamic>> items,

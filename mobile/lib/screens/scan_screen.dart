@@ -22,27 +22,26 @@ class _ScanScreenState extends State<ScanScreen> {
         final code = barcode.rawValue!;
 
         try {
-          // Play Sound or Haptic (Optional)
-          await OrderService().scanQrOrder(code);
+          final order = await OrderService().scanQrOrder(code);
 
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                content: Text('Scan Berhasil! Pesanan Terverifikasi.'),
+                content: Text('Scan berhasil! Pesanan sudah terverifikasi.'),
                 backgroundColor: Colors.green));
             if (Navigator.of(context).canPop()) {
-              Navigator.pop(context, true);
+              Navigator.pop(context, order);
             }
           }
         } catch (e) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                content: Text('Gagal: $e'), backgroundColor: Colors.red));
-            // Delay before allowing next scan to prevent spam
+                content: Text('Scan gagal, coba lagi ya. ($e)'),
+                backgroundColor: Colors.red));
             await Future.delayed(const Duration(seconds: 2));
             setState(() => _isProcessing = false);
           }
         }
-        break; // Process only first valid code
+        break;
       }
     }
   }

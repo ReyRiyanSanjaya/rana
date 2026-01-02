@@ -7,6 +7,9 @@ import 'package:rana_merchant/screens/printer_settings_screen.dart';
 import 'package:rana_merchant/screens/receipt_settings_screen.dart';
 import 'package:rana_merchant/screens/privacy_policy_screen.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:rana_merchant/data/remote/api_service.dart';
+import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -167,6 +170,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               SliverList(
                 delegate: SliverChildListDelegate([
                   _buildSectionHeader('Toko & Perangkat'),
+                  _buildReferralCard(),
                   _buildSettingsGroup([
                     _buildSettingsItem(
                       icon: Icons.print_rounded,
@@ -255,6 +259,209 @@ class _SettingsScreenState extends State<SettingsScreen> {
         border: Border.all(color: Colors.grey[200]!),
       ),
       child: Column(children: children),
+    );
+  }
+
+  Widget _buildReferralCard() {
+    final currency =
+        NumberFormat.simpleCurrency(locale: 'id_ID', decimalDigits: 0);
+    return FutureBuilder<Map<String, dynamic>>(
+      future: ApiService().getReferralInfo(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.grey[200]!),
+              ),
+              child: Row(
+                children: [
+                  const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Memuat informasi referral...',
+                    style: GoogleFonts.outfit(
+                        fontSize: 13, color: const Color(0xFF64748B)),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        if (snapshot.hasError || !snapshot.hasData) {
+          return const SizedBox.shrink();
+        }
+
+        final data = snapshot.data ?? {};
+        final code = (data['code'] ?? '').toString();
+        final program =
+            data['program'] is Map<String, dynamic> ? data['program'] as Map<String, dynamic> : <String, dynamic>{};
+        final stats =
+            data['stats'] is Map<String, dynamic> ? data['stats'] as Map<String, dynamic> : <String, dynamic>{};
+
+        if (code.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.grey[200]!),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Program Referral',
+                    style: GoogleFonts.outfit(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF1E293B)),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Belum ada kode referral aktif untuk toko ini.',
+                    style: GoogleFonts.outfit(
+                        fontSize: 13, color: const Color(0xFF64748B)),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        final totalReferrals =
+            (stats['totalReferrals'] ?? 0).toString();
+        final totalReleased = double.tryParse(
+                (stats['totalRewardReleased'] ?? 0).toString()) ??
+            0;
+        final programName = program['name']?.toString() ?? '';
+        final shareText =
+            'Daftar Rana POS pakai kode referral $code untuk dapat saldo wallet.';
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey[200]!),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Program Referral',
+                  style: GoogleFonts.outfit(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF1E293B)),
+                ),
+                if (programName.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    programName,
+                    style: GoogleFonts.outfit(
+                        fontSize: 13, color: const Color(0xFF64748B)),
+                  ),
+                ],
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Kode Referral',
+                          style: GoogleFonts.outfit(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: const Color(0xFF94A3B8)),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          code,
+                          style: GoogleFonts.outfit(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 2,
+                              color: const Color(0xFFE07A5F)),
+                        ),
+                      ],
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFE07A5F),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: () {
+                        Share.share(shareText);
+                      },
+                      child: const Text('Bagikan'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Total Referral',
+                          style: GoogleFonts.outfit(
+                              fontSize: 11, color: const Color(0xFF94A3B8)),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          totalReferrals,
+                          style: GoogleFonts.outfit(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF1E293B)),
+                        ),
+                      ],
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Reward Cair',
+                          style: GoogleFonts.outfit(
+                              fontSize: 11, color: const Color(0xFF94A3B8)),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          currency.format(totalReleased),
+                          style: GoogleFonts.outfit(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF1E293B)),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 

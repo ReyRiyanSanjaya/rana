@@ -169,7 +169,7 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
                               border: OutlineInputBorder())),
                       const SizedBox(height: 12),
                       const Text(
-                          'Setelah bayar, Anda akan mendapatkan Kode QR untuk di-scan di kasir.',
+                          'Setelah bayar, kamu akan dapat Kode QR untuk di-scan di kasir.',
                           style: TextStyle(
                               color: Color(0xFF81B29A),
                               fontWeight: FontWeight.bold)),

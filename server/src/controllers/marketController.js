@@ -2,11 +2,6 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const { successResponse, errorResponse } = require('../utils/response');
 
-// Haversine Formula (Earth Radius = 6371 km)
-// We will use Raw SQL for performance if dataset grows, 
-// but for MVP Prisma.raw or JS filter is fine. 
-// Let's use Prisma $queryRaw for efficiency.
-
 const getNearbyStores = async (req, res) => {
     try {
         const { lat, long, radius = 5 } = req.query; // Radius in km
@@ -68,7 +63,6 @@ const getNearbyStores = async (req, res) => {
     }
 };
 
-// [NEW] Public: Get Active Flash Sales
 const getActiveFlashSales = async (req, res) => {
     try {
         const { storeId } = req.query;
@@ -94,4 +88,56 @@ const getActiveFlashSales = async (req, res) => {
     }
 };
 
-module.exports = { getNearbyStores, getActiveFlashSales };
+const getStoreCatalog = async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!id) return errorResponse(res, "Store id required", 400);
+
+        const store = await prisma.store.findUnique({
+            where: { id },
+            select: {
+                id: true,
+                name: true,
+                location: true,
+                category: true,
+                latitude: true,
+                longitude: true,
+                imageUrl: true
+            }
+        });
+        if (!store) return errorResponse(res, "Store not found", 404);
+
+        const { search, limit } = req.query;
+        const take = Math.min(parseInt(limit || '60', 10) || 60, 200);
+
+        const products = await prisma.product.findMany({
+            where: {
+                storeId: id,
+                isActive: true,
+                ...(search
+                    ? {
+                          name: {
+                              contains: search,
+                              mode: 'insensitive'
+                          }
+                      }
+                    : {})
+            },
+            select: {
+                id: true,
+                name: true,
+                sellingPrice: true,
+                imageUrl: true,
+                description: true
+            },
+            orderBy: { name: 'asc' },
+            take
+        });
+
+        return successResponse(res, { store, products });
+    } catch (error) {
+        return errorResponse(res, "Failed to fetch store catalog", 500, error);
+    }
+};
+
+module.exports = { getNearbyStores, getActiveFlashSales, getStoreCatalog };

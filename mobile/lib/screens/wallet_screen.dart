@@ -222,40 +222,28 @@ class _WalletScreenState extends State<WalletScreen>
   Widget _buildQuickActions(BuildContext context) {
     final actions = [
       {
-        'icon': Icons.add,
+        'icon': Icons.account_balance_wallet_rounded,
         'label': 'Top Up',
         'color': const Color(0xFFE07A5F),
         'onTap': () => _showTopUpDialog(context)
       },
       {
-        'icon': Icons.arrow_upward,
+        'icon': Icons.south_rounded,
         'label': 'Tarik',
-        'color': const Color(0xFFF2CC8F),
+        'color': const Color(0xFFE07A5F),
         'onTap': () => _showWithdrawDialog(context)
       },
       {
-        'icon': Icons.swap_horiz,
+        'icon': Icons.sync_alt_rounded,
         'label': 'Kirim',
-        'color': const Color(0xFF3D405B),
+        'color': const Color(0xFFE07A5F),
         'onTap': () => _showTransferDialog(context)
       },
       {
-        'icon': Icons.qr_code_scanner,
-        'label': 'Scan',
+        'icon': Icons.group_add_rounded,
+        'label': 'Ajak',
         'color': const Color(0xFFE07A5F),
-        'onTap': () => _scanQr(context)
-      },
-      {
-        'icon': Icons.qr_code,
-        'label': 'Minta',
-        'color': const Color(0xFF81B29A),
-        'onTap': () => _showReceiveDialog(context)
-      },
-      {
-        'icon': Icons.more_horiz,
-        'label': 'Lainnya',
-        'color': Colors.grey,
-        'onTap': () {}
+        'onTap': () => _showReferralDialog(context)
       },
     ];
 
@@ -516,13 +504,14 @@ class _WalletScreenState extends State<WalletScreen>
                             style: GoogleFonts.outfit(
                                 fontSize: 18, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 24),
-                        if (snapshot.connectionState == ConnectionState.waiting)
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting)
                           const SizedBox(
                             width: 200,
                             height: 200,
                             child: Center(child: CircularProgressIndicator()),
                           )
-                        else if (qrisUrl.isNotEmpty)
+                        else if (qrisUrl != '')
                           ClipRRect(
                             borderRadius: BorderRadius.circular(12),
                             child: Image.network(
@@ -553,7 +542,7 @@ class _WalletScreenState extends State<WalletScreen>
                           ),
                         const SizedBox(height: 16),
                         Text(
-                          qrisUrl.isNotEmpty
+                          qrisUrl != ''
                               ? 'Scan QRIS ini untuk membayar'
                               : 'QRIS belum tersedia. Hubungi admin.',
                           textAlign: TextAlign.center,
@@ -562,7 +551,7 @@ class _WalletScreenState extends State<WalletScreen>
                         const SizedBox(height: 24),
                         FilledButton.icon(
                           onPressed: () async {
-                            if (qrisUrl.isNotEmpty) {
+                            if (qrisUrl != '') {
                               await Share.share(qrisUrl);
                             }
                             if (context.mounted) Navigator.pop(context);
@@ -573,6 +562,190 @@ class _WalletScreenState extends State<WalletScreen>
                             backgroundColor: const Color(0xFFE07A5F),
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12)),
+                          ),
+                        )
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ));
+  }
+
+  void _showReferralDialog(BuildContext context) {
+    showDialog(
+        context: context,
+        builder: (_) => Dialog(
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(24)),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: FutureBuilder<Map<String, dynamic>>(
+                  future: ApiService().getReferralInfo(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const SizedBox(
+                        width: 200,
+                        height: 200,
+                        child: Center(
+                            child: CircularProgressIndicator(
+                                color: Color(0xFFE07A5F))),
+                      );
+                    }
+
+                    if (snapshot.hasError || !snapshot.hasData) {
+                      return SizedBox(
+                        width: 260,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text('Program Referral',
+                                style: GoogleFonts.outfit(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Gagal memuat data referral.',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.outfit(
+                                  color: Colors.grey, fontSize: 13),
+                            ),
+                            const SizedBox(height: 16),
+                            FilledButton(
+                              onPressed: () => Navigator.pop(context),
+                              style: FilledButton.styleFrom(
+                                  backgroundColor: const Color(0xFFE07A5F)),
+                              child: const Text('Tutup'),
+                            )
+                          ],
+                        ),
+                      );
+                    }
+
+                    final data = snapshot.data!;
+                    final code = (data['code'] ?? '').toString();
+                    final program = data['program'] as Map<String, dynamic>? ?? {};
+                    final stats = data['stats'] as Map<String, dynamic>? ?? {};
+
+                    final totalReferrals =
+                        (stats['totalReferrals'] ?? 0).toString();
+                    final totalReleased =
+                        (stats['totalRewardReleased'] ?? 0).toString();
+
+                    final shareText = code.isEmpty
+                        ? ''
+                        : 'Daftar Rana POS pakai kode referral $code untuk dapat saldo wallet.';
+
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Program Referral',
+                            style: GoogleFonts.outfit(
+                                fontSize: 18, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 8),
+                        Text(program['name']?.toString() ?? '',
+                            style: GoogleFonts.outfit(
+                                fontSize: 14, color: Colors.grey[700])),
+                        const SizedBox(height: 24),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFF8F0),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                                color:
+                                    const Color(0xFFE07A5F).withOpacity(0.4)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Kode Referral Kamu',
+                                  style: GoogleFonts.outfit(
+                                      fontSize: 12,
+                                      color: Colors.grey[700],
+                                      fontWeight: FontWeight.w500)),
+                              const SizedBox(height: 6),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    code.isEmpty ? '-' : code,
+                                    style: GoogleFonts.outfit(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 2),
+                                  ),
+                                  FilledButton(
+                                    onPressed: code.isEmpty
+                                        ? null
+                                        : () {
+                                            Share.share(shareText);
+                                            Navigator.pop(context);
+                                          },
+                                    style: FilledButton.styleFrom(
+                                        backgroundColor:
+                                            const Color(0xFFE07A5F)),
+                                    child: const Text('BAGIKAN'),
+                                  )
+                                ],
+                              )
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Total Referral',
+                                    style: GoogleFonts.outfit(
+                                        fontSize: 12,
+                                        color: Colors.grey[600])),
+                                const SizedBox(height: 4),
+                                Text(totalReferrals,
+                                    style: GoogleFonts.outfit(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Reward Cair',
+                                    style: GoogleFonts.outfit(
+                                        fontSize: 12,
+                                        color: Colors.grey[600])),
+                                const SizedBox(height: 4),
+                                Text(
+                                    NumberFormat.simpleCurrency(
+                                            locale: 'id_ID', decimalDigits: 0)
+                                        .format(double.tryParse(
+                                                totalReleased) ??
+                                            0),
+                                    style: GoogleFonts.outfit(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: OutlinedButton.styleFrom(
+                                side: BorderSide(
+                                    color: Colors.grey.shade300,
+                                    width: 1.2),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12))),
+                            child: const Text('Tutup'),
                           ),
                         )
                       ],
@@ -634,6 +807,29 @@ class __TopUpSheetState extends State<_TopUpSheet> {
   XFile? _imageFile;
   final _picker = ImagePicker();
   bool _isSubmitting = false;
+  String _bankInfo = '';
+  bool _isBankLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBankInfo();
+  }
+
+  Future<void> _loadBankInfo() async {
+    setState(() => _isBankLoading = true);
+    try {
+      final settings = await ApiService().getSystemSettings();
+      if (!mounted) return;
+      setState(() {
+        _bankInfo = (settings['PLATFORM_BANK_INFO'] ?? '').trim();
+        _isBankLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isBankLoading = false);
+    }
+  }
 
   Future<void> _pickImage() async {
     final picked = await _picker.pickImage(source: ImageSource.gallery);
@@ -665,97 +861,105 @@ class __TopUpSheetState extends State<_TopUpSheet> {
           top: 24,
           left: 24,
           right: 24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Top Up Saldo',
-              style: GoogleFonts.outfit(
-                  fontSize: 20, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-                color: const Color(0xFFFFF1F2),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFFECDD3))),
-            child: Row(
-              children: [
-                const CircleAvatar(
-                    backgroundColor: Color(0xFFE07A5F),
-                    child: Icon(Icons.account_balance, color: Colors.white)),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('BCA Virtual Account',
-                          style: GoogleFonts.outfit(
-                              color: const Color(0xFF881337),
-                              fontWeight: FontWeight.bold)),
-                      Text('88012 081234567890',
-                          style: GoogleFonts.outfit(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 1)),
-                    ],
-                  ),
-                ),
-                IconButton(
-                    icon: const Icon(Icons.copy, color: Color(0xFFE07A5F)),
-                    onPressed: () {})
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-          TextField(
-              controller: _amountCtrl,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                  labelText: 'Nominal Transfer', prefixText: 'Rp ')),
-          const SizedBox(height: 16),
-          Text('Bukti Transfer (Wajib)',
-              style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          InkWell(
-            onTap: _pickImage,
-            child: Container(
-              height: 150,
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Top Up Saldo',
+                style: GoogleFonts.outfit(
+                    fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey[300]!, width: 2),
+                  color: const Color(0xFFFFF1F2),
                   borderRadius: BorderRadius.circular(16),
-                  color: Colors.grey[50]),
-              alignment: Alignment.center,
-              child: _imageFile == null
-                  ? Column(children: [
-                      const SizedBox(height: 50),
-                      Icon(Icons.cloud_upload_outlined,
-                          size: 40, color: Colors.grey[400]),
-                      Text('Tap untuk upload',
-                          style: GoogleFonts.outfit(color: Colors.grey[600]))
-                    ])
-                  : ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
-                      child: kIsWeb
-                          ? Image.network(_imageFile!.path,
-                              fit: BoxFit.cover, width: double.infinity)
-                          : Image.file(File(_imageFile!.path),
-                              fit: BoxFit.cover, width: double.infinity)),
+                  border: Border.all(color: const Color(0xFFFECDD3))),
+              child: Row(
+                children: [
+                  const CircleAvatar(
+                      backgroundColor: Color(0xFFE07A5F),
+                      child: Icon(Icons.account_balance, color: Colors.white)),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Rekening Tujuan',
+                            style: GoogleFonts.outfit(
+                                color: const Color(0xFF881337),
+                                fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 4),
+                        Text(
+                            _isBankLoading
+                                ? 'Memuat...'
+                                : (_bankInfo.trim() == ''
+                                    ? 'Belum diatur oleh admin'
+                                    : _bankInfo),
+                            style: GoogleFonts.outfit(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 1)),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                      icon: const Icon(Icons.copy, color: Color(0xFFE07A5F)),
+                      onPressed: () {})
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 24),
-          SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                  onPressed: _isSubmitting ? null : _submit,
-                  style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFFE07A5F),
-                      padding: const EdgeInsets.all(16)),
-                  child: _isSubmitting
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text('Kirim Pengajuan'))),
-          const SizedBox(height: 24),
-        ],
+            const SizedBox(height: 24),
+            TextField(
+                controller: _amountCtrl,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                    labelText: 'Nominal Transfer', prefixText: 'Rp ')),
+            const SizedBox(height: 16),
+            Text('Bukti Transfer (Wajib)',
+                style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            InkWell(
+              onTap: _pickImage,
+              child: Container(
+                height: 150,
+                decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey[300]!, width: 2),
+                    borderRadius: BorderRadius.circular(16),
+                    color: Colors.grey[50]),
+                alignment: Alignment.center,
+                child: _imageFile == null
+                    ? Column(children: [
+                        const SizedBox(height: 50),
+                        Icon(Icons.cloud_upload_outlined,
+                            size: 40, color: Colors.grey[400]),
+                        Text('Tap untuk upload',
+                            style: GoogleFonts.outfit(color: Colors.grey[600]))
+                      ])
+                    : ClipRRect(
+                        borderRadius: BorderRadius.circular(14),
+                        child: kIsWeb
+                            ? Image.network(_imageFile!.path,
+                                fit: BoxFit.cover, width: double.infinity)
+                            : Image.file(File(_imageFile!.path),
+                                fit: BoxFit.cover, width: double.infinity)),
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                    onPressed: _isSubmitting ? null : _submit,
+                    style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFFE07A5F),
+                        padding: const EdgeInsets.all(16)),
+                    child: _isSubmitting
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text('Kirim Pengajuan'))),
+            const SizedBox(height: 24),
+          ],
+        ),
       ),
     );
   }
