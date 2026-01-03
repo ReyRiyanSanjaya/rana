@@ -59,8 +59,9 @@ class RealtimeService {
           Map<String, dynamic>.from(data ?? {});
 
       // Filter by ID if present to avoid cross-talk
-      if (payload.containsKey('id') && payload['id'].toString() != orderId)
-        return;
+    if (payload.containsKey('id') && payload['id'].toString() != orderId) {
+      return;
+    }
 
       final status = payload['orderStatus'] ?? payload['status'] ?? 'UPDATED';
 

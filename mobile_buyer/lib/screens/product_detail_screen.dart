@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:rana_market/data/market_api_service.dart';
+import 'package:rana_market/providers/auth_provider.dart';
+import 'package:rana_market/providers/favorites_provider.dart';
 import 'package:rana_market/providers/market_cart_provider.dart';
 import 'package:rana_market/providers/reviews_provider.dart';
-import 'package:rana_market/providers/auth_provider.dart';
 import 'package:rana_market/screens/login_screen.dart';
+import 'package:rana_market/screens/store_detail_screen.dart';
+import 'package:rana_market/screens/main_screen.dart';
+import 'package:rana_market/widgets/buyer_bottom_nav.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final Map<String, dynamic> product;
@@ -42,6 +47,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           .loadInitial(widget.product['id'], sort: 'newest');
     });
     _scrollCtrl.addListener(_onScroll);
+    _recordViewed();
   }
 
   void _onScroll() {
@@ -55,6 +61,18 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     }
   }
 
+  Future<void> _recordViewed() async {
+    final id = widget.product['id']?.toString();
+    if (id == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    const key = 'buyer_recent_products_v1';
+    final list = prefs.getStringList(key) ?? <String>[];
+    list.remove(id);
+    list.insert(0, id);
+    if (list.length > 20) list.removeRange(20, list.length);
+    await prefs.setStringList(key, list);
+  }
+
   @override
   void dispose() {
     _scrollCtrl.removeListener(_onScroll);
@@ -65,7 +83,18 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final price = (widget.product['sellingPrice'] as num).toDouble();
+    final price =
+        (widget.product['sellingPrice'] as num?)?.toDouble() ?? 0;
+    final originalPrice =
+        (widget.product['originalPrice'] as num?)?.toDouble();
+    final hasPromo = originalPrice != null &&
+        originalPrice > price &&
+        originalPrice > 0;
+    final discountPct = hasPromo
+        ? ((1 - price / originalPrice) * 100).round()
+        : null;
+    final savedAmount =
+        hasPromo ? (originalPrice - price).toInt() : null;
     final imageUrl = MarketApiService().resolveFileUrl(
       widget.product['imageUrl'] ?? widget.product['image'],
     );
@@ -91,23 +120,80 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   SizedBox(
                     height: 250,
                     width: double.infinity,
-                    child: imageUrl.isEmpty
-                        ? Container(
-                            color: Colors.grey.shade200,
-                            child: const Icon(Icons.image,
-                                size: 100, color: Colors.grey),
-                          )
-                        : Image.network(
-                            imageUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: imageUrl.isEmpty
+                              ? Container(
+                                  color: Colors.grey.shade200,
+                                  child: const Icon(Icons.image,
+                                      size: 100, color: Colors.grey),
+                                )
+                              : Image.network(
+                                  imageUrl,
+                                  fit: BoxFit.cover,
+                                  errorBuilder:
+                                      (context, error, stackTrace) {
+                                    return Container(
+                                      color: Colors.grey.shade200,
+                                      child: const Icon(Icons.image,
+                                          size: 100, color: Colors.grey),
+                                    );
+                                  },
+                                ),
+                        ),
+                        if (discountPct != null)
+                          Positioned(
+                            left: 16,
+                            top: 16,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE07A5F)
+                                    .withValues(alpha: 0.9),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                '-$discountPct%',
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                        Positioned(
+                          right: 16,
+                          top: 16,
+                          child: Consumer<FavoritesProvider>(
+                            builder: (context, fav, _) {
+                              final isFav =
+                                  fav.isFavorite(widget.product['id']);
                               return Container(
-                                color: Colors.grey.shade200,
-                                child: const Icon(Icons.image,
-                                    size: 100, color: Colors.grey),
+                                decoration: BoxDecoration(
+                                  color:
+                                      Colors.white.withValues(alpha: 0.85),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: IconButton(
+                                  icon: Icon(
+                                    isFav
+                                        ? Icons.favorite
+                                        : Icons.favorite_border,
+                                    color: isFav
+                                        ? Colors.red
+                                        : Colors.grey,
+                                  ),
+                                  onPressed: () => fav
+                                      .toggleFavorite(widget.product['id']),
+                                ),
                               );
                             },
                           ),
+                        ),
+                      ],
+                    ),
                   ),
                   Padding(
                     padding: const EdgeInsets.all(16),
@@ -120,13 +206,61 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                               fontSize: 24, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 8),
-                        Text(
-                          'Rp $price',
-                          style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFFE07A5F)),
-                        ),
+        if (hasPromo) ...[
+                          Text(
+                            'Rp ${originalPrice.toInt()}',
+                            style: const TextStyle(
+                                decoration: TextDecoration.lineThrough,
+                                color: Colors.grey,
+                                fontSize: 14),
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Text(
+                                'Rp ${price.toInt()}',
+                                style: const TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFFE07A5F)),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE07A5F)
+                                      .withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: Text(
+                                  '-$discountPct%',
+                                  style: const TextStyle(
+                                      color: Color(0xFFE07A5F),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (savedAmount != null) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              'Hemat Rp $savedAmount',
+                              style: const TextStyle(
+                                  color: Color(0xFF81B29A),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ] else
+                          Text(
+                            'Rp ${price.toInt()}',
+                            style: const TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFFE07A5F)),
+                          ),
                         const SizedBox(height: 8),
                         Consumer<ReviewsProvider>(
                           builder: (context, rev, _) {
@@ -143,6 +277,100 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         const SizedBox(height: 16),
                         const Divider(),
                         const SizedBox(height: 16),
+                        const Text(
+                          'Informasi Toko',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 50,
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade100,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.store,
+                                  color: Color(0xFFE07A5F),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      widget.storeName,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      (widget.storeAddress ??
+                                              widget.product['storeAddress'])
+                                              ?.toString() ??
+                                          'Alamat tidak tersedia',
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: Colors.grey.shade600,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              TextButton(
+                                onPressed: () {
+                                  final store = <String, dynamic>{
+                                    'id': widget.storeId,
+                                    'name': widget.storeName,
+                                    'address': (widget.storeAddress ??
+                                            widget.product['storeAddress'])
+                                        ?.toString(),
+                                    'location': (widget.storeAddress ??
+                                            widget.product['storeAddress'])
+                                        ?.toString(),
+                                    'latitude': widget.storeLat,
+                                    'longitude': widget.storeLong,
+                                  };
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          StoreDetailScreen(store: store),
+                                    ),
+                                  );
+                                },
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 8),
+                                  minimumSize: const Size(0, 0),
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                  foregroundColor: const Color(0xFFE07A5F),
+                                ),
+                                child: const Text(
+                                  'Kunjungi Toko',
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
                         const Text(
                           'Deskripsi',
                           style: TextStyle(
@@ -366,9 +594,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       try {
                         final cart = Provider.of<MarketCartProvider>(context,
                             listen: false);
-                        final originalPrice =
-                            (widget.product['originalPrice'] as num?)
-                                ?.toDouble();
 
                         // Add quantity times
                         for (var i = 0; i < _quantity; i++) {
@@ -407,6 +632,36 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             ),
           )
         ],
+      ),
+      bottomNavigationBar: BuyerBottomNav(
+        selectedIndex: 0,
+        onSelected: (index) {
+          if (index == 0) {
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(
+                  builder: (_) => const MainScreen(initialIndex: 0)),
+              (route) => false,
+            );
+          } else if (index == 1) {
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(
+                  builder: (_) => const MainScreen(initialIndex: 1)),
+              (route) => false,
+            );
+          } else if (index == 2) {
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(
+                  builder: (_) => const MainScreen(initialIndex: 2)),
+              (route) => false,
+            );
+          } else if (index == 3) {
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(
+                  builder: (_) => const MainScreen(initialIndex: 3)),
+              (route) => false,
+            );
+          }
+        },
       ),
     );
   }

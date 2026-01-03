@@ -31,7 +31,6 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
   List<Map<String, dynamic>> _flashSaleProducts = []; // [NEW]
   bool _isLoading = true;
   bool _annLoading = true;
-  bool _flashLoading = true; // [NEW]
   String _selectedCategory = 'All';
   List<String> _categories = const ['All'];
   final TextEditingController _searchCtrl = TextEditingController();
@@ -40,11 +39,20 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
   Timer? _flashTimer;
   Duration _timeLeft = Duration.zero;
   DateTime? _flashEndTime;
+  List<String> _recentProductIds = [];
 
   // Filters
   String _sortBy = 'distance'; // distance, rating
   double _minRating = 0;
   bool _promoOnly = false;
+
+  String _greetingTitle() {
+    final hour = DateTime.now().hour;
+    if (hour >= 5 && hour < 11) return 'Rekomendasi Pagi Ini';
+    if (hour >= 11 && hour < 15) return 'Pilihan Siang Hari';
+    if (hour >= 15 && hour < 19) return 'Ngemil Sore & Malam';
+    return 'Untuk Kamu';
+  }
 
   @override
   void initState() {
@@ -53,6 +61,7 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
     _initLocation();
     _startFlashTimer();
     _loadOrders();
+    _loadRecentViewed();
   }
 
   Future<void> _loadOrders() async {
@@ -66,6 +75,16 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
       if (!mounted) return;
       Provider.of<OrdersProvider>(context, listen: false).setAll(list);
     } catch (_) {}
+  }
+
+  Future<void> _loadRecentViewed() async {
+    final prefs = await SharedPreferences.getInstance();
+    final list =
+        prefs.getStringList('buyer_recent_products_v1') ?? const [];
+    if (!mounted) return;
+    setState(() {
+      _recentProductIds = list;
+    });
   }
 
   String _getStatusText(String status) {
@@ -143,18 +162,16 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
 
   void _startFlashTimer() {
     _flashTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (mounted) {
-        setState(() {
-          if (_flashEndTime != null) {
-            final now = DateTime.now();
-            if (_flashEndTime!.isAfter(now)) {
-              _timeLeft = _flashEndTime!.difference(now);
-            } else {
-              _timeLeft = Duration.zero;
-            }
-          }
-        });
-      }
+      if (!mounted || _flashEndTime == null) return;
+      final now = DateTime.now();
+      final end = _flashEndTime;
+      setState(() {
+        if (end != null && end.isAfter(now)) {
+          _timeLeft = end.difference(now);
+        } else {
+          _timeLeft = Duration.zero;
+        }
+      });
     });
   }
 
@@ -192,7 +209,6 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
       setState(() {
         _address = 'Lokasi Ditolak';
         _isLoading = false;
-        _flashLoading = false;
       });
     }
   }
@@ -223,15 +239,14 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
     setState(() {
       _flashSaleProducts =
           products.map((e) => Map<String, dynamic>.from(e)).toList();
-      _flashLoading = false;
+      // Flash loading finished
       _flashEndTime = endTime;
-      if (_flashEndTime != null) {
+      final end = _flashEndTime;
+      if (end != null) {
         final now = DateTime.now();
-        if (_flashEndTime!.isAfter(now)) {
-          _timeLeft = _flashEndTime!.difference(now);
-        } else {
-          _timeLeft = Duration.zero;
-        }
+        _timeLeft = end.isAfter(now)
+            ? end.difference(now)
+            : Duration.zero;
       }
     });
   }
@@ -297,7 +312,8 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                           setModalState(() => _sortBy = 'distance');
                           setState(() {});
                         },
-                        selectedColor: const Color(0xFFE07A5F).withOpacity(0.2),
+                        selectedColor:
+                            const Color(0xFFE07A5F).withValues(alpha: 0.2),
                         labelStyle: TextStyle(
                             color: _sortBy == 'distance'
                                 ? const Color(0xFFE07A5F)
@@ -310,7 +326,8 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                           setModalState(() => _sortBy = 'rating');
                           setState(() {});
                         },
-                        selectedColor: const Color(0xFFE07A5F).withOpacity(0.2),
+                        selectedColor:
+                            const Color(0xFFE07A5F).withValues(alpha: 0.2),
                         labelStyle: TextStyle(
                             color: _sortBy == 'rating'
                                 ? const Color(0xFFE07A5F)
@@ -337,7 +354,8 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                   SwitchListTile(
                     title: const Text('Hanya Promo'),
                     value: _promoOnly,
-                    activeColor: const Color(0xFFE07A5F),
+                    activeTrackColor:
+                        const Color(0xFFE07A5F).withValues(alpha: 0.5),
                     onChanged: (val) {
                       setModalState(() => _promoOnly = val);
                       setState(() {});
@@ -497,6 +515,7 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
           } else {
             await _initLocation();
           }
+          await _loadRecentViewed();
         },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -539,6 +558,74 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: ActionChip(
+                              label: const Text('Makan Siang dekat sini'),
+                              onPressed: () {
+                                const q = 'makan siang';
+                                _searchCtrl.text = q;
+                                setState(
+                                    () => _query = q.toLowerCase().trim());
+                                Provider.of<SearchHistoryProvider>(context,
+                                        listen: false)
+                                    .addQuery(q);
+                              },
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: ActionChip(
+                              label: const Text('Cemilan'),
+                              onPressed: () {
+                                const q = 'cemilan';
+                                _searchCtrl.text = q;
+                                setState(
+                                    () => _query = q.toLowerCase().trim());
+                                Provider.of<SearchHistoryProvider>(context,
+                                        listen: false)
+                                    .addQuery(q);
+                              },
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: ActionChip(
+                              label: const Text('Obat & Vitamin'),
+                              onPressed: () {
+                                const q = 'obat';
+                                _searchCtrl.text = q;
+                                setState(
+                                    () => _query = q.toLowerCase().trim());
+                                Provider.of<SearchHistoryProvider>(context,
+                                        listen: false)
+                                    .addQuery(q);
+                              },
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: ActionChip(
+                              label: const Text('Minuman dingin'),
+                              onPressed: () {
+                                const q = 'minuman dingin';
+                                _searchCtrl.text = q;
+                                setState(
+                                    () => _query = q.toLowerCase().trim());
+                                Provider.of<SearchHistoryProvider>(context,
+                                        listen: false)
+                                    .addQuery(q);
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
                     // Active Filters
                     if (_sortBy != 'distance' || _minRating > 0 || _promoOnly)
                       SingleChildScrollView(
@@ -552,8 +639,8 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                                   label: const Text('Rating Tertinggi'),
                                   onDeleted: () =>
                                       setState(() => _sortBy = 'distance'),
-                                  backgroundColor:
-                                      const Color(0xFFE07A5F).withOpacity(0.1),
+                                  backgroundColor: const Color(0xFFE07A5F)
+                                      .withValues(alpha: 0.1),
                                   labelStyle: const TextStyle(
                                       color: Color(0xFFE07A5F), fontSize: 12),
                                   deleteIconColor: const Color(0xFFE07A5F),
@@ -566,8 +653,8 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                                   label: Text('Rating $_minRating+'),
                                   onDeleted: () =>
                                       setState(() => _minRating = 0),
-                                  backgroundColor:
-                                      const Color(0xFFE07A5F).withOpacity(0.1),
+                                  backgroundColor: const Color(0xFFE07A5F)
+                                      .withValues(alpha: 0.1),
                                   labelStyle: const TextStyle(
                                       color: Color(0xFFE07A5F), fontSize: 12),
                                   deleteIconColor: const Color(0xFFE07A5F),
@@ -580,8 +667,8 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                                   label: const Text('Promo'),
                                   onDeleted: () =>
                                       setState(() => _promoOnly = false),
-                                  backgroundColor:
-                                      const Color(0xFFE07A5F).withOpacity(0.1),
+                                  backgroundColor: const Color(0xFFE07A5F)
+                                      .withValues(alpha: 0.1),
                                   labelStyle: const TextStyle(
                                       color: Color(0xFFE07A5F), fontSize: 12),
                                   deleteIconColor: const Color(0xFFE07A5F),
@@ -592,8 +679,9 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                       ),
                     Consumer<SearchHistoryProvider>(
                       builder: (context, hist, _) {
-                        if (!hist.loaded || hist.history.isEmpty)
+                        if (!hist.loaded || hist.history.isEmpty) {
                           return const SizedBox.shrink();
+                        }
                         return SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
                           child: Row(
@@ -670,11 +758,12 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
-                                color:
-                                    _getStatusColor(status).withOpacity(0.3)),
+                                color: _getStatusColor(status)
+                                    .withValues(alpha: 0.3)),
                             boxShadow: [
                               BoxShadow(
-                                  color: Colors.black.withOpacity(0.05),
+                                  color: Colors.black
+                                      .withValues(alpha: 0.05),
                                   blurRadius: 8,
                                   offset: const Offset(0, 4))
                             ]),
@@ -778,9 +867,11 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
                                   colors: [
-                                    const Color(0xFFE07A5F).withOpacity(0.25),
+                                    const Color(0xFFE07A5F)
+                                        .withValues(alpha: 0.25),
                                     const Color(0xFFF4DCD6),
-                                    const Color(0xFFE07A5F).withOpacity(0.15),
+                                    const Color(0xFFE07A5F)
+                                        .withValues(alpha: 0.15),
                                   ],
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
@@ -790,7 +881,7 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                                 .animate(onPlay: (c) => c.repeat(reverse: true))
                                 .tint(
                                     color: const Color(0xFFFFCCBC)
-                                        .withOpacity(0.3),
+                                        .withValues(alpha: 0.3),
                                     duration: 4.seconds),
 
                             // Lottie Fire/Energy Effect (Subtle)
@@ -862,7 +953,7 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                                       boxShadow: [
                                         BoxShadow(
                                           color: const Color(0xFFE07A5F)
-                                              .withOpacity(0.4),
+                                              .withValues(alpha: 0.4),
                                           blurRadius: 8,
                                           offset: const Offset(0, 4),
                                         )
@@ -909,21 +1000,20 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                                 return GestureDetector(
                                   onTap: () {
                                     Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                            builder: (_) => ProductDetailScreen(
-                                                  product: p,
-                                                  storeId: p['storeId'],
-                                                  storeName: p['storeName'],
-                                                  storeAddress:
-                                                      p['storeAddress'],
-                                                  storeLat:
-                                                      (p['storeLat'] as num?)
-                                                          ?.toDouble(),
-                                                  storeLong:
-                                                      (p['storeLong'] as num?)
-                                                          ?.toDouble(),
-                                                )));
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => ProductDetailScreen(
+                                          product: p,
+                                          storeId: p['storeId'],
+                                          storeName: p['storeName'],
+                                          storeAddress: p['storeAddress'],
+                                          storeLat:
+                                              (p['storeLat'] as num?)?.toDouble(),
+                                          storeLong:
+                                              (p['storeLong'] as num?)?.toDouble(),
+                                        ),
+                                      ),
+                                    ).then((_) => _loadRecentViewed());
                                   },
                                   child: Container(
                                     width: 160,
@@ -932,7 +1022,8 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                                       borderRadius: BorderRadius.circular(20),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: Colors.black.withOpacity(0.08),
+                                          color: Colors.black
+                                              .withValues(alpha: 0.08),
                                           blurRadius: 12,
                                           offset: const Offset(0, 6),
                                         )
@@ -987,7 +1078,7 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                                                       boxShadow: [
                                                         BoxShadow(
                                                           color: Colors.red
-                                                              .withOpacity(0.4),
+                                                              .withValues(alpha: 0.4),
                                                           blurRadius: 4,
                                                           offset: const Offset(
                                                               0, 2),
@@ -1124,11 +1215,1150 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                 ),
               ],
 
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: Text('Untuk Kamu',
-                    style:
-                        TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+              Consumer<OrdersProvider>(
+                builder: (context, prov, _) {
+                  final completed = prov.orders.where((o) {
+                    final s = (o['orderStatus'] ?? '').toString();
+                    return s == 'COMPLETED';
+                  }).toList();
+
+                  if (completed.isEmpty) return const SizedBox.shrink();
+
+                  final nearbyStoreMap = <String, Map<String, dynamic>>{};
+                  for (final s in _nearbyStores) {
+                    if (s is! Map) continue;
+                    final sid = s['id']?.toString();
+                    if (sid == null) continue;
+                    nearbyStoreMap[sid] = Map<String, dynamic>.from(s);
+                  }
+
+                  final counts = <String, int>{};
+                  final products = <String, Map<String, dynamic>>{};
+                  final lastTime = <String, DateTime>{};
+
+                  for (final o in completed) {
+                    if (o is! Map) continue;
+
+                    Map<String, dynamic>? store;
+                    String? storeId;
+                    final storeRaw = o['store'];
+                    if (storeRaw is Map) {
+                      store = Map<String, dynamic>.from(storeRaw);
+                      final rawId = store['id'] ?? store['storeId'];
+                      if (rawId != null) {
+                        storeId = rawId.toString();
+                      }
+                    } else {
+                      final rawId = o['storeId'];
+                      if (rawId != null) {
+                        storeId = rawId.toString();
+                      }
+                    }
+
+                    if (storeId != null) {
+                      final nearby = nearbyStoreMap[storeId];
+                      if (nearby != null) {
+                        store ??= <String, dynamic>{};
+                        store.addAll(nearby);
+                      }
+                    }
+
+                    DateTime? createdAt;
+                    if (o['createdAt'] != null) {
+                      createdAt = DateTime.tryParse(o['createdAt'].toString());
+                    }
+
+                    final items =
+                        o['transactionItems'] as List<dynamic>? ?? [];
+                    for (final it in items) {
+                      if (it is! Map) continue;
+
+                      String? pid;
+                      if (it['productId'] != null) {
+                        pid = it['productId'].toString();
+                      } else if (it['product'] is Map &&
+                          (it['product']['id'] != null)) {
+                        pid = it['product']['id'].toString();
+                      } else if (it['product'] is String) {
+                        pid = it['product'].toString();
+                      }
+                      if (pid == null) continue;
+
+                      final qty = it['quantity'] as int? ?? 1;
+                      counts[pid] = (counts[pid] ?? 0) + qty;
+
+                      if (createdAt != null) {
+                        final prev = lastTime[pid];
+                        if (prev == null || createdAt.isAfter(prev)) {
+                          lastTime[pid] = createdAt;
+                        }
+                      }
+
+                      if (!products.containsKey(pid)) {
+                        String name = 'Item';
+                        if (it['productName'] != null) {
+                          name = it['productName'].toString();
+                        } else if (it['name'] != null) {
+                          name = it['name'].toString();
+                        } else if (it['product'] is Map &&
+                            (it['product']['name'] != null)) {
+                          name = it['product']['name'].toString();
+                        }
+
+                        double price = (it['price'] as num?)?.toDouble() ??
+                            (it['sellingPrice'] as num?)?.toDouble() ??
+                            (it['product'] is Map
+                                ? (it['product']['sellingPrice'] as num?)
+                                    ?.toDouble()
+                                : null) ??
+                            0;
+
+                        double? original =
+                            (it['originalPrice'] as num?)?.toDouble();
+                        if (original == null && it['product'] is Map) {
+                          final pMap = it['product'] as Map;
+                          final orig = pMap['originalPrice'] ??
+                              pMap['price'] ??
+                              pMap['sellingPrice'];
+                          if (orig is num) {
+                            original = orig.toDouble();
+                          }
+                        }
+
+                        dynamic rawImg;
+                        if (it['product'] is Map) {
+                          rawImg = (it['product']['imageUrl'] ??
+                              it['product']['image']);
+                        }
+                        final imageUrl = rawImg != null
+                            ? MarketApiService()
+                                .resolveFileUrl(rawImg.toString())
+                            : '';
+
+                        String? storeName;
+                        String? storeAddress;
+                        double? storeLat;
+                        double? storeLong;
+                        dynamic distV;
+                        if (store != null) {
+                          storeName = store['name']?.toString();
+                          storeAddress = (store['address'] ??
+                                  store['location'] ??
+                                  store['alamat'])
+                              ?.toString();
+                          final lat = store['latitude'];
+                          final long = store['longitude'];
+                          if (lat is num) {
+                            storeLat = lat.toDouble();
+                          }
+                          if (long is num) {
+                            storeLong = long.toDouble();
+                          }
+                          distV = store['distance'];
+                        }
+
+                        double? storeDist;
+                        if (distV is num) {
+                          storeDist = distV.toDouble();
+                        } else if (distV != null) {
+                          storeDist =
+                              double.tryParse(distV.toString());
+                        }
+
+                        products[pid] = {
+                          'id': pid,
+                          'name': name,
+                          'sellingPrice': price,
+                          if (original != null) 'originalPrice': original,
+                          'imageUrl': imageUrl,
+                          '__storeId': storeId,
+                          '__storeName': storeName,
+                          '__storeAddress': storeAddress,
+                          '__storeLat': storeLat,
+                          '__storeLong': storeLong,
+                          '__storeDistance': storeDist,
+                        };
+                      }
+                    }
+                  }
+
+                  if (products.isEmpty) return const SizedBox.shrink();
+
+                  final entries = counts.entries.toList()
+                    ..sort((a, b) {
+                      final cmp = b.value.compareTo(a.value);
+                      if (cmp != 0) return cmp;
+                      final ta = lastTime[a.key];
+                      final tb = lastTime[b.key];
+                      if (ta == null || tb == null) return 0;
+                      return tb.compareTo(ta);
+                    });
+
+                  final takeIds =
+                      entries.take(10).map((e) => e.key).toList();
+                  final list = <Map<String, dynamic>>[];
+                  for (final id in takeIds) {
+                    final p = products[id];
+                    if (p != null) list.add(p);
+                  }
+
+                  if (list.isEmpty) return const SizedBox.shrink();
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.fromLTRB(16, 24, 16, 8),
+                        child: Text(
+                          'Sering Kamu Beli',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 18),
+                        ),
+                      ),
+                      SizedBox(
+                        height: 200,
+                        child: Consumer2<FavoritesProvider, ReviewsProvider>(
+                          builder: (context, fav, rev, _) {
+                            return ListView.separated(
+                              scrollDirection: Axis.horizontal,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16),
+                              separatorBuilder: (_, __) =>
+                                  const SizedBox(width: 16),
+                              itemCount: list.length,
+                              itemBuilder: (context, i) {
+                                final p = list[i];
+                                final imageUrl = MarketApiService()
+                                    .resolveFileUrl(
+                                        p['imageUrl'] ?? p['image']);
+                                final dynamic distV =
+                                    p['__storeDistance'];
+                                final distNum = (distV is num)
+                                    ? distV.toDouble()
+                                    : double.tryParse(
+                                        distV?.toString() ?? '');
+                                final distText =
+                                    distNum?.toStringAsFixed(1);
+                                final avg = rev.getAverage(p['id']);
+                                final selling =
+                                    (p['sellingPrice'] as num?)?.toDouble() ??
+                                        0;
+                                final original =
+                                    (p['originalPrice'] as num?)
+                                        ?.toDouble();
+                                final hasPromo = original != null &&
+                                    original > selling &&
+                                    original > 0;
+                                final discountPct = hasPromo
+                                    ? ((1 - selling / original) * 100)
+                                        .round()
+                                    : null;
+                                final isFav = fav.isFavorite(p['id']);
+
+                                return GestureDetector(
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            ProductDetailScreen(
+                                          product: p,
+                                          storeId: p['__storeId'],
+                                          storeName: p['__storeName'],
+                                          storeAddress:
+                                              p['__storeAddress'],
+                                          storeLat: p['__storeLat'],
+                                          storeLong: p['__storeLong'],
+                                        ),
+                                      ),
+                                    ).then((_) => _loadRecentViewed());
+                                  },
+                                  child: Stack(
+                                    children: [
+                                      Container(
+                                        width: 160,
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius:
+                                              BorderRadius.circular(16),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black
+                                                  .withValues(alpha: 0.05),
+                                              blurRadius: 8,
+                                              offset:
+                                                  const Offset(0, 4),
+                                            ),
+                                          ],
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Expanded(
+                                              flex: 3,
+                                              child: ClipRRect(
+                                                borderRadius:
+                                                    const BorderRadius
+                                                        .vertical(
+                                                  top:
+                                                      Radius.circular(16),
+                                                ),
+                                                child: imageUrl.isEmpty
+                                                    ? Container(
+                                                        color: Colors
+                                                            .grey.shade200,
+                                                        child:
+                                                            const Center(
+                                                          child: Icon(
+                                                            Icons.fastfood,
+                                                            size: 30,
+                                                            color: Colors
+                                                                .grey,
+                                                          ),
+                                                        ),
+                                                      )
+                                                    : Stack(
+                                                        children: [
+                                                          Positioned.fill(
+                                                            child: Image
+                                                                .network(
+                                                              imageUrl,
+                                                              fit: BoxFit
+                                                                  .cover,
+                                                              width: double
+                                                                  .infinity,
+                                                              errorBuilder: (context,
+                                                                      error,
+                                                                      stackTrace) {
+                                                                return Container(
+                                                                  color: Colors
+                                                                      .grey
+                                                                      .shade200,
+                                                                  child:
+                                                                      const Center(
+                                                                    child:
+                                                                        Icon(
+                                                                      Icons.fastfood,
+                                                                      size:
+                                                                          30,
+                                                                      color:
+                                                                          Colors.grey,
+                                                                    ),
+                                                                  ),
+                                                                );
+                                                              },
+                                                            ),
+                                                          ),
+                                                          if (discountPct !=
+                                                              null)
+                                                            Positioned(
+                                                              left: 8,
+                                                              top: 8,
+                                                              child:
+                                                                  Container(
+                                                                padding: const EdgeInsets
+                                                                    .symmetric(
+                                                                  horizontal:
+                                                                      6,
+                                                                  vertical:
+                                                                      2,
+                                                                ),
+                                                                decoration:
+                                                                    BoxDecoration(
+                                                                  color: const Color(
+                                                                          0xFFE07A5F)
+                                                                      .withValues(
+                                                                          alpha:
+                                                                              0.9),
+                                                                  borderRadius:
+                                                                      BorderRadius.circular(
+                                                                          10),
+                                                                ),
+                                                                child: Text(
+                                                                  '-$discountPct%',
+                                                                  style: const TextStyle(
+                                                                      color: Colors.white,
+                                                                      fontSize: 10,
+                                                                      fontWeight: FontWeight.bold),
+                                                                ),
+                                                              ),
+                                                            ),
+                                                        ],
+                                                      ),
+                                              ),
+                                            ),
+                                            Expanded(
+                                              flex: 2,
+                                              child: Padding(
+                                                padding:
+                                                    const EdgeInsets.all(
+                                                        12.0),
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment
+                                                          .start,
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment
+                                                          .spaceBetween,
+                                                  children: [
+                                                    Text(
+                                                      p['name'] ?? '',
+                                                      maxLines: 2,
+                                                      overflow: TextOverflow
+                                                          .ellipsis,
+                                                      style:
+                                                          const TextStyle(
+                                                        fontWeight:
+                                                            FontWeight
+                                                                .bold,
+                                                        fontSize: 14,
+                                                      ),
+                                                    ),
+                                                    if (original != null &&
+                                                        original > selling)
+                                                      Column(
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment
+                                                                .start,
+                                                        children: [
+                                                          Text(
+                                                            _formatCurrency(
+                                                                original),
+                                                            style:
+                                                                const TextStyle(
+                                                              decoration:
+                                                                  TextDecoration
+                                                                      .lineThrough,
+                                                              color: Colors
+                                                                  .grey,
+                                                              fontSize: 11,
+                                                            ),
+                                                          ),
+                                                          Text(
+                                                            _formatCurrency(
+                                                                selling),
+                                                            style:
+                                                                const TextStyle(
+                                                              color: Color(
+                                                                  0xFFE07A5F),
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w700,
+                                                              fontSize: 14,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      )
+                                                    else
+                                                      Text(
+                                                        _formatCurrency(
+                                                            selling),
+                                                        style:
+                                                            const TextStyle(
+                                                          color: Color(
+                                                              0xFFE07A5F),
+                                                          fontWeight:
+                                                              FontWeight
+                                                                  .w700,
+                                                          fontSize: 14,
+                                                        ),
+                                                      ),
+                                                    Row(
+                                                      children: [
+                                                        Icon(
+                                                          Icons
+                                                              .star_rounded,
+                                                          size: 16,
+                                                          color: const Color(
+                                                              0xFFF2CC8F),
+                                                        ),
+                                                        const SizedBox(
+                                                          width: 4,
+                                                        ),
+                                                        Text(
+                                                          avg.toStringAsFixed(
+                                                              1),
+                                                          style:
+                                                              const TextStyle(
+                                                            fontWeight:
+                                                                FontWeight
+                                                                    .w600,
+                                                            fontSize: 12,
+                                                          ),
+                                                        ),
+                                                        const Spacer(),
+                                                        if (distText != null) ...[
+                                                          Icon(
+                                                            Icons.place,
+                                                            size: 14,
+                                                            color: Colors
+                                                                .grey
+                                                                .shade400,
+                                                          ),
+                                                          const SizedBox(
+                                                            width: 2,
+                                                          ),
+                                                          Text(
+                                                            '$distText km',
+                                                            style: TextStyle(
+                                                              fontSize: 11,
+                                                              color: Colors
+                                                                  .grey
+                                                                  .shade600,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ],
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      Positioned(
+                                        right: 6,
+                                        top: 6,
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withValues(
+                                                alpha: 0.85),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: IconButton(
+                                            icon: Icon(
+                                              isFav
+                                                  ? Icons.favorite
+                                                  : Icons.favorite_border,
+                                              color: isFav
+                                                  ? Colors.red
+                                                  : Colors.grey,
+                                            ),
+                                            onPressed: () => fav
+                                                .toggleFavorite(p['id']),
+                                            iconSize: 18,
+                                            padding:
+                                                const EdgeInsets.all(4),
+                                            constraints:
+                                                const BoxConstraints(),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                                    .animate(
+                                      delay: (i * 80).ms,
+                                    )
+                                    .fadeIn(
+                                      duration: 350.ms,
+                                    )
+                                    .slideX(
+                                      begin: 0.1,
+                                    );
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+
+              Builder(builder: (context) {
+                final all = <Map<String, dynamic>>[];
+                for (final s in _nearbyStores) {
+                  if (s is! Map) continue;
+                  final prods = (s['products'] as List<dynamic>? ?? const []);
+                  for (final p in prods) {
+                    if (p is! Map) continue;
+                    final price =
+                        (p['sellingPrice'] as num?)?.toDouble() ?? 0;
+                    final original =
+                        (p['originalPrice'] as num?)?.toDouble();
+                    if (original == null || original <= price) continue;
+                    final map = Map<String, dynamic>.from(p);
+                    map['__storeId'] = s['id'];
+                    map['__storeName'] = s['name'];
+                    map['__storeDistance'] = s['distance'];
+                    map['__storeAddress'] =
+                        (s['address'] ?? s['location'] ?? s['alamat'])
+                            ?.toString();
+                    map['__storeLat'] =
+                        (s['latitude'] as num?)?.toDouble();
+                    map['__storeLong'] =
+                        (s['longitude'] as num?)?.toDouble();
+                    all.add(map);
+                  }
+                }
+                if (all.isEmpty) return const SizedBox.shrink();
+
+                all.sort((a, b) {
+                  final ap =
+                      (a['sellingPrice'] as num?)?.toDouble() ?? 0;
+                  final ao =
+                      (a['originalPrice'] as num?)?.toDouble() ?? ap;
+                  final bp =
+                      (b['sellingPrice'] as num?)?.toDouble() ?? 0;
+                  final bo =
+                      (b['originalPrice'] as num?)?.toDouble() ?? bp;
+                  final ad =
+                      ao > 0 ? (1 - ap / ao) : 0;
+                  final bd =
+                      bo > 0 ? (1 - bp / bo) : 0;
+                  return bd.compareTo(ad);
+                });
+
+                final list = all.take(12).toList();
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
+                      child: Text('Promo di Sekitar',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 18)),
+                    ),
+                    SizedBox(
+                      height: 220,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 16),
+                        separatorBuilder: (_, __) =>
+                            const SizedBox(width: 16),
+                        itemCount: list.length,
+                        itemBuilder: (context, index) {
+                          final p = list[index];
+                          final price =
+                              (p['sellingPrice'] as num?)?.toDouble() ?? 0;
+                          final original =
+                              (p['originalPrice'] as num?)?.toDouble() ??
+                                  price;
+                          final imageUrl = MarketApiService()
+                              .resolveFileUrl(
+                                  p['imageUrl'] ?? p['image']);
+                          final dynamic distV = p['__storeDistance'];
+                          final distNum = (distV is num)
+                              ? distV.toDouble()
+                              : double.tryParse(
+                                  distV?.toString() ?? '');
+                          final distText = distNum?.toStringAsFixed(1);
+                          final hasPromo =
+                              original > price && original > 0;
+                          final discountPct = hasPromo
+                              ? ((1 - price / original) * 100).round()
+                              : null;
+
+                          return Consumer2<FavoritesProvider, ReviewsProvider>(
+                            builder: (context, fav, rev, _) {
+                              final avg = rev.getAverage(p['id']);
+                              final isFav = fav.isFavorite(p['id']);
+
+                              return GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => ProductDetailScreen(
+                                        product: p,
+                                        storeId: p['__storeId'],
+                                        storeName: p['__storeName'],
+                                        storeAddress: p['__storeAddress'],
+                                        storeLat: p['__storeLat'],
+                                        storeLong: p['__storeLong'],
+                                      ),
+                                    ),
+                                  ).then((_) => _loadRecentViewed());
+                                },
+                                child: Stack(
+                                  children: [
+                                    Container(
+                                      width: 170,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius:
+                                            BorderRadius.circular(16),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black
+                                                .withValues(alpha: 0.05),
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 4),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Expanded(
+                                            flex: 3,
+                                            child: ClipRRect(
+                                              borderRadius:
+                                                  const BorderRadius
+                                                          .vertical(
+                                                      top:
+                                                          Radius.circular(16)),
+                                              child: imageUrl.isEmpty
+                                                  ? Container(
+                                                      color: Colors
+                                                          .grey.shade200,
+                                                      child: const Center(
+                                                          child: Icon(
+                                                              Icons.fastfood,
+                                                              size: 30,
+                                                              color:
+                                                                  Colors.grey)),
+                                                    )
+                                                  : Stack(
+                                                      children: [
+                                                        Positioned.fill(
+                                                          child:
+                                                              Image.network(
+                                                            imageUrl,
+                                                            fit: BoxFit.cover,
+                                                            width: double
+                                                                .infinity,
+                                                            errorBuilder:
+                                                                (context,
+                                                                    error,
+                                                                    stackTrace) {
+                                                              return Container(
+                                                                color: Colors
+                                                                    .grey
+                                                                    .shade200,
+                                                                child: const Center(
+                                                                    child: Icon(
+                                                                        Icons.fastfood,
+                                                                        size:
+                                                                            30,
+                                                                        color: Colors
+                                                                            .grey)),
+                                                              );
+                                                            },
+                                                          ),
+                                                        ),
+                                                        if (discountPct != null)
+                                                          Positioned(
+                                                            top: 8,
+                                                            left: 8,
+                                                            child: Container(
+                                                              padding: const EdgeInsets
+                                                                      .symmetric(
+                                                                  horizontal: 6,
+                                                                  vertical: 2),
+                                                              decoration:
+                                                                  BoxDecoration(
+                                                                color: const Color(
+                                                                        0xFFE07A5F)
+                                                                    .withValues(
+                                                                        alpha:
+                                                                            0.9),
+                                                                borderRadius:
+                                                                    BorderRadius
+                                                                        .circular(
+                                                                            10),
+                                                              ),
+                                                              child: Text(
+                                                                '-$discountPct%',
+                                                                style: const TextStyle(
+                                                                    color: Colors
+                                                                        .white,
+                                                                    fontSize: 10,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .bold),
+                                                              ),
+                                                            ),
+                                                          ),
+                                                      ],
+                                                    ),
+                                            ),
+                                          ),
+                                          Expanded(
+                                            flex: 2,
+                                            child: Padding(
+                                              padding:
+                                                  const EdgeInsets.all(12),
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment
+                                                        .spaceBetween,
+                                                children: [
+                                                  Text(p['name'] ?? '',
+                                                      maxLines: 2,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                      style: const TextStyle(
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                          fontSize: 14)),
+                                                  Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      Text(
+                                                          _formatCurrency(
+                                                              original),
+                                                          style: const TextStyle(
+                                                              decoration:
+                                                                  TextDecoration
+                                                                      .lineThrough,
+                                                              color:
+                                                                  Colors.grey,
+                                                              fontSize: 11)),
+                                                      Text(
+                                                          _formatCurrency(
+                                                              price),
+                                                          style: const TextStyle(
+                                                              color: Color(
+                                                                  0xFFE07A5F),
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w700,
+                                                              fontSize: 14)),
+                                                    ],
+                                                  ),
+                                                  Row(
+                                                    children: [
+                                                      Icon(
+                                                          Icons.star_rounded,
+                                                          size: 16,
+                                                          color: const Color(
+                                                              0xFFF2CC8F)),
+                                                      const SizedBox(width: 4),
+                                                      Text(
+                                                          avg.toStringAsFixed(
+                                                              1),
+                                                          style: const TextStyle(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w600,
+                                                              fontSize: 12)),
+                                                      const Spacer(),
+                                                      if (distText != null) ...[
+                                                        Icon(Icons.place,
+                                                            size: 14,
+                                                            color: Colors
+                                                                .grey.shade400),
+                                                        const SizedBox(
+                                                            width: 2),
+                                                        Text('$distText km',
+                                                            style: TextStyle(
+                                                                fontSize: 11,
+                                                                color: Colors
+                                                                    .grey
+                                                                    .shade600)),
+                                                      ],
+                                                    ],
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Positioned(
+                                      right: 6,
+                                      top: 6,
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          color:
+                                              Colors.white
+                                                  .withValues(alpha: 0.85),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: IconButton(
+                                          icon: Icon(
+                                              isFav
+                                                  ? Icons.favorite
+                                                  : Icons.favorite_border,
+                                              color: isFav
+                                                  ? Colors.red
+                                                  : Colors.grey),
+                                          onPressed: () =>
+                                              fav.toggleFavorite(p['id']),
+                                          iconSize: 18,
+                                          padding:
+                                              const EdgeInsets.all(4),
+                                          constraints:
+                                              const BoxConstraints(),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                                  .animate(delay: (index * 80).ms)
+                                  .fadeIn(duration: 350.ms)
+                                  .slideX(begin: 0.1);
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                );
+              }),
+
+              Builder(builder: (context) {
+                final fav = Provider.of<FavoritesProvider>(context);
+                final favIds = fav.ids;
+                if (favIds.isEmpty) {
+                  return const SizedBox.shrink();
+                }
+
+                final rev = Provider.of<ReviewsProvider>(context);
+
+                final storesMap = <String, dynamic>{};
+                final storeRatings = <String, double>{};
+                final storeCounts = <String, int>{};
+                final storeDistances = <String, double?>{};
+
+                for (final s in _nearbyStores) {
+                  if (s is! Map) continue;
+                  final sid = s['id']?.toString();
+                  if (sid == null) continue;
+                  final prods =
+                      (s['products'] as List<dynamic>? ?? const []);
+                  bool hasFavProduct = false;
+                  double sum = 0;
+                  int count = 0;
+
+                  for (final p in prods) {
+                    if (p is! Map) continue;
+                    final id = p['id']?.toString();
+                    if (id != null && favIds.contains(id)) {
+                      hasFavProduct = true;
+                    }
+                    final avg = rev.getAverage(p['id']);
+                    if (avg > 0) {
+                      sum += avg;
+                      count++;
+                    }
+                  }
+
+                  if (!hasFavProduct) continue;
+                  storesMap[sid] = s;
+
+                  final dynamic distV = s['distance'];
+                  final distNum = (distV is num)
+                      ? distV.toDouble()
+                      : double.tryParse(distV?.toString() ?? '');
+                  storeDistances[sid] = distNum;
+
+                  if (count > 0) {
+                    storeRatings[sid] = sum / count;
+                    storeCounts[sid] = count;
+                  }
+                }
+
+                if (storesMap.isEmpty) {
+                  return const SizedBox.shrink();
+                }
+
+                final entries = storesMap.entries.toList()
+                  ..sort((a, b) {
+                    final ar = storeRatings[a.key] ?? 0;
+                    final br = storeRatings[b.key] ?? 0;
+                    if (ar != br) return br.compareTo(ar);
+                    final ad = storeDistances[a.key] ?? 99999;
+                    final bd = storeDistances[b.key] ?? 99999;
+                    return ad.compareTo(bd);
+                  });
+
+                final list = entries.take(10).toList();
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(16, 24, 16, 8),
+                      child: Text(
+                        'Toko Favoritmu',
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 18),
+                      ),
+                    ),
+                    SizedBox(
+                      height: 140,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 16),
+                        separatorBuilder: (_, __) =>
+                            const SizedBox(width: 16),
+                        itemCount: list.length,
+                        itemBuilder: (context, index) {
+                          final entry = list[index];
+                          final store = entry.value;
+                          final sid = entry.key;
+                          final name =
+                              store['name']?.toString() ?? 'Toko';
+                          final addr = (store['address'] ??
+                                      store['location'] ??
+                                      store['alamat'])
+                                  ?.toString() ??
+                              '-';
+                          final dynamic distV = store['distance'];
+                          final distNum = (distV is num)
+                              ? distV.toDouble()
+                              : double.tryParse(
+                                  distV?.toString() ?? '');
+                          final distText = distNum?.toStringAsFixed(1);
+                          final rating = storeRatings[sid];
+                          final ratingCount = storeCounts[sid] ?? 0;
+
+                          return GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => StoreDetailScreen(
+                                      store: Map<String, dynamic>.from(
+                                          store as Map)),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              width: 220,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(14),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black
+                                        .withValues(alpha: 0.05),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              padding: const EdgeInsets.all(12),
+                              child: Column(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        width: 32,
+                                        height: 32,
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFE07A5F)
+                                              .withValues(alpha: 0.08),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                        child: const Icon(
+                                          Icons.store,
+                                          color: Color(0xFFE07A5F),
+                                          size: 18,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          name,
+                                          maxLines: 1,
+                                          overflow:
+                                              TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                              fontWeight:
+                                                  FontWeight.bold,
+                                              fontSize: 14),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    addr,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Row(
+                                    children: [
+                                      if (rating != null &&
+                                          rating > 0) ...[
+                                        const Icon(
+                                          Icons.star_rounded,
+                                          size: 14,
+                                          color: Color(0xFFF2CC8F),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          rating.toStringAsFixed(1),
+                                          style: const TextStyle(
+                                              fontSize: 11,
+                                              fontWeight:
+                                                  FontWeight.w600),
+                                        ),
+                                        if (ratingCount > 0) ...[
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            '($ratingCount)',
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              color: Colors
+                                                  .grey.shade500,
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                      const Spacer(),
+                                      if (distText != null) ...[
+                                        Icon(
+                                          Icons.place,
+                                          size: 13,
+                                          color: Colors
+                                              .grey.shade500,
+                                        ),
+                                        const SizedBox(width: 2),
+                                        Text(
+                                          '$distText km',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color:
+                                                Colors.grey.shade600,
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                );
+              }),
+
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                    _greetingTitle(),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 18)),
               ),
               const SizedBox(height: 12),
               SizedBox(
@@ -1164,12 +2394,13 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                       final avg = rev.getAverage(p['id']);
                       if (avg < _minRating) return false;
                       if (_promoOnly) {
-                        // Check if discount exists
                         final price =
                             (p['sellingPrice'] as num?)?.toDouble() ?? 0;
                         final original =
                             (p['originalPrice'] as num?)?.toDouble();
-                        if (original == null || original <= price) return false;
+                        if (original == null || original <= price) {
+                          return false;
+                        }
                       }
                       return true;
                     }).toList();
@@ -1220,6 +2451,15 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                         final avg = rev.getAverage(p['id']);
                         final imageUrl = MarketApiService()
                             .resolveFileUrl(p['imageUrl'] ?? p['image']);
+                        final selling =
+                            (p['sellingPrice'] as num?)?.toDouble() ?? 0;
+                        final original =
+                            (p['originalPrice'] as num?)?.toDouble();
+                        final hasPromo =
+                            original != null && original > selling && original > 0;
+                        final discountPct = hasPromo
+                            ? ((1 - selling / original) * 100).round()
+                            : null;
                         final dynamic distV = p['__storeDistance'];
                         final distNum = (distV is num)
                             ? distV.toDouble()
@@ -1229,16 +2469,18 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                         return GestureDetector(
                           onTap: () {
                             Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) => ProductDetailScreen(
-                                          product: p,
-                                          storeId: p['__storeId'],
-                                          storeName: p['__storeName'],
-                                          storeAddress: p['__storeAddress'],
-                                          storeLat: p['__storeLat'],
-                                          storeLong: p['__storeLong'],
-                                        )));
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ProductDetailScreen(
+                                  product: p,
+                                  storeId: p['__storeId'],
+                                  storeName: p['__storeName'],
+                                  storeAddress: p['__storeAddress'],
+                                  storeLat: p['__storeLat'],
+                                  storeLong: p['__storeLong'],
+                                ),
+                              ),
+                            ).then((_) => _loadRecentViewed());
                           },
                           child: Container(
                             width: 180, // Wider card
@@ -1247,7 +2489,7 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                               borderRadius: BorderRadius.circular(16),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.05),
+                                  color: Colors.black.withValues(alpha: 0.05),
                                   blurRadius: 8,
                                   offset: const Offset(0, 4),
                                 ),
@@ -1257,7 +2499,7 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Expanded(
-                                  flex: 3, // More space for image
+                                  flex: 3,
                                   child: ClipRRect(
                                     borderRadius: const BorderRadius.vertical(
                                         top: Radius.circular(16)),
@@ -1269,20 +2511,58 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                                                     size: 30,
                                                     color: Colors.grey)),
                                           )
-                                        : Image.network(
-                                            imageUrl,
-                                            fit: BoxFit.cover,
-                                            width: double.infinity,
-                                            errorBuilder:
-                                                (context, error, stackTrace) {
-                                              return Container(
-                                                color: Colors.grey.shade200,
-                                                child: const Center(
-                                                    child: Icon(Icons.fastfood,
-                                                        size: 30,
-                                                        color: Colors.grey)),
-                                              );
-                                            },
+                                        : Stack(
+                                            children: [
+                                              Positioned.fill(
+                                                child: Image.network(
+                                                  imageUrl,
+                                                  fit: BoxFit.cover,
+                                                  width: double.infinity,
+                                                  errorBuilder: (context, error,
+                                                      stackTrace) {
+                                                    return Container(
+                                                      color:
+                                                          Colors.grey.shade200,
+                                                      child: const Center(
+                                                          child: Icon(
+                                                              Icons.fastfood,
+                                                              size: 30,
+                                                              color:
+                                                                  Colors.grey)),
+                                                    );
+                                                  },
+                                                ),
+                                              ),
+                                              if (discountPct != null)
+                                                Positioned(
+                                                  left: 8,
+                                                  top: 8,
+                                                  child: Container(
+                                                    padding:
+                                                        const EdgeInsets
+                                                            .symmetric(
+                                                            horizontal: 6,
+                                                            vertical: 2),
+                                                    decoration: BoxDecoration(
+                                                      color: const Color(
+                                                              0xFFE07A5F)
+                                                          .withValues(
+                                                              alpha: 0.9),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              10),
+                                                    ),
+                                                    child: Text(
+                                                      '-$discountPct%',
+                                                      style: const TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 10,
+                                                          fontWeight:
+                                                              FontWeight.bold),
+                                                    ),
+                                                  ),
+                                                ),
+                                            ],
                                           ),
                                   ),
                                 ),
@@ -1296,12 +2576,52 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                                       mainAxisAlignment:
                                           MainAxisAlignment.spaceBetween,
                                       children: [
-                                        Text(p['name'],
+                                        Text(
+                                            p['name'],
                                             maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
+                                            overflow:
+                                                TextOverflow.ellipsis,
                                             style: const TextStyle(
-                                                fontWeight: FontWeight.bold,
+                                                fontWeight:
+                                                    FontWeight.bold,
                                                 fontSize: 14)),
+                                        if (original != null &&
+                                            original > selling)
+                                          Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                  _formatCurrency(
+                                                      original),
+                                                  style: const TextStyle(
+                                                      decoration:
+                                                          TextDecoration
+                                                              .lineThrough,
+                                                      color: Colors.grey,
+                                                      fontSize: 11)),
+                                              Text(
+                                                  _formatCurrency(
+                                                      selling),
+                                                  style: const TextStyle(
+                                                      color: Color(
+                                                          0xFFE07A5F),
+                                                      fontWeight:
+                                                          FontWeight
+                                                              .w700,
+                                                      fontSize: 14)),
+                                            ],
+                                          )
+                                        else
+                                          Text(
+                                              _formatCurrency(
+                                                  selling),
+                                              style: const TextStyle(
+                                                  color: Color(
+                                                      0xFFE07A5F),
+                                                  fontWeight:
+                                                      FontWeight.w700,
+                                                  fontSize: 14)),
                                         Row(
                                           children: [
                                             Icon(Icons.star_rounded, // Solid
@@ -1342,6 +2662,928 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                   },
                 ),
               ),
+
+              Consumer2<FavoritesProvider, ReviewsProvider>(
+                builder: (context, fav, rev, _) {
+                  final favIds = fav.ids;
+                  if (favIds.isEmpty) return const SizedBox.shrink();
+
+                  final all = <Map<String, dynamic>>[];
+                  for (final s in _nearbyStores) {
+                    if (s is! Map) continue;
+                    final prods = (s['products'] as List<dynamic>? ?? const []);
+                    for (final p in prods) {
+                      if (p is! Map) continue;
+                      final map = Map<String, dynamic>.from(p);
+                      map['__storeId'] = s['id'];
+                      map['__storeName'] = s['name'];
+                      map['__storeDistance'] = s['distance'];
+                      map['__storeAddress'] =
+                          (s['address'] ?? s['location'] ?? s['alamat'])
+                              ?.toString();
+                      map['__storeLat'] = (s['latitude'] as num?)?.toDouble();
+                      map['__storeLong'] =
+                          (s['longitude'] as num?)?.toDouble();
+                      all.add(map);
+                    }
+                  }
+
+                  final favorites = all.where((p) {
+                    final id = p['id']?.toString();
+                    if (id == null) return false;
+                    return favIds.contains(id);
+                  }).toList();
+
+                  if (favorites.isEmpty) return const SizedBox.shrink();
+
+                  favorites.sort((a, b) {
+                    final ar = rev.getAverage(a['id']);
+                    final br = rev.getAverage(b['id']);
+                    if (ar != br) return br.compareTo(ar);
+                    final ad =
+                        (a['__storeDistance'] as num?)?.toDouble() ?? 99999;
+                    final bd =
+                        (b['__storeDistance'] as num?)?.toDouble() ?? 99999;
+                    return ad.compareTo(bd);
+                  });
+
+                  final list = favorites.take(12).toList();
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.fromLTRB(16, 24, 16, 8),
+                        child: Text('Favorit Kamu',
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 18)),
+                      ),
+                      SizedBox(
+                        height: 200,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(width: 16),
+                          itemCount: list.length,
+                          itemBuilder: (context, i) {
+                            final p = list[i];
+                            final avg = rev.getAverage(p['id']);
+                            final imageUrl = MarketApiService()
+                                .resolveFileUrl(p['imageUrl'] ?? p['image']);
+                            final dynamic distV = p['__storeDistance'];
+                            final distNum = (distV is num)
+                                ? distV.toDouble()
+                                : double.tryParse(distV?.toString() ?? '');
+                            final distText = distNum?.toStringAsFixed(1);
+                            final selling =
+                                (p['sellingPrice'] as num?)?.toDouble() ?? 0;
+                            final original =
+                                (p['originalPrice'] as num?)?.toDouble();
+                            final hasPromo = original != null &&
+                                original > selling &&
+                                original > 0;
+                            final discountPct = hasPromo
+                                ? ((1 - selling / original) * 100).round()
+                                : null;
+                            final isFav = fav.isFavorite(p['id']);
+
+                            return GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => ProductDetailScreen(
+                                      product: p,
+                                      storeId: p['__storeId'],
+                                      storeName: p['__storeName'],
+                                      storeAddress: p['__storeAddress'],
+                                      storeLat: p['__storeLat'],
+                                      storeLong: p['__storeLong'],
+                                    ),
+                                  ),
+                                ).then((_) => _loadRecentViewed());
+                              },
+                              child: Stack(
+                                children: [
+                                  Container(
+                                    width: 160,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(16),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black
+                                              .withValues(alpha: 0.05),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 4),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Expanded(
+                                          flex: 3,
+                                          child: ClipRRect(
+                                            borderRadius:
+                                                const BorderRadius.vertical(
+                                                    top: Radius.circular(16)),
+                                            child: imageUrl.isEmpty
+                                                ? Container(
+                                                    color:
+                                                        Colors.grey.shade200,
+                                                    child: const Center(
+                                                        child: Icon(
+                                                            Icons.fastfood,
+                                                            size: 30,
+                                                            color:
+                                                                Colors.grey)),
+                                                  )
+                                                : Stack(
+                                                    children: [
+                                                      Positioned.fill(
+                                                        child: Image.network(
+                                                          imageUrl,
+                                                          fit: BoxFit.cover,
+                                                          width:
+                                                              double.infinity,
+                                                          errorBuilder: (context,
+                                                              error,
+                                                              stackTrace) {
+                                                            return Container(
+                                                              color: Colors.grey
+                                                                  .shade200,
+                                                              child: const Center(
+                                                                  child: Icon(
+                                                                      Icons
+                                                                          .fastfood,
+                                                                      size: 30,
+                                                                      color: Colors
+                                                                          .grey)),
+                                                            );
+                                                          },
+                                                        ),
+                                                      ),
+                                                      if (discountPct != null)
+                                                        Positioned(
+                                                          left: 8,
+                                                          top: 8,
+                                                          child: Container(
+                                                            padding:
+                                                                const EdgeInsets
+                                                                    .symmetric(
+                                                                    horizontal:
+                                                                        6,
+                                                                    vertical:
+                                                                        2),
+                                                            decoration:
+                                                                BoxDecoration(
+                                                              color: const Color(
+                                                                      0xFFE07A5F)
+                                                                  .withValues(
+                                                                      alpha:
+                                                                          0.9),
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          10),
+                                                            ),
+                                                            child: Text(
+                                                              '-$discountPct%',
+                                                              style: const TextStyle(
+                                                                  color: Colors
+                                                                      .white,
+                                                                  fontSize: 10,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                    ],
+                                                  ),
+                                          ),
+                                        ),
+                                        Expanded(
+                                          flex: 2,
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(12.0),
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment
+                                                      .spaceBetween,
+                                              children: [
+                                                Text(p['name'],
+                                                    maxLines: 2,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    style: const TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        fontSize: 14)),
+                                                if (original != null &&
+                                                    original > selling)
+                                                  Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      Text(
+                                                          _formatCurrency(
+                                                              original),
+                                                          style: const TextStyle(
+                                                              decoration:
+                                                                  TextDecoration
+                                                                      .lineThrough,
+                                                              color:
+                                                                  Colors.grey,
+                                                              fontSize: 11)),
+                                                      Text(
+                                                          _formatCurrency(
+                                                              selling),
+                                                          style: const TextStyle(
+                                                              color: Color(
+                                                                  0xFFE07A5F),
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w700,
+                                                              fontSize: 14)),
+                                                    ],
+                                                  )
+                                                else
+                                                  Text(
+                                                      _formatCurrency(selling),
+                                                      style: const TextStyle(
+                                                          color:
+                                                              Color(0xFFE07A5F),
+                                                          fontWeight:
+                                                              FontWeight.w700,
+                                                          fontSize: 14)),
+                                                Row(
+                                                  children: [
+                                                    Icon(Icons.star_rounded,
+                                                        size: 16,
+                                                        color: const Color(
+                                                            0xFFF2CC8F)),
+                                                    const SizedBox(width: 4),
+                                                    Text(
+                                                        avg.toStringAsFixed(1),
+                                                        style: const TextStyle(
+                                                            fontWeight:
+                                                                FontWeight.w600,
+                                                            fontSize: 12)),
+                                                    const Spacer(),
+                                                    if (distText != null) ...[
+                                                      Icon(Icons.place,
+                                                          size: 14,
+                                                          color: Colors
+                                                              .grey.shade400),
+                                                      const SizedBox(width: 2),
+                                                      Text('$distText km',
+                                                          style: TextStyle(
+                                                              fontSize: 11,
+                                                              color: Colors.grey
+                                                                  .shade600)),
+                                                    ],
+                                                  ],
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Positioned(
+                                    right: 6,
+                                    top: 6,
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color:
+                                            Colors.white
+                                                .withValues(alpha: 0.85),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: IconButton(
+                                        icon: Icon(
+                                            isFav
+                                                ? Icons.favorite
+                                                : Icons.favorite_border,
+                                            color: isFav
+                                                ? Colors.red
+                                                : Colors.grey),
+                                        onPressed: () =>
+                                            fav.toggleFavorite(p['id']),
+                                        iconSize: 18,
+                                        padding: const EdgeInsets.all(4),
+                                        constraints:
+                                            const BoxConstraints(),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                                .animate(delay: (i * 80).ms)
+                                .fadeIn(duration: 350.ms)
+                                .slideX(begin: 0.1);
+                          },
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+
+              Builder(builder: (context) {
+                if (_recentProductIds.isEmpty) {
+                  return const SizedBox.shrink();
+                }
+
+                final all = <Map<String, dynamic>>[];
+                for (final s in _nearbyStores) {
+                  if (s is! Map) continue;
+                  final prods = (s['products'] as List<dynamic>? ?? const []);
+                  for (final p in prods) {
+                    if (p is! Map) continue;
+                    final map = Map<String, dynamic>.from(p);
+                    map['__storeId'] = s['id'];
+                    map['__storeName'] = s['name'];
+                    map['__storeDistance'] = s['distance'];
+                    map['__storeAddress'] =
+                        (s['address'] ?? s['location'] ?? s['alamat'])
+                            ?.toString();
+                    map['__storeLat'] =
+                        (s['latitude'] as num?)?.toDouble();
+                    map['__storeLong'] =
+                        (s['longitude'] as num?)?.toDouble();
+                    all.add(map);
+                  }
+                }
+
+                final byId = <String, Map<String, dynamic>>{};
+                for (final p in all) {
+                  final id = p['id']?.toString();
+                  if (id != null && !byId.containsKey(id)) {
+                    byId[id] = p;
+                  }
+                }
+
+                final list = <Map<String, dynamic>>[];
+                for (final id in _recentProductIds) {
+                  final p = byId[id];
+                  if (p != null) list.add(p);
+                }
+
+                if (list.isEmpty) return const SizedBox.shrink();
+
+                final take = list.take(10).toList();
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(16, 24, 16, 8),
+                      child: Text(
+                        'Baru Kamu Lihat',
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 18),
+                      ),
+                    ),
+                    SizedBox(
+                      height: 200,
+                      child: Consumer2<FavoritesProvider, ReviewsProvider>(
+                        builder: (context, fav, rev, _) {
+                          return ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 16),
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(width: 16),
+                            itemCount: take.length,
+                            itemBuilder: (context, i) {
+                              final p = take[i];
+                              final imageUrl = MarketApiService()
+                                  .resolveFileUrl(
+                                      p['imageUrl'] ?? p['image']);
+                              final dynamic distV = p['__storeDistance'];
+                              final distNum = (distV is num)
+                                  ? distV.toDouble()
+                                  : double.tryParse(
+                                      distV?.toString() ?? '');
+                              final distText = distNum?.toStringAsFixed(1);
+                              final avg = rev.getAverage(p['id']);
+                              final selling =
+                                  (p['sellingPrice'] as num?)?.toDouble() ?? 0;
+                              final original =
+                                  (p['originalPrice'] as num?)?.toDouble();
+                              final hasPromo =
+                                  original != null && original > selling && original > 0;
+                              final discountPct = hasPromo
+                                  ? ((1 - selling / original) * 100).round()
+                                  : null;
+                              final isFav = fav.isFavorite(p['id']);
+
+                              return GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          ProductDetailScreen(
+                                        product: p,
+                                        storeId: p['__storeId'],
+                                        storeName: p['__storeName'],
+                                        storeAddress:
+                                            p['__storeAddress'],
+                                        storeLat: p['__storeLat'],
+                                        storeLong: p['__storeLong'],
+                                      ),
+                                    ),
+                                  ).then((_) => _loadRecentViewed());
+                                },
+                                child: Stack(
+                                  children: [
+                                    Container(
+                                      width: 160,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius:
+                                            BorderRadius.circular(16),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black
+                                                .withValues(alpha: 0.05),
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 4),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Expanded(
+                                            flex: 3,
+                                          child: ClipRRect(
+                                            borderRadius:
+                                                const BorderRadius
+                                                    .vertical(
+                                                    top: Radius
+                                                        .circular(
+                                                            16)),
+                                            child: imageUrl.isEmpty
+                                                ? Container(
+                                                    color: Colors
+                                                        .grey.shade200,
+                                                    child: const Center(
+                                                        child: Icon(
+                                                            Icons
+                                                                .fastfood,
+                                                            size: 30,
+                                                            color: Colors
+                                                                .grey)),
+                                                  )
+                                                : Stack(
+                                                    children: [
+                                                      Positioned.fill(
+                                                        child: Image.network(
+                                                          imageUrl,
+                                                          fit: BoxFit.cover,
+                                                          width:
+                                                              double.infinity,
+                                                          errorBuilder:
+                                                              (context, error,
+                                                                  stackTrace) {
+                                                            return Container(
+                                                              color: Colors.grey
+                                                                  .shade200,
+                                                              child: const Center(
+                                                                  child: Icon(
+                                                                      Icons.fastfood,
+                                                                      size: 30,
+                                                                      color: Colors
+                                                                          .grey)),
+                                                            );
+                                                          },
+                                                        ),
+                                                      ),
+                                                      if (discountPct != null)
+                                                        Positioned(
+                                                          left: 8,
+                                                          top: 8,
+                                                          child: Container(
+                                                            padding:
+                                                                const EdgeInsets
+                                                                    .symmetric(
+                                                                    horizontal:
+                                                                        6,
+                                                                    vertical:
+                                                                        2),
+                                                            decoration:
+                                                                BoxDecoration(
+                                                              color: const Color(
+                                                                      0xFFE07A5F)
+                                                                  .withValues(
+                                                                      alpha:
+                                                                          0.9),
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          10),
+                                                            ),
+                                                            child: Text(
+                                                              '-$discountPct%',
+                                                              style: const TextStyle(
+                                                                  color: Colors
+                                                                      .white,
+                                                                  fontSize: 10,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                    ],
+                                                  ),
+                                          ),
+                                          ),
+                                          Expanded(
+                                            flex: 2,
+                                            child: Padding(
+                                              padding:
+                                                  const EdgeInsets.all(
+                                                      12.0),
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment
+                                                        .start,
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment
+                                                        .spaceBetween,
+                                                children: [
+                                                  Text(
+                                                      p['name'] ?? '',
+                                                      maxLines: 2,
+                                                      overflow:
+                                                          TextOverflow
+                                                              .ellipsis,
+                                                      style: const TextStyle(
+                                                          fontWeight:
+                                                              FontWeight
+                                                                  .bold,
+                                                          fontSize:
+                                                              14)),
+                                                  if (original != null &&
+                                                      original > selling)
+                                                    Column(
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .start,
+                                                      children: [
+                                                        Text(
+                                                            _formatCurrency(
+                                                                original),
+                                                            style: const TextStyle(
+                                                                decoration:
+                                                                    TextDecoration
+                                                                        .lineThrough,
+                                                                color:
+                                                                    Colors.grey,
+                                                                fontSize:
+                                                                    11)),
+                                                        Text(
+                                                            _formatCurrency(
+                                                                selling),
+                                                            style: const TextStyle(
+                                                                color: Color(
+                                                                    0xFFE07A5F),
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w700,
+                                                                fontSize:
+                                                                    14)),
+                                                      ],
+                                                    )
+                                                  else
+                                                    Text(
+                                                        _formatCurrency(
+                                                            selling),
+                                                        style: const TextStyle(
+                                                            color:
+                                                                Color(0xFFE07A5F),
+                                                            fontWeight:
+                                                                FontWeight.w700,
+                                                            fontSize: 14)),
+                                                  Row(
+                                                    children: [
+                                                      Icon(
+                                                          Icons
+                                                              .star_rounded,
+                                                          size: 16,
+                                                          color: const Color(
+                                                              0xFFF2CC8F)),
+                                                      const SizedBox(
+                                                          width: 4),
+                                                      Text(
+                                                          avg
+                                                              .toStringAsFixed(
+                                                                  1),
+                                                          style: const TextStyle(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w600,
+                                                              fontSize:
+                                                                  12)),
+                                                      const Spacer(),
+                                                      if (distText != null) ...[
+                                                        Icon(
+                                                            Icons.place,
+                                                            size: 14,
+                                                            color: Colors
+                                                                .grey
+                                                                .shade400),
+                                                        const SizedBox(
+                                                            width:
+                                                                2),
+                                                        Text(
+                                                            '$distText km',
+                                                            style: TextStyle(
+                                                                fontSize:
+                                                                    11,
+                                                                color: Colors
+                                                                    .grey
+                                                                    .shade600)),
+                                                      ],
+                                                    ],
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Positioned(
+                                      right: 6,
+                                      top: 6,
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          color: Colors.white
+                                              .withValues(alpha: 0.85),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: IconButton(
+                                          icon: Icon(
+                                              isFav
+                                                  ? Icons.favorite
+                                                  : Icons.favorite_border,
+                                              color: isFav
+                                                  ? Colors.red
+                                                  : Colors.grey),
+                                          onPressed: () =>
+                                              fav.toggleFavorite(p['id']),
+                                          iconSize: 18,
+                                          padding:
+                                              const EdgeInsets.all(4),
+                                          constraints:
+                                              const BoxConstraints(),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                                  .animate(
+                                      delay:
+                                          (i * 80).ms)
+                                  .fadeIn(
+                                      duration:
+                                          350.ms)
+                                  .slideX(
+                                      begin:
+                                          0.1);
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                );
+              }),
+
+              Consumer<OrdersProvider>(
+                builder: (context, prov, _) {
+                  final history = prov.orders.where((o) {
+                    final s = (o['orderStatus'] ?? '').toString();
+                    return s == 'COMPLETED';
+                  }).toList();
+
+                  if (history.isEmpty) return const SizedBox.shrink();
+
+                  final order = history.first;
+                  final storeRaw = order['store'];
+                  if (storeRaw is! Map) return const SizedBox.shrink();
+                  final store = Map<String, dynamic>.from(storeRaw);
+                  if (store['address'] == null) {
+                    store['address'] =
+                        (store['address'] ?? store['location'] ?? store['alamat'])
+                            ?.toString();
+                  }
+
+                  String? imageUrl;
+                  final items =
+                      order['transactionItems'] as List<dynamic>? ?? [];
+                  if (items.isNotEmpty) {
+                    final p = items.first['product'];
+                    if (p is Map) {
+                      final raw = p['imageUrl'] ?? p['image'];
+                      if (raw != null) {
+                        imageUrl = MarketApiService()
+                            .resolveFileUrl(raw.toString());
+                      }
+                    }
+                  }
+
+                  DateTime? createdAt;
+                  if (order['createdAt'] != null) {
+                    createdAt =
+                        DateTime.tryParse(order['createdAt'].toString());
+                  }
+                  final createdText = createdAt != null
+                      ? DateFormat('dd MMM yyyy, HH:mm').format(createdAt)
+                      : null;
+
+                  final total = order['totalAmount'] as num?;
+                  final totalText =
+                      total != null ? _formatCurrency(total) : null;
+
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) =>
+                                    StoreDetailScreen(store: store)));
+                      },
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color:
+                                  Colors.black.withValues(alpha: 0.05),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            )
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 50,
+                              height: 50,
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade100,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: imageUrl != null
+                                  ? ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Image.network(imageUrl,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, __, ___) =>
+                                              const Icon(Icons.fastfood,
+                                                  color: Colors.grey)),
+                                    )
+                                  : const Icon(Icons.fastfood,
+                                      color: Colors.grey),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text('Belanja Lagi',
+                                            style: TextStyle(
+                                                fontSize: 10,
+                                                color: Colors.grey.shade600,
+                                                fontWeight: FontWeight.bold)),
+                                      ),
+                                      if (createdText != null)
+                                        Text(createdText,
+                                            style: TextStyle(
+                                                fontSize: 10,
+                                                color: Colors.grey.shade500)),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(store['name']?.toString() ?? 'Toko',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13)),
+                                  if (totalText != null)
+                                    Text('Total terakhir $totalText',
+                                        style: TextStyle(
+                                            fontSize: 11,
+                                            color: Colors.grey.shade600)),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            ElevatedButton(
+                              onPressed: () {
+                                Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (_) =>
+                                            StoreDetailScreen(store: store)));
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFE07A5F),
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 12),
+                                minimumSize: const Size(0, 36),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: const Text('Belanja Lagi',
+                                  style: TextStyle(fontSize: 12)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ).animate().fadeIn().slideY(begin: 0.1, end: 0);
+                },
+              ),
+
+              Builder(builder: (context) {
+                final counts = <String, int>{};
+                for (final s in _nearbyStores) {
+                  if (s is! Map) continue;
+                  final raw = s['category']?.toString().trim();
+                  if (raw == null || raw.isEmpty) continue;
+                  counts[raw] = (counts[raw] ?? 0) + 1;
+                }
+                if (counts.isEmpty) return const SizedBox.shrink();
+                final items = counts.entries.toList()
+                  ..sort((a, b) => b.value.compareTo(a.value));
+                final top = items.take(6).toList();
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(16, 24, 16, 8),
+                      child: Text(
+                        'Kategori Populer di Sekitar',
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 18),
+                      ),
+                    ),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Row(
+                        children: [
+                          for (final e in top)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: ActionChip(
+                                label: Text(
+                                  e.key,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _selectedCategory = e.key;
+                                  });
+                                },
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              }),
 
               // Categories
               if (_categories.length > 1) ...[
@@ -1399,9 +3641,85 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
 
               // Real List
               _nearbyStores.isEmpty && !_isLoading
-                  ? const Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Text('Tidak ada toko di sekitar.'))
+                  ? Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            height: 160,
+                            child: Lottie.network(
+                              'https://assets10.lottiefiles.com/packages/lf20_tno6cg2w.json',
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, __, ___) => Icon(
+                                Icons.store_mall_directory,
+                                size: 72,
+                                color: Colors.grey.shade300,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE07A5F)
+                                  .withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: const Text(
+                              'Belum ada toko di sekitar titik ini',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Color(0xFFE07A5F),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'Coba nyalakan GPS dan perbarui lokasi, atau pilih alamat lain secara manual.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          const Text(
+                            'Geser peta ke area lain untuk mencari lebih banyak toko di sekitarmu.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.grey,
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton.icon(
+                              onPressed: () async {
+                                setState(() => _isLoading = true);
+                                await _initLocation();
+                              },
+                              icon: const Icon(Icons.my_location),
+                              label: const Text('Gunakan Lokasi Saat Ini'),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: _showManualLocationDialog,
+                              icon: const Icon(Icons.edit_location_alt),
+                              label: const Text('Pilih Lokasi Manual'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
                   : ListView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
@@ -1410,7 +3728,6 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                       itemBuilder: (context, index) {
                         final store = _nearbyStores[index];
 
-                        // Client-side filter
                         if (_selectedCategory != 'All' &&
                             store['category'] != _selectedCategory) {
                           return const SizedBox.shrink();
@@ -1433,6 +3750,41 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                         if (_query.isNotEmpty && filtered.isEmpty) {
                           return const SizedBox.shrink();
                         }
+
+                        final fav = Provider.of<FavoritesProvider>(context);
+                        final rev = Provider.of<ReviewsProvider>(context);
+
+                        double? storeAvg;
+                        var sumRating = 0.0;
+                        var countRating = 0;
+                        for (final p in prods) {
+                          if (p is! Map) continue;
+                          final a = rev.getAverage(p['id']);
+                          if (a > 0) {
+                            sumRating += a;
+                            countRating++;
+                          }
+                        }
+                        if (countRating > 0) {
+                          storeAvg = sumRating / countRating;
+                        }
+
+                        bool hasFav = false;
+                        double? minPrice;
+                        for (final p in prods) {
+                          if (p is! Map) continue;
+                          if (!hasFav && fav.isFavorite(p['id'])) {
+                            hasFav = true;
+                          }
+                          final price =
+                              (p['sellingPrice'] as num?)?.toDouble();
+                          if (price != null && price > 0) {
+                            if (minPrice == null || price < minPrice) {
+                              minPrice = price;
+                            }
+                          }
+                        }
+
                         final storeAddr = (store['address'] ??
                                     store['location'] ??
                                     store['alamat'])
@@ -1446,7 +3798,8 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                         return Card(
                           margin: const EdgeInsets.only(bottom: 24),
                           elevation: 4,
-                          shadowColor: Colors.black.withOpacity(0.1),
+                          shadowColor:
+                              Colors.black.withValues(alpha: 0.1),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16)),
                           child: Column(
@@ -1505,6 +3858,14 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                                               style: TextStyle(
                                                   color: Colors.grey.shade600,
                                                   fontSize: 12)),
+                                          if (minPrice != null)
+                                            Text(
+                                              'Mulai dari ${_formatCurrency(minPrice)}',
+                                              style: TextStyle(
+                                                  color: Colors.grey.shade700,
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w500),
+                                            ),
                                         ],
                                       ),
                                     ),
@@ -1517,7 +3878,7 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                                               horizontal: 8, vertical: 4),
                                           decoration: BoxDecoration(
                                               color: const Color(0xFFE07A5F)
-                                                  .withOpacity(0.1),
+                                                  .withValues(alpha: 0.1),
                                               borderRadius:
                                                   BorderRadius.circular(6)),
                                           child: Text(store['category'],
@@ -1541,6 +3902,71 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                                                         Colors.grey.shade700)),
                                           ],
                                         ),
+                                        if (storeAvg != null &&
+                                            storeAvg > 0)
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                                top: 2),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const Icon(
+                                                  Icons.star_rounded,
+                                                  size: 14,
+                                                  color: Color(0xFFF2CC8F),
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  storeAvg
+                                                      .toStringAsFixed(1),
+                                                  style: const TextStyle(
+                                                    fontSize: 11,
+                                                    fontWeight:
+                                                        FontWeight.w600,
+                                                  ),
+                                                ),
+                                                if (hasFav) ...[
+                                                  const SizedBox(width: 6),
+                                                  Container(
+                                                    padding: const EdgeInsets
+                                                            .symmetric(
+                                                        horizontal: 6,
+                                                        vertical: 2),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.red
+                                                          .withValues(
+                                                              alpha: 0.1),
+                                                      borderRadius:
+                                                          BorderRadius
+                                                              .circular(8),
+                                                    ),
+                                                    child: const Row(
+                                                      mainAxisSize:
+                                                          MainAxisSize.min,
+                                                      children: [
+                                                        Icon(
+                                                          Icons.favorite,
+                                                          size: 10,
+                                                          color: Colors.red,
+                                                        ),
+                                                        SizedBox(width: 2),
+                                                        Text(
+                                                          'Favoritmu',
+                                                          style: TextStyle(
+                                                            fontSize: 9,
+                                                            color: Colors.red,
+                                                            fontWeight:
+                                                                FontWeight
+                                                                    .w600,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ],
+                                              ],
+                                            ),
+                                          ),
                                         TextButton(
                                             style: TextButton.styleFrom(
                                               padding: EdgeInsets.zero,
@@ -1596,46 +4022,37 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                                           return GestureDetector(
                                             onTap: () {
                                               Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                      builder: (_) =>
-                                                          ProductDetailScreen(
-                                                            product: p,
-                                                            storeId:
-                                                                store['id'],
-                                                            storeName:
-                                                                store['name'],
-                                                            storeAddress: (store[
-                                                                        'address'] ??
-                                                                    store[
-                                                                        'location'] ??
-                                                                    store[
-                                                                        'alamat'])
-                                                                ?.toString(),
-                                                            storeLat: ((store[
-                                                                            'latitude'] ??
-                                                                        store[
-                                                                            'lat'])
-                                                                    is num)
-                                                                ? (store['latitude'] ??
-                                                                        store[
-                                                                            'lat'])
-                                                                    .toDouble()
-                                                                : null,
-                                                            storeLong: ((store[
-                                                                            'longitude'] ??
-                                                                        store[
-                                                                            'long'] ??
-                                                                        store['lng'])
-                                                                    is num)
-                                                                ? (store['longitude'] ??
-                                                                        store[
-                                                                            'long'] ??
-                                                                        store[
-                                                                            'lng'])
-                                                                    .toDouble()
-                                                                : null,
-                                                          )));
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (_) =>
+                                                      ProductDetailScreen(
+                                                    product: p,
+                                                    storeId: store['id'],
+                                                    storeName: store['name'],
+                                                    storeAddress: (store[
+                                                                'address'] ??
+                                                            store['location'] ??
+                                                            store['alamat'])
+                                                        ?.toString(),
+                                                    storeLat: ((store['latitude'] ??
+                                                                store['lat'])
+                                                            is num)
+                                                        ? (store['latitude'] ??
+                                                                store['lat'])
+                                                            .toDouble()
+                                                        : null,
+                                                    storeLong: ((store['longitude'] ??
+                                                                store['long'] ??
+                                                                store['lng'])
+                                                            is num)
+                                                        ? (store['longitude'] ??
+                                                                store['long'] ??
+                                                                store['lng'])
+                                                            .toDouble()
+                                                        : null,
+                                                  ),
+                                                ),
+                                              ).then((_) => _loadRecentViewed());
                                             },
                                             child: Stack(
                                               children: [
@@ -1649,7 +4066,7 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                                                       boxShadow: [
                                                         BoxShadow(
                                                           color: Colors.grey
-                                                              .withOpacity(0.1),
+                                                              .withValues(alpha: 0.1),
                                                           blurRadius: 4,
                                                           offset: const Offset(
                                                               0, 2),
@@ -1759,7 +4176,7 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                                                   child: Container(
                                                     decoration: BoxDecoration(
                                                       color: Colors.white
-                                                          .withOpacity(0.8),
+                                                          .withValues(alpha: 0.8),
                                                       shape: BoxShape.circle,
                                                     ),
                                                     child: IconButton(
@@ -1826,7 +4243,7 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: bg.withOpacity(0.3),
+            color: bg.withValues(alpha: 0.3),
             blurRadius: 8,
             offset: const Offset(0, 4),
           )
@@ -1840,7 +4257,7 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
             child: Icon(
               Icons.campaign,
               size: 100,
-              color: Colors.white.withOpacity(0.1),
+              color: Colors.white.withValues(alpha: 0.1),
             ),
           ),
           Padding(
@@ -1862,7 +4279,8 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                          color: Colors.white.withOpacity(0.9), fontSize: 14)),
+                          color: Colors.white.withValues(alpha: 0.9),
+                          fontSize: 14)),
                 ],
               ],
             ),
@@ -1874,33 +4292,48 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
 
   IconData _iconForCategory(String category) {
     final c = category.toLowerCase();
-    if (c == 'all') return Icons.store;
-    if (c.contains('apotik') || c.contains('pharmacy'))
+    if (c == 'all') {
+      return Icons.store;
+    }
+    if (c.contains('apotik') || c.contains('pharmacy')) {
       return Icons.local_pharmacy;
-    if (c.contains('makan') || c.contains('resto') || c.contains('kedai'))
+    }
+    if (c.contains('makan') || c.contains('resto') || c.contains('kedai')) {
       return Icons.restaurant;
-    if (c.contains('baju') || c.contains('fashion')) return Icons.checkroom;
-    if (c.contains('ponsel') || c.contains('phone') || c.contains('hp'))
+    }
+    if (c.contains('baju') || c.contains('fashion')) {
+      return Icons.checkroom;
+    }
+    if (c.contains('ponsel') || c.contains('phone') || c.contains('hp')) {
       return Icons.smartphone;
-    if (c.contains('kelontong') || c.contains('grocery'))
+    }
+    if (c.contains('kelontong') || c.contains('grocery')) {
       return Icons.storefront;
+    }
     return Icons.category;
   }
 
   Color _colorForCategory(String category) {
     final c = category.toLowerCase();
     // Soft Earthy/Pastel Palette based on Brand Color #E07A5F
-    if (c == 'all') return const Color(0xFFE07A5F);
-    if (c.contains('apotik') || c.contains('pharmacy'))
+    if (c == 'all') {
+      return const Color(0xFFE07A5F);
+    }
+    if (c.contains('apotik') || c.contains('pharmacy')) {
       return const Color(0xFF81B29A); // Soft Green
-    if (c.contains('makan') || c.contains('resto') || c.contains('kedai'))
+    }
+    if (c.contains('makan') || c.contains('resto') || c.contains('kedai')) {
       return const Color(0xFFE07A5F); // Brand Color
-    if (c.contains('baju') || c.contains('fashion'))
+    }
+    if (c.contains('baju') || c.contains('fashion')) {
       return const Color(0xFFF4A261); // Soft Orange
-    if (c.contains('ponsel') || c.contains('phone') || c.contains('hp'))
+    }
+    if (c.contains('ponsel') || c.contains('phone') || c.contains('hp')) {
       return const Color(0xFF9D8189); // Soft Mauve
-    if (c.contains('kelontong') || c.contains('grocery'))
+    }
+    if (c.contains('kelontong') || c.contains('grocery')) {
       return const Color(0xFFF2CC8F); // Soft Yellow
+    }
     return const Color(0xFFE07A5F);
   }
 
@@ -1922,13 +4355,13 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
             decoration: BoxDecoration(
               color: isSelected
                   ? color
-                  : color.withOpacity(0.1), // Soft background
+                  : color.withValues(alpha: 0.1), // Soft background
               borderRadius: BorderRadius.circular(16),
               // Removed border for softer look
               boxShadow: isSelected
                   ? [
                       BoxShadow(
-                          color: color.withOpacity(0.4),
+                          color: color.withValues(alpha: 0.4),
                           blurRadius: 12, // Softer shadow
                           offset: const Offset(0, 6))
                     ]

@@ -212,12 +212,26 @@ const getAppConfig = async (req, res) => {
     try {
         const settings = await prisma.systemSettings.findMany({
             where: {
-                key: { in: ['BUYER_SERVICE_FEE', 'PLATFORM_BANK_INFO', 'BANK_NAME', 'BANK_ACCOUNT_NUMBER', 'BANK_ACCOUNT_NAME'] }
+                key: {
+                    in: [
+                        'BUYER_SERVICE_FEE',
+                        'BUYER_SERVICE_FEE_TYPE',
+                        'BUYER_FEE_CAP_MIN',
+                        'BUYER_FEE_CAP_MAX',
+                        'PLATFORM_BANK_INFO',
+                        'BANK_NAME',
+                        'BANK_ACCOUNT_NUMBER',
+                        'BANK_ACCOUNT_NAME'
+                    ]
+                }
             }
         });
         
         const config = {
             buyerServiceFee: 0,
+            buyerServiceFeeType: 'FLAT',
+            buyerFeeCapMin: null,
+            buyerFeeCapMax: null,
             bankInfo: {}
         };
 
@@ -225,6 +239,15 @@ const getAppConfig = async (req, res) => {
 
         settings.forEach(s => {
             if (s.key === 'BUYER_SERVICE_FEE') config.buyerServiceFee = parseInt(s.value) || 0;
+            if (s.key === 'BUYER_SERVICE_FEE_TYPE') config.buyerServiceFeeType = s.value || 'FLAT';
+            if (s.key === 'BUYER_FEE_CAP_MIN') {
+                const v = parseFloat(s.value);
+                if (!Number.isNaN(v)) config.buyerFeeCapMin = v;
+            }
+            if (s.key === 'BUYER_FEE_CAP_MAX') {
+                const v = parseFloat(s.value);
+                if (!Number.isNaN(v)) config.buyerFeeCapMax = v;
+            }
             if (['PLATFORM_BANK_INFO', 'BANK_NAME', 'BANK_ACCOUNT_NUMBER', 'BANK_ACCOUNT_NAME'].includes(s.key)) {
                 bankMap[s.key] = s.value;
             }

@@ -10,6 +10,8 @@ import 'package:rana_market/screens/login_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:lottie/lottie.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:rana_market/screens/main_screen.dart';
+import 'package:rana_market/widgets/buyer_bottom_nav.dart';
 
 class MarketCartScreen extends StatefulWidget {
   const MarketCartScreen({super.key});
@@ -155,7 +157,7 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
                           borderRadius: BorderRadius.circular(12),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
+                              color: Colors.black.withValues(alpha: 0.05),
                               blurRadius: 10,
                               offset: const Offset(0, 2),
                             )
@@ -204,7 +206,7 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
                           borderRadius: BorderRadius.circular(12),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
+                              color: Colors.black.withValues(alpha: 0.05),
                               blurRadius: 10,
                               offset: const Offset(0, 2),
                             )
@@ -282,7 +284,8 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
                     color: Colors.white,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
+                        color:
+                            Colors.black.withValues(alpha: 0.1),
                         blurRadius: 10,
                         offset: const Offset(0, -5),
                       )
@@ -336,6 +339,36 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
                 ),
               ],
             ),
+      bottomNavigationBar: BuyerBottomNav(
+        selectedIndex: 0,
+        onSelected: (index) {
+          if (index == 0) {
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(
+                  builder: (_) => const MainScreen(initialIndex: 0)),
+              (route) => false,
+            );
+          } else if (index == 1) {
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(
+                  builder: (_) => const MainScreen(initialIndex: 1)),
+              (route) => false,
+            );
+          } else if (index == 2) {
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(
+                  builder: (_) => const MainScreen(initialIndex: 2)),
+              (route) => false,
+            );
+          } else if (index == 3) {
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(
+                  builder: (_) => const MainScreen(initialIndex: 3)),
+              (route) => false,
+            );
+          }
+        },
+      ),
     );
   }
 
@@ -347,7 +380,7 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 2))
         ],
@@ -406,7 +439,7 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 5,
               offset: const Offset(0, 2))
         ],
@@ -505,16 +538,6 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
     );
   }
 
-  Widget _buildUserInfoRow(IconData icon, String text) {
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: Colors.grey),
-        const SizedBox(width: 8),
-        Text(text, style: const TextStyle(fontWeight: FontWeight.w500)),
-      ],
-    );
-  }
-
   void _showQuantityDialog(MarketCartItem item) {
     final controller = TextEditingController(text: item.quantity.toString());
     showDialog(
@@ -589,11 +612,13 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
 
     if (confirm != true) return;
 
+    if (!mounted) return;
+
     // Show Custom Processing Dialog
     showDialog(
       context: context,
       barrierDismissible: false,
-      barrierColor: Colors.black.withOpacity(0.7),
+      barrierColor: Colors.black.withValues(alpha: 0.7),
       builder: (ctx) => const _ProcessingDialog(),
     );
 

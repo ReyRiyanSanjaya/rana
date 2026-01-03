@@ -5,7 +5,9 @@ import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:rana_market/data/market_api_service.dart';
 import 'package:rana_market/providers/auth_provider.dart';
+import 'package:rana_market/screens/main_screen.dart';
 import 'package:rana_market/services/realtime_service.dart';
+import 'package:rana_market/widgets/buyer_bottom_nav.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -248,7 +250,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color:
+                            Colors.black.withValues(alpha: 0.05),
                         blurRadius: 10,
                         offset: const Offset(0, 4))
                   ],
@@ -258,7 +261,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: statusColor.withOpacity(0.1),
+                        color:
+                            statusColor.withValues(alpha: 0.1),
                         borderRadius: const BorderRadius.vertical(
                             top: Radius.circular(16)),
                       ),
@@ -593,7 +597,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                                 ((item['price'] as num? ?? 0) *
                                     (item['quantity'] as num? ?? 1)))),
                     const SizedBox(height: 8),
-                    _buildPaymentRow('Biaya Layanan', 0), // Placeholder
+                    _buildPaymentRow(
+                        'Biaya Layanan', (_order['buyerFee'] as num?) ?? 0),
                     const SizedBox(height: 8),
                     const Divider(),
                     const SizedBox(height: 8),
@@ -619,6 +624,16 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             ],
           ),
         ),
+      ),
+      bottomNavigationBar: BuyerBottomNav(
+        selectedIndex: 1,
+        onSelected: (index) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(
+                builder: (_) => MainScreen(initialIndex: index)),
+            (route) => false,
+          );
+        },
       ),
     );
   }

@@ -196,6 +196,15 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
                     final avg = rev.getAverage(p['id']);
                     final imageUrl = MarketApiService()
                         .resolveFileUrl(p['imageUrl'] ?? p['image']);
+                    final selling =
+                        (p['sellingPrice'] as num?)?.toDouble() ?? 0;
+                    final original =
+                        (p['originalPrice'] as num?)?.toDouble();
+                    final hasPromo =
+                        original != null && original > selling && original > 0;
+                    final discountPct = hasPromo
+                        ? ((1 - selling / original) * 100).round()
+                        : null;
                     return GestureDetector(
                       onTap: () {
                         Navigator.push(
@@ -247,19 +256,57 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
                                                     size: 40,
                                                     color: Colors.grey)),
                                           )
-                                        : Image.network(
-                                            imageUrl,
-                                            fit: BoxFit.cover,
-                                            errorBuilder:
-                                                (context, error, stackTrace) {
-                                              return Container(
-                                                color: Colors.grey.shade200,
-                                                child: const Center(
-                                                    child: Icon(Icons.fastfood,
-                                                        size: 40,
-                                                        color: Colors.grey)),
-                                              );
-                                            },
+                                        : Stack(
+                                            children: [
+                                              Positioned.fill(
+                                                child: Image.network(
+                                                  imageUrl,
+                                                  fit: BoxFit.cover,
+                                                  errorBuilder: (context, error,
+                                                      stackTrace) {
+                                                    return Container(
+                                                      color:
+                                                          Colors.grey.shade200,
+                                                      child: const Center(
+                                                          child: Icon(
+                                                              Icons.fastfood,
+                                                              size: 40,
+                                                              color:
+                                                                  Colors.grey)),
+                                                    );
+                                                  },
+                                                ),
+                                              ),
+                                              if (discountPct != null)
+                                                Positioned(
+                                                  left: 8,
+                                                  top: 8,
+                                                  child: Container(
+                                                    padding:
+                                                        const EdgeInsets
+                                                            .symmetric(
+                                                            horizontal: 6,
+                                                            vertical: 2),
+                                                    decoration: BoxDecoration(
+                                                      color: const Color(
+                                                              0xFFE07A5F)
+                                                          .withValues(
+                                                              alpha: 0.9),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              10),
+                                                    ),
+                                                    child: Text(
+                                                      '-$discountPct%',
+                                                      style: const TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 10,
+                                                          fontWeight:
+                                                              FontWeight.bold),
+                                                    ),
+                                                  ),
+                                                ),
+                                            ],
                                           ),
                                   ),
                                 ),
@@ -275,10 +322,34 @@ class _StoreDetailScreenState extends State<StoreDetailScreen> {
                                           style: const TextStyle(
                                               fontWeight: FontWeight.bold)),
                                       const SizedBox(height: 4),
-                                      Text('Rp ${p['sellingPrice']}',
-                                          style: const TextStyle(
-                                              color: Color(0xFF81B29A),
-                                              fontWeight: FontWeight.bold)),
+                                      if (original != null &&
+                                          original > selling)
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                                'Rp ${original.toInt()}',
+                                                style: const TextStyle(
+                                                    decoration: TextDecoration
+                                                        .lineThrough,
+                                                    color: Colors.grey,
+                                                    fontSize: 11)),
+                                            Text(
+                                                'Rp ${selling.toInt()}',
+                                                style: const TextStyle(
+                                                    color: Color(0xFFE07A5F),
+                                                    fontWeight:
+                                                        FontWeight.bold)),
+                                          ],
+                                        )
+                                      else
+                                        Text(
+                                            'Rp ${selling.toInt()}',
+                                            style: const TextStyle(
+                                                color: Color(0xFF81B29A),
+                                                fontWeight:
+                                                    FontWeight.bold)),
                                       Row(
                                         children: [
                                           Icon(Icons.star,

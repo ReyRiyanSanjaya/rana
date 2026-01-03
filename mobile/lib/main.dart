@@ -17,6 +17,8 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:rana_merchant/providers/wholesale_cart_provider.dart'; // [NEW]
 import 'package:rana_merchant/providers/wallet_provider.dart'; // [NEW]
 import 'package:rana_merchant/providers/subscription_provider.dart'; // [FIX] Added missing import
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:rana_merchant/screens/onboarding_merchant_screen.dart';
 
 const Color kBrandColor = Color(0xFFE07A5F); // Soft Terra Cotta
 const Color kBeigeBackground = Color(0xFFFFF8F0); // Soft Beige
@@ -181,6 +183,7 @@ class AuthWrapper extends StatefulWidget {
 
 class _AuthWrapperState extends State<AuthWrapper> {
   bool _checked = false;
+  bool _showOnboarding = false;
 
   @override
   void initState() {
@@ -188,6 +191,15 @@ class _AuthWrapperState extends State<AuthWrapper> {
     Future.microtask(() async {
       try {
         await context.read<AuthProvider>().checkAuth();
+        final prefs = await SharedPreferences.getInstance();
+        final hasCompleted =
+            prefs.getBool('has_completed_onboarding') ?? false;
+        final auth = context.read<AuthProvider>();
+        if (mounted) {
+          setState(() {
+            _showOnboarding = auth.isAuthenticated && !hasCompleted;
+          });
+        }
       } finally {
         if (mounted) setState(() => _checked = true);
       }
@@ -202,6 +214,12 @@ class _AuthWrapperState extends State<AuthWrapper> {
         body: Center(child: CircularProgressIndicator()),
       );
     }
-    return auth.isAuthenticated ? const HomeScreen() : const LoginScreen();
+    if (!auth.isAuthenticated) {
+      return const LoginScreen();
+    }
+    if (_showOnboarding) {
+      return const MerchantOnboardingScreen();
+    }
+    return const HomeScreen();
   }
 }

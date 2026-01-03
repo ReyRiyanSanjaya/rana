@@ -66,7 +66,9 @@ class RanaMarketApp extends StatelessWidget {
             elevation: 0,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
-              side: BorderSide(color: kBrandColor.withOpacity(0.1)),
+              side: BorderSide(
+                color: kBrandColor.withValues(alpha: 0.1),
+              ),
             ),
             color: Colors.white,
           ),

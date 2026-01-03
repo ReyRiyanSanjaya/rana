@@ -87,7 +87,26 @@ const purchaseProduct = async (req, res) => {
 
             if (chargeAmount == null) {
                 const base = (ppobTxn.providerSellingPrice ?? ppobTxn.providerPrice);
-                if (base != null && base > 0) chargeAmount = applyMarkup(base, cfg);
+                if (base != null && base > 0) {
+                    const baseCharge = applyMarkup(base, cfg);
+                    const feeSetting = await prisma.systemSettings.findUnique({ where: { key: 'BUYER_SERVICE_FEE' } });
+                    const feeTypeSetting = await prisma.systemSettings.findUnique({ where: { key: 'BUYER_SERVICE_FEE_TYPE' } });
+                    const minCapSetting = await prisma.systemSettings.findUnique({ where: { key: 'BUYER_FEE_CAP_MIN' } });
+                    const maxCapSetting = await prisma.systemSettings.findUnique({ where: { key: 'BUYER_FEE_CAP_MAX' } });
+                    const feeVal = feeSetting ? parseFloat(feeSetting.value) : 0;
+                    const feeType = feeTypeSetting ? String(feeTypeSetting.value) : 'FLAT';
+                    let buyerFee = 0;
+                    if (feeType === 'PERCENT') {
+                        buyerFee = (baseCharge * feeVal) / 100;
+                    } else {
+                        buyerFee = feeVal;
+                    }
+                    const minCap = minCapSetting ? parseFloat(minCapSetting.value) : undefined;
+                    const maxCap = maxCapSetting ? parseFloat(maxCapSetting.value) : undefined;
+                    if (minCap !== undefined && buyerFee < minCap) buyerFee = minCap;
+                    if (maxCap !== undefined && buyerFee > maxCap) buyerFee = maxCap;
+                    chargeAmount = baseCharge + buyerFee;
+                }
             }
             if (chargeAmount == null || chargeAmount <= 0) {
                 return errorResponse(res, "Tagihan belum valid, lakukan inquiry ulang", 400);
@@ -125,7 +144,7 @@ const purchaseProduct = async (req, res) => {
                             storeId,
                             amount: chargeAmount,
                             type: 'CASH_OUT',
-                            category: 'OTHER',
+                            category: 'EXPENSE_PURCHASE',
                             description: `PPOB ${buyerSkuCode} ke ${customerNo} (refId ${refId})`,
                             occurredAt: new Date()
                         }
@@ -290,18 +309,36 @@ const getProducts = async (req, res) => {
         });
 
         if (listCmd === 'prepaid') {
+            const feeSetting = await prisma.systemSettings.findUnique({ where: { key: 'BUYER_SERVICE_FEE' } });
+            const feeTypeSetting = await prisma.systemSettings.findUnique({ where: { key: 'BUYER_SERVICE_FEE_TYPE' } });
+            const minCapSetting = await prisma.systemSettings.findUnique({ where: { key: 'BUYER_FEE_CAP_MIN' } });
+            const maxCapSetting = await prisma.systemSettings.findUnique({ where: { key: 'BUYER_FEE_CAP_MAX' } });
+            const feeVal = feeSetting ? parseFloat(feeSetting.value) : 0;
+            const feeType = feeTypeSetting ? String(feeTypeSetting.value) : 'FLAT';
+            const minCap = minCapSetting ? parseFloat(minCapSetting.value) : undefined;
+            const maxCap = maxCapSetting ? parseFloat(maxCapSetting.value) : undefined;
+
             const normalized = products
                 .filter((p) => p?.buyer_product_status === true && p?.seller_product_status === true)
                 .map((p) => {
                     const base = Number(p.price) || 0;
-                    const selling = applyMarkup(base, cfg);
+                    const sellingBase = applyMarkup(base, cfg);
+                    let buyerFee = 0;
+                    if (feeType === 'PERCENT') {
+                        buyerFee = (sellingBase * feeVal) / 100;
+                    } else {
+                        buyerFee = feeVal;
+                    }
+                    if (minCap !== undefined && buyerFee < minCap) buyerFee = minCap;
+                    if (maxCap !== undefined && buyerFee > maxCap) buyerFee = maxCap;
+                    const finalPrice = sellingBase + buyerFee;
                     return {
                         id: p.buyer_sku_code,
                         name: p.product_name,
                         category: (p.category || '').toString(),
                         brand: (p.brand || '').toString(),
                         type: (p.type || '').toString(),
-                        price: selling,
+                        price: finalPrice,
                         providerPrice: base,
                         desc: p.desc || null
                     };
@@ -393,7 +430,27 @@ const checkBill = async (req, res) => {
         const providerPrice = toNumberOrNull(inquiry?.price);
         const providerSellingPrice = toNumberOrNull(inquiry?.selling_price);
         const chargeBase = providerSellingPrice ?? providerPrice;
-        const estimatedCharge = chargeBase != null ? applyMarkup(chargeBase, cfg) : null;
+        let estimatedCharge = null;
+        let buyerFee = 0;
+        if (chargeBase != null) {
+            const baseCharge = applyMarkup(chargeBase, cfg);
+            const feeSetting = await prisma.systemSettings.findUnique({ where: { key: 'BUYER_SERVICE_FEE' } });
+            const feeTypeSetting = await prisma.systemSettings.findUnique({ where: { key: 'BUYER_SERVICE_FEE_TYPE' } });
+            const minCapSetting = await prisma.systemSettings.findUnique({ where: { key: 'BUYER_FEE_CAP_MIN' } });
+            const maxCapSetting = await prisma.systemSettings.findUnique({ where: { key: 'BUYER_FEE_CAP_MAX' } });
+            const feeVal = feeSetting ? parseFloat(feeSetting.value) : 0;
+            const feeType = feeTypeSetting ? String(feeTypeSetting.value) : 'FLAT';
+            if (feeType === 'PERCENT') {
+                buyerFee = (baseCharge * feeVal) / 100;
+            } else {
+                buyerFee = feeVal;
+            }
+            const minCap = minCapSetting ? parseFloat(minCapSetting.value) : undefined;
+            const maxCap = maxCapSetting ? parseFloat(maxCapSetting.value) : undefined;
+            if (minCap !== undefined && buyerFee < minCap) buyerFee = minCap;
+            if (maxCap !== undefined && buyerFee > maxCap) buyerFee = maxCap;
+            estimatedCharge = baseCharge + buyerFee;
+        }
 
         await prisma.ppobTransaction.create({
             data: {
@@ -425,6 +482,7 @@ const checkBill = async (req, res) => {
             price: providerPrice,
             sellingPrice: providerSellingPrice,
             estimatedCharge,
+            serviceFee: buyerFee,
             desc: inquiry?.desc || null,
             periode: inquiry?.periode || null
         });

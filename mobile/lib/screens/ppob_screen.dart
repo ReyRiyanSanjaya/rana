@@ -323,6 +323,15 @@ class _TransactionSheetState extends State<_TransactionSheet> {
   bool _isInquiryLoading = false;
   Map<String, dynamic>? _inquiry;
 
+  String _formatCurrency(dynamic value) {
+    if (value == null) return '-';
+    final numValue = value is num ? value : num.tryParse(value.toString());
+    if (numValue == null) return '-';
+    return NumberFormat.currency(
+            locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0)
+        .format(numValue);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -510,8 +519,14 @@ class _TransactionSheetState extends State<_TransactionSheet> {
                       style: const TextStyle(fontSize: 12, color: Colors.grey)),
                   const SizedBox(height: 6),
                   Text(
-                      'Estimasi bayar: Rp ${_inquiry!['estimatedCharge']?.toString() ?? '-'}',
+                      'Estimasi bayar: ${_formatCurrency(_inquiry!['estimatedCharge'])}',
                       style: const TextStyle(fontSize: 12)),
+                  if (_inquiry!['serviceFee'] != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                        'Termasuk biaya layanan: ${_formatCurrency(_inquiry!['serviceFee'])}',
+                        style: const TextStyle(fontSize: 12)),
+                  ],
                 ],
               ),
             ),

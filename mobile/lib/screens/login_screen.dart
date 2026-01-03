@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:rana_merchant/providers/auth_provider.dart';
 import 'package:rana_merchant/screens/register_screen.dart';
 import 'package:rana_merchant/screens/home_screen.dart';
+import 'package:rana_merchant/screens/onboarding_merchant_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -22,10 +24,21 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       await Provider.of<AuthProvider>(context, listen: false)
           .login(_phoneCtrl.text, _passCtrl.text);
-      if (mounted) {
-        Navigator.pushReplacement(
-            context, MaterialPageRoute(builder: (_) => const HomeScreen()));
-      }
+
+      if (!mounted) return;
+
+      final prefs = await SharedPreferences.getInstance();
+      final hasCompleted =
+          prefs.getBool('has_completed_onboarding') ?? false;
+
+      final next = hasCompleted
+          ? const HomeScreen()
+          : const MerchantOnboardingScreen();
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => next),
+      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(e.toString()),

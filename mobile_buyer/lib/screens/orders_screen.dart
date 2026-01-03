@@ -6,6 +6,7 @@ import 'package:rana_market/providers/orders_provider.dart';
 import 'package:rana_market/services/realtime_service.dart';
 import 'package:rana_market/screens/order_detail_screen.dart';
 import 'package:rana_market/data/market_api_service.dart';
+import 'package:lottie/lottie.dart';
 
 class OrdersScreen extends StatefulWidget {
   const OrdersScreen({super.key});
@@ -187,15 +188,24 @@ class _OrdersScreenState extends State<OrdersScreen> {
             if (prov.orders.isEmpty) {
               return ListView(
                 children: [
-                  SizedBox(height: MediaQuery.of(context).size.height * 0.2),
-                  const Center(
+                  SizedBox(
+                      height: MediaQuery.of(context).size.height * 0.15),
+                  Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.shopping_bag_outlined,
-                            size: 80, color: Colors.grey),
-                        SizedBox(height: 16),
-                        Text('Belum ada pesanan aktif',
+                        SizedBox(
+                          height: 160,
+                          child: Lottie.network(
+                            'https://assets9.lottiefiles.com/packages/lf20_qh5z2v.json',
+                            fit: BoxFit.contain,
+                            errorBuilder: (_, __, ___) =>
+                                const Icon(Icons.shopping_bag_outlined,
+                                    size: 80, color: Colors.grey),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        const Text('Belum ada pesanan aktif',
                             style: TextStyle(color: Colors.grey, fontSize: 16)),
                       ],
                     ),
@@ -248,7 +258,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
+                          color: Colors.black.withValues(alpha: 0.05),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         )
@@ -286,7 +296,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
-                                color: statusColor.withOpacity(0.1),
+                                color:
+                                    statusColor.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(

@@ -50,6 +50,7 @@ import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:rana_merchant/services/realtime_service.dart';
 import 'package:rana_merchant/services/order_service.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -79,6 +80,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Timer? _autoSyncTimer;
   final RealtimeService _realtimeService = RealtimeService();
   final OrderService _orderService = OrderService();
+  bool _showBeginnerTip = false;
+  bool _shouldShowOnboardingSuccess = false;
+  bool _showHomeTour = false;
+  int _homeTourStep = 0;
 
   // [NEW] Icon Mapper
   IconData _getIcon(String name) {
@@ -162,6 +167,8 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadProducts();
     _loadInsight();
     _loadStoreInfo();
+    _loadBeginnerTipFlag();
+    _maybeStartHomeTour();
     _appMenusFuture = ApiService().fetchAppMenus();
     // [NEW] Load Wallet Data for Home Card
     Future.microtask(() => context.read<WalletProvider>().loadData());
@@ -214,6 +221,80 @@ class _HomeScreenState extends State<HomeScreen> {
     _refreshNotificationBadge();
     _realtimeService.init();
     _realtimeService.addTransactionListener(_handleRealtimeOrderEvent);
+    _checkOnboardingSuccessFlag();
+  }
+
+  Future<void> _loadBeginnerTipFlag() async {
+    final prefs = await SharedPreferences.getInstance();
+    final hasCompleted =
+        prefs.getBool('has_completed_onboarding') ?? false;
+    final hasDismissed =
+        prefs.getBool('has_dismissed_beginner_tip') ?? false;
+    if (!mounted) return;
+    setState(() {
+      _showBeginnerTip = hasCompleted && !hasDismissed;
+    });
+  }
+
+  Future<void> _dismissBeginnerTip() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('has_dismissed_beginner_tip', true);
+    if (!mounted) return;
+    setState(() {
+      _showBeginnerTip = false;
+    });
+  }
+
+  Future<void> _maybeStartHomeTour() async {
+    final prefs = await SharedPreferences.getInstance();
+    final hasCompleted =
+        prefs.getBool('has_completed_onboarding') ?? false;
+    final hasSeenTour =
+        prefs.getBool('has_seen_home_tour') ?? false;
+    if (!mounted || !hasCompleted || hasSeenTour) return;
+    setState(() {
+      _showHomeTour = true;
+      _homeTourStep = 0;
+    });
+  }
+
+  Future<void> _checkOnboardingSuccessFlag() async {
+    final prefs = await SharedPreferences.getInstance();
+    final should = prefs.getBool('should_show_onboarding_success') ?? false;
+    if (!mounted || !should) return;
+    await prefs.setBool('should_show_onboarding_success', false);
+    setState(() {
+      _shouldShowOnboardingSuccess = true;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_shouldShowOnboardingSuccess) return;
+      _showOnboardingSuccessSheet();
+    });
+  }
+
+  Future<void> _finishHomeTour() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('has_seen_home_tour', true);
+    if (!mounted) return;
+    setState(() {
+      _showHomeTour = false;
+    });
+  }
+
+  Future<void> _advanceHomeTour() async {
+    if (!_showHomeTour) return;
+    if (_homeTourStep < 2) {
+      setState(() {
+        _homeTourStep++;
+      });
+      return;
+    }
+    await _finishHomeTour();
+  }
+
+  Future<void> _skipHomeTour() async {
+    if (!_showHomeTour) return;
+    await _finishHomeTour();
   }
 
   Future<void> _loadStoreInfo() async {
@@ -276,6 +357,262 @@ class _HomeScreenState extends State<HomeScreen> {
         _newOrdersCount = pendingCount;
       });
     } catch (_) {}
+  }
+
+  void _showOnboardingSuccessSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        final media = MediaQuery.of(ctx);
+        return Container(
+          padding: const EdgeInsets.all(24),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                SizedBox(
+                  height: 160,
+                  child: Lottie.asset(
+                    'assets/lottie/confetti_success.json',
+                    repeat: false,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Toko Anda siap jualan',
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Produk pertama Anda sudah dibuat. Tambah produk lagi supaya pelanggan lebih banyak pilihan.',
+                  style: GoogleFonts.poppins(
+                    fontSize: 13,
+                    color: const Color(0xFF64748B),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                    },
+                    child: const Text('Masuk ke Beranda'),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const AddProductScreen(),
+                        ),
+                      );
+                    },
+                    child: const Text('Tambah produk lagi'),
+                  ),
+                ),
+                SizedBox(height: media.viewInsets.bottom + 8),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildHomeTourOverlay(BuildContext context) {
+    String title;
+    String description;
+    Alignment highlightAlignment;
+    IconData stepIcon;
+    String stepLabel;
+
+    if (_homeTourStep == 0) {
+      title = 'Mulai dari Kasir';
+      description =
+          'Gunakan menu Kasir untuk mencatat setiap transaksi agar laporan selalu rapi.';
+      highlightAlignment = const Alignment(0, -0.1);
+      stepIcon = Icons.point_of_sale;
+      stepLabel = 'Kasir';
+    } else if (_homeTourStep == 1) {
+      title = 'Atur Produk';
+      description =
+          'Kelola stok dan harga produk dari menu Produk supaya jualan lebih teratur.';
+      highlightAlignment = const Alignment(0, 0.2);
+      stepIcon = Icons.inventory_2;
+      stepLabel = 'Produk';
+    } else {
+      title = 'Lihat Laporan';
+      description =
+          'Pantau omzet harian dan performa toko melalui menu Laporan.';
+      highlightAlignment = const Alignment(0, 0.85);
+      stepIcon = Icons.bar_chart;
+      stepLabel = 'Laporan';
+    }
+
+    return IgnorePointer(
+      ignoring: false,
+      child: Container(
+        color: Colors.black.withOpacity(0.55),
+        child: Stack(
+          children: [
+            Align(
+              alignment: highlightAlignment,
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(begin: 1, end: 1.08),
+                duration: const Duration(milliseconds: 900),
+                curve: Curves.easeInOut,
+                builder: (context, value, child) {
+                  return Transform.scale(
+                    scale: value,
+                    child: Container(
+                      width: 140,
+                      height: 140,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 3),
+                        color: Colors.white.withOpacity(0.06),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(50),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            stepIcon,
+                            size: 16,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            stepLabel,
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Container(
+                            width: 4,
+                            height: 4,
+                            decoration: const BoxDecoration(
+                              color: Colors.white54,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Langkah ${_homeTourStep + 1} dari 3',
+                            style: GoogleFonts.poppins(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      title,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      description,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.poppins(
+                        color: Colors.white70,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.06),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton(
+                              onPressed: _advanceHomeTour,
+                              child: Text(
+                                _homeTourStep == 2 ? 'Mengerti' : 'Lanjut',
+                              ),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: _skipHomeTour,
+                            child: const Text(
+                              'Lewati panduan',
+                              style: TextStyle(color: Colors.white70),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _refreshNotificationBadge() async {
@@ -720,8 +1057,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             );
           } else {
-            // MOBILE LAYOUT - SUPER APP STYLE
-            return WillPopScope(
+            final mobile = WillPopScope(
               onWillPop: () async {
                 final nav = _tabNavigatorKeys[_bottomNavIndex].currentState;
                 if (nav != null && nav.canPop()) {
@@ -779,6 +1115,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             );
+
+            if (_showHomeTour) {
+              return Stack(
+                children: [
+                  mobile,
+                  _buildHomeTourOverlay(context),
+                ],
+              );
+            }
+
+            return mobile;
           }
         },
       ),
@@ -880,6 +1227,79 @@ class _HomeScreenState extends State<HomeScreen> {
         SliverToBoxAdapter(
           child: Column(
             children: [
+              if (_showBeginnerTip) const SizedBox(height: 16),
+              if (_showBeginnerTip)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF8F0),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: const Color(0xFFE07A5F).withOpacity(0.18),
+                      ),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE07A5F).withOpacity(0.08),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.lightbulb_outline,
+                            color: Color(0xFFE07A5F),
+                            size: 18,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'Tips untuk kamu',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFFE07A5F),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Tambah lebih banyak produk agar pelanggan mudah memilih.',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  color: const Color(0xFF1E293B),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        InkWell(
+                          onTap: _dismissBeginnerTip,
+                          borderRadius: BorderRadius.circular(16),
+                          child: const Padding(
+                            padding: EdgeInsets.all(4),
+                            child: Icon(
+                              Icons.close,
+                              size: 16,
+                              color: Color(0xFF94A3B8),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              if (_showBeginnerTip) const SizedBox(height: 16),
               _buildLiveTicker(), // [NEW] Flash News
               const SizedBox(height: 16),
               _buildWalletCard(navContext).animate().fade().slideY(

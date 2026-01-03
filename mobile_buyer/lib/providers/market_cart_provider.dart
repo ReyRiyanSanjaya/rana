@@ -34,8 +34,29 @@ class MarketCartProvider with ChangeNotifier {
   double? get activeStoreLat => _activeStoreLat;
   double? get activeStoreLong => _activeStoreLong;
   Map<String, MarketCartItem> get items => _items;
-  double _serviceFee = 0;
-  double get serviceFee => _serviceFee;
+  double _serviceFeeValue = 0;
+  String _serviceFeeType = 'FLAT';
+  double? _serviceFeeCapMin;
+  double? _serviceFeeCapMax;
+
+  double get serviceFee {
+    final subtotal = totalAmount;
+    if (subtotal <= 0) return 0;
+
+    double fee = 0;
+    if (_serviceFeeType == 'PERCENT') {
+      fee = subtotal * (_serviceFeeValue / 100);
+    } else {
+      fee = _serviceFeeValue;
+    }
+    if (_serviceFeeCapMin != null && fee < _serviceFeeCapMin!) {
+      fee = _serviceFeeCapMin!;
+    }
+    if (_serviceFeeCapMax != null && fee > _serviceFeeCapMax!) {
+      fee = _serviceFeeCapMax!;
+    }
+    return fee;
+  }
 
   double get totalAmount {
     var total = 0.0;
@@ -55,15 +76,27 @@ class MarketCartProvider with ChangeNotifier {
 
   double get totalDiscount => totalOriginalAmount - totalAmount;
 
-  double get grandTotal => totalAmount + _serviceFee;
+  double get grandTotal => totalAmount + serviceFee;
 
   Future<void> fetchServiceFee() async {
     try {
       final config = await MarketApiService().getAppConfig();
       if (config.containsKey('buyerServiceFee')) {
-        _serviceFee = (config['buyerServiceFee'] as num).toDouble();
-        notifyListeners();
+        _serviceFeeValue = (config['buyerServiceFee'] as num).toDouble();
       }
+      if (config.containsKey('buyerServiceFeeType')) {
+        _serviceFeeType =
+            (config['buyerServiceFeeType'] as String?)?.toUpperCase() ?? 'FLAT';
+      }
+      if (config.containsKey('buyerFeeCapMin')) {
+        final v = config['buyerFeeCapMin'];
+        if (v is num) _serviceFeeCapMin = v.toDouble();
+      }
+      if (config.containsKey('buyerFeeCapMax')) {
+        final v = config['buyerFeeCapMax'];
+        if (v is num) _serviceFeeCapMax = v.toDouble();
+      }
+      notifyListeners();
     } catch (e) {
       debugPrint('Error fetching service fee: $e');
     }
