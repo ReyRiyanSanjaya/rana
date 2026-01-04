@@ -9,6 +9,7 @@ router.get('/app-menus', systemController.getAppMenus);
 
 // Protected System Info
 const verifyToken = require('../middleware/auth');
+router.get('/announcements/me', verifyToken, systemController.getMyAnnouncements);
 router.get('/notifications', verifyToken, systemController.getNotifications); 
 router.post('/notifications/read-all', verifyToken, systemController.markAllNotificationsRead);
 

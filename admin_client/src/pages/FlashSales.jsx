@@ -8,6 +8,13 @@ const FlashSales = () => {
   const [loading, setLoading] = React.useState(false);
   const [flashSales, setFlashSales] = React.useState([]);
 
+  const [statusFilter, setStatusFilter] = React.useState('ALL');
+
+  const filteredSales = flashSales.filter(fs => {
+    if (statusFilter === 'ALL') return true;
+    return fs.status === statusFilter;
+  });
+
   const refresh = async () => {
     setLoading(true);
     try {
@@ -59,9 +66,9 @@ const FlashSales = () => {
             <tbody>
               {loading ? (
                 <tr><td className="py-6 px-3 text-slate-400" colSpan={6}>Loading...</td></tr>
-              ) : flashSales.length === 0 ? (
+              ) : filteredSales.length === 0 ? (
                 <tr><td className="py-6 px-3 text-slate-400" colSpan={6}>Tidak ada data</td></tr>
-              ) : flashSales.map(fs => (
+              ) : filteredSales.map(fs => (
                 <tr key={fs.id} className="border-b">
                   <td className="py-2 px-3 font-medium text-slate-900">{fs.title}</td>
                   <td className="py-2 px-3">{fs.store?.name || '-'}</td>

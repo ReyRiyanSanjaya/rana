@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:rana_market/screens/market_home_screen.dart';
 import 'package:rana_market/screens/orders_screen.dart';
 import 'package:rana_market/screens/notifications_screen.dart';
@@ -34,8 +33,6 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const kBrandColor = Color(0xFFE07A5F);
-
     return Scaffold(
       body: IndexedStack(
         index: _selectedIndex,

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:rana_market/config/theme_config.dart';
 import 'package:rana_market/providers/auth_provider.dart';
 import 'package:rana_market/screens/login_screen.dart';
 import 'package:rana_market/screens/register_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -137,8 +139,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   CircleAvatar(
                     radius: 50,
                     backgroundColor: Colors.grey.shade200,
-                    child:
-                        const Icon(Icons.person, size: 50, color: Colors.grey),
+                    child: const Icon(Icons.person,
+                        size: 50, color: ThemeConfig.textSecondary),
                   ),
                   const SizedBox(height: 16),
                   const Text(
@@ -160,8 +162,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       side: BorderSide(color: Colors.grey.shade200),
                     ),
                     child: ListTile(
-                      leading:
-                          const Icon(Icons.phone, color: Color(0xFFE07A5F)),
+                      leading: const Icon(Icons.phone,
+                          color: ThemeConfig.brandColor),
                       title: const Text('Kontak pesanan'),
                       subtitle: _loadingPrefs
                           ? const Text('Memuat...')
@@ -179,8 +181,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                         _buyerPhone!,
                                     ].join(' • '),
                             ),
-                      trailing:
-                          const Icon(Icons.chevron_right, color: Colors.grey),
+                      trailing: const Icon(Icons.chevron_right,
+                          color: ThemeConfig.textSecondary),
                       onTap: () => _openContactEditor(),
                     ),
                   ),
@@ -228,41 +230,52 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            // Profile Header
-            CircleAvatar(
-              radius: 50,
-              backgroundColor: Colors.grey.shade200,
-              child: const Icon(Icons.person, size: 50, color: Colors.grey),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: ThemeConfig.isTablet(context) ? 640 : double.infinity,
             ),
-            const SizedBox(height: 16),
-            Text(user?['name'] ?? 'Pengguna Rana',
-                style:
-                    const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-            Text(user?['email'] ?? '-',
-                style: const TextStyle(color: Colors.grey)),
-            Text((user?['phone'] ?? user?['phoneNumber'] ?? '-').toString(),
-                style: const TextStyle(color: Colors.grey)),
-
-            const SizedBox(height: 32),
-
-            _buildMenuItem(Icons.phone, 'Kontak Pesanan',
-                onTap: () => _openContactEditor()),
-
-            const SizedBox(height: 32),
-            OutlinedButton(
-              onPressed: () async {
-                await auth.logout();
-              },
-              style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFFE07A5F),
-                side: const BorderSide(color: Color(0xFFE07A5F)),
-                minimumSize: const Size(double.infinity, 50),
-              ),
-              child: const Text('Keluar'),
-            )
-          ],
+            child: Column(
+              children: [
+                CircleAvatar(
+                  radius: 50,
+                  backgroundColor: Colors.grey.shade200,
+                  child: const Icon(Icons.person, size: 50, color: Colors.grey),
+                ).animate().fadeIn(duration: 300.ms),
+                const SizedBox(height: 16),
+                Text(user?['name'] ?? 'Pengguna Rana',
+                        style: const TextStyle(
+                            fontSize: 22, fontWeight: FontWeight.bold))
+                    .animate()
+                    .fadeIn(duration: 250.ms),
+                Text(user?['email'] ?? '-',
+                        style: const TextStyle(color: Colors.grey))
+                    .animate()
+                    .fadeIn(duration: 250.ms),
+                Text((user?['phone'] ?? user?['phoneNumber'] ?? '-').toString(),
+                        style: const TextStyle(color: Colors.grey))
+                    .animate()
+                    .fadeIn(duration: 250.ms),
+                const SizedBox(height: 32),
+                _buildMenuItem(Icons.phone, 'Kontak Pesanan',
+                        onTap: () => _openContactEditor())
+                    .animate()
+                    .fadeIn(duration: 300.ms),
+                const SizedBox(height: 32),
+                OutlinedButton(
+                  onPressed: () async {
+                    await auth.logout();
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: ThemeConfig.brandColor,
+                    side: const BorderSide(color: ThemeConfig.brandColor),
+                    minimumSize: const Size(double.infinity, 50),
+                  ),
+                  child: const Text('Keluar'),
+                ).animate().fadeIn(duration: 300.ms)
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -270,7 +283,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildMenuItem(IconData icon, String title, {VoidCallback? onTap}) {
     return ListTile(
-      leading: Icon(icon, color: const Color(0xFFE07A5F)),
+      leading: Icon(icon, color: ThemeConfig.brandColor),
       title: Text(title),
       trailing: const Icon(Icons.chevron_right, color: Colors.grey),
       onTap: onTap,

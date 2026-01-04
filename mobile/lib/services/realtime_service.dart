@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:rana_merchant/constants.dart';
+import 'package:rana_merchant/config/api_config.dart';
 import 'package:rana_merchant/data/local/database_helper.dart';
 import 'package:rana_merchant/data/remote/api_service.dart';
 import 'package:rana_merchant/services/notification_service.dart';
@@ -21,14 +22,12 @@ class RealtimeService {
   io.Socket _ensureConnected() {
     if (_socket != null && _socket!.connected) return _socket!;
     final token = ApiService().token ?? '';
-    final origin = AppConstants.baseUrl;
+    final origin = ApiConfig.serverUrl;
 
     _socket = io.io(
       origin,
-      io.OptionBuilder()
-          .setTransports(['websocket', 'polling'])
-          .setAuth({'token': token})
-          .build(),
+      io.OptionBuilder().setTransports(['websocket', 'polling']).setAuth(
+          {'token': token}).build(),
     );
 
     return _socket!;
@@ -59,7 +58,8 @@ class RealtimeService {
     s.on('transactions:created', (payload) {
       if (payload is! Map) return;
       final data = Map<String, dynamic>.from(payload);
-      for (final handler in List<TransactionEventHandler>.from(_transactionListeners)) {
+      for (final handler
+          in List<TransactionEventHandler>.from(_transactionListeners)) {
         unawaited(Future<void>.microtask(() => handler(data)));
       }
 
@@ -73,12 +73,15 @@ class RealtimeService {
     s.on('orders:updated', (payload) {
       if (payload is! Map) return;
       final data = Map<String, dynamic>.from(payload);
-      for (final handler in List<TransactionEventHandler>.from(_transactionListeners)) {
+      for (final handler
+          in List<TransactionEventHandler>.from(_transactionListeners)) {
         unawaited(Future<void>.microtask(() => handler(data)));
       }
 
       final status = data['orderStatus']?.toString();
-      final title = status == null || status.isEmpty ? 'Pesanan diperbarui' : 'Status pesanan: $status';
+      final title = status == null || status.isEmpty
+          ? 'Pesanan diperbarui'
+          : 'Status pesanan: $status';
 
       NotificationService().showNotification(
         id: DateTime.now().millisecondsSinceEpoch % 100000,

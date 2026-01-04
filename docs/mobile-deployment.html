@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile Deployment - Dokumentasi Rana Market</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <nav class="sidebar">
+        <a href="index.html" class="brand">Rana Market 🐸</a>
+        <ul class="nav-links">
+            <li class="nav-item"><a href="index.html" class="nav-link">🏠 Pengantar</a></li>
+            <li class="nav-item"><a href="architecture.html" class="nav-link">🏗️ Arsitektur Sistem</a></li>
+            <li class="nav-item"><a href="database-schema.html" class="nav-link">💾 Database Schema</a></li>
+            <li class="nav-item"><a href="security.html" class="nav-link">🔒 Keamanan</a></li>
+            <li class="nav-item"><a href="server-deployment.html" class="nav-link">🖥️ Server Deployment</a></li>
+            <li class="nav-item"><a href="mobile-deployment.html" class="nav-link active">📱 Mobile Deployment</a></li>
+            <li class="nav-item"><a href="api-integration.html" class="nav-link">🔌 Integrasi API</a></li>
+            <li class="nav-item"><a href="cicd.html" class="nav-link">🚀 CI/CD Pipeline</a></li>
+            <li class="nav-item"><a href="tools.html" class="nav-link">🛠️ Tools & Utils</a></li>
+            <li class="nav-item"><a href="user-manual.html" class="nav-link">📖 Panduan Admin</a></li>
+            <li class="nav-item"><a href="maintenance.html" class="nav-link">🛠️ Maintenance & Ops</a></li>
+            <li class="nav-item"><a href="troubleshooting.html" class="nav-link">❓ Troubleshooting</a></li>
+        </ul>
+    </nav>
+
+    <main class="main-content">
+        <h1>Panduan Deployment Mobile (Android)</h1>
+        <p>Cara mem-build aplikasi Flutter menjadi file <code>.aab</code> (App Bundle) siap rilis ke Google Play Store.</p>
+
+        <h2>1. Konfigurasi URL API</h2>
+        <p>Pastikan aplikasi mengarah ke server production, bukan localhost.</p>
+        <div class="alert alert-info">
+            <strong>File:</strong> <code>lib/config/api_config.dart</code>
+        </div>
+        <p>Edit variabel <code>_prodUrl</code>:</p>
+        <pre><code>static const String _prodUrl = 'https://api.domainanda.com/api';</code></pre>
+
+        <h2>2. Membuat Keystore (Signing Key)</h2>
+        <p>Anda memerlukan kunci digital untuk menandatangani aplikasi. <strong>Lakukan ini sekali saja dan simpan filenya selamanya.</strong></p>
+        
+        <p>Jalankan di terminal folder <code>mobile_buyer</code>:</p>
+        <pre><code>keytool -genkey -v -keystore upload-keystore.jks -storetype JKS -keyalg RSA -keysize 2048 -validity 10000 -alias upload</code></pre>
+        <p>Simpan password yang Anda buat!</p>
+
+        <h2>3. Konfigurasi Gradle</h2>
+        <p>Edit file <code>android/key.properties</code>:</p>
+        <pre><code>storePassword=password_anda
+keyPassword=password_anda
+keyAlias=upload
+storeFile=../../upload-keystore.jks</code></pre>
+
+        <h2>4. Ganti Nama & Icon</h2>
+        <ul>
+            <li><strong>Nama Aplikasi:</strong> Edit <code>android/app/src/main/AndroidManifest.xml</code> bagian <code>android:label</code>.</li>
+            <li><strong>Icon:</strong> Ganti gambar di <code>assets/icon/app_icon.png</code> lalu jalankan:
+                <pre><code>dart run flutter_launcher_icons</code></pre>
+            </li>
+            <li><strong>Package ID:</strong> Edit <code>android/app/build.gradle</code> bagian <code>applicationId</code> (contoh: <code>com.toko.rana</code>).</li>
+        </ul>
+
+        <h2>5. Build Release</h2>
+        <p>Jalankan perintah build:</p>
+        <pre><code>flutter clean
+flutter pub get
+flutter build appbundle --release</code></pre>
+
+        <div class="alert alert-success">
+            <strong>Hasil:</strong> File App Bundle akan berada di:<br>
+            <code>build/app/outputs/bundle/release/app-release.aab</code>
+        </div>
+
+        <h2>6. Upload ke Play Store</h2>
+        <ol>
+            <li>Buka <a href="https://play.google.com/console">Google Play Console</a>.</li>
+            <li>Buat aplikasi baru.</li>
+            <li>Masuk ke menu <strong>Production</strong>.</li>
+            <li>Upload file <code>.aab</code> yang baru dibuat.</li>
+            <li>Lengkapi deskripsi, screenshot, dan rating konten.</li>
+            <li>Kirim untuk peninjauan (Review).</li>
+        </ol>
+
+        <footer>
+            &copy; 2026 Rana Market Team. All rights reserved.
+        </footer>
+    </main>
+    <script src="js/main.js"></script>
+</body>
+</html>

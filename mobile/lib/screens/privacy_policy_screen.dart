@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:rana_merchant/config/app_config.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class PrivacyPolicyScreen extends StatelessWidget {
@@ -77,7 +78,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
               width: double.infinity,
               child: OutlinedButton.icon(
                 onPressed: () => _launchUrl(
-                    'https://wa.me/628887992299?text=Halo%20Admin%20Rana%20POS,%20saya%20ingin%20bertanya%20tentang%20Kebijakan%20Privasi'),
+                    '${AppConfig.supportWhatsAppUrl}?text=Halo%20Admin%20Rana%20POS,%20saya%20ingin%20bertanya%20tentang%20Kebijakan%20Privasi'),
                 icon: const Icon(Icons.chat_bubble_outline),
                 label: const Text('Chat WhatsApp Admin'),
                 style: OutlinedButton.styleFrom(

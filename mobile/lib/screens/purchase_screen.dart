@@ -208,8 +208,8 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                                     setState(() => _selectedCat = c.toString());
                                     _refreshProducts();
                                   },
-                                  selectedColor: const Color(0xFFE07A5F)
-                                      .withOpacity(0.2),
+                                  selectedColor:
+                                      const Color(0xFFE07A5F).withOpacity(0.2),
                                   labelStyle: TextStyle(
                                       color: _selectedCat == c
                                           ? const Color(0xFFE07A5F)
@@ -233,8 +233,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                     child: GridView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate:
-                          SliverGridDelegateWithFixedCrossAxisCount(
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: crossAxisCount,
                         childAspectRatio: childAspectRatio,
                         crossAxisSpacing: 12,
@@ -499,7 +498,10 @@ class _ProductDetailSheetState extends State<_ProductDetailSheet> {
                       height: 300,
                       color: Colors.grey.shade200,
                       child: (imageUrl != null && imageUrl != '')
-                          ? Image.network(imageUrl, fit: BoxFit.cover)
+                          ? Image.network(
+                              ApiService().resolveFileUrl(imageUrl),
+                              fit: BoxFit.cover,
+                            )
                           : const Icon(Icons.image,
                               size: 120, color: Colors.grey)),
                   Padding(

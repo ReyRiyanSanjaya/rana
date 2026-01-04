@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rana_market/config/theme_config.dart';
 import 'package:rana_market/data/market_api_service.dart';
 import 'package:rana_market/screens/order_detail_screen.dart';
 
@@ -68,7 +69,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF8F0),
+      backgroundColor: ThemeConfig.beigeBackground,
       appBar: AppBar(
         title: const Text('Pembayaran'),
         backgroundColor: Colors.transparent,
@@ -88,7 +89,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       style: const TextStyle(
                           fontSize: 32,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFFE07A5F))),
+                          color: ThemeConfig.brandColor)),
                   const SizedBox(height: 32),
                   const Text('Ambil di Toko',
                       style:
@@ -105,7 +106,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   const SizedBox(height: 16),
                   if (_qrisUrl != null)
                     Image.network(
-                      _qrisUrl!,
+                      MarketApiService().resolveFileUrl(_qrisUrl!),
                       height: 250,
                       loadingBuilder: (ctx, child, prog) => prog == null
                           ? child

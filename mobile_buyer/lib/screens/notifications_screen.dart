@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:rana_market/config/theme_config.dart';
 import 'package:rana_market/providers/notifications_provider.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -49,11 +51,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Color _getColor(String source) {
     switch (source) {
       case 'ANNOUNCEMENT':
-        return Colors.orange;
+        return ThemeConfig.colorWarning;
       case 'REALTIME':
-        return Colors.blue;
+        return ThemeConfig.colorInfo;
       case 'ORDER_UPDATE':
-        return Colors.green;
+        return ThemeConfig.colorSuccess;
       default:
         return Colors.grey;
     }
@@ -62,7 +64,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF8F0),
+      backgroundColor: ThemeConfig.beigeBackground,
       appBar: AppBar(
         title: const Text('Notifikasi'),
         backgroundColor: Colors.transparent,
@@ -92,11 +94,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   Icon(Icons.notifications_off_outlined,
                       size: 80, color: Colors.grey.shade300),
                   const SizedBox(height: 16),
-                  Text(
+                  const Text(
                     'Belum ada notifikasi',
                     style: TextStyle(
                         fontSize: 18,
-                        color: Colors.grey.shade500,
+                        color: ThemeConfig.textSecondary,
                         fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
@@ -110,6 +112,32 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             );
           }
 
+          final isTab = ThemeConfig.isTablet(context);
+          if (isTab) {
+            final cols = ThemeConfig.gridColumns(context, mobile: 1);
+            return RefreshIndicator(
+              onRefresh: prov.load,
+              child: GridView.builder(
+                padding: const EdgeInsets.all(16),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: cols,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                  childAspectRatio: 2.4,
+                ),
+                itemCount: prov.items.length,
+                itemBuilder: (ctx, i) {
+                  final n = prov.items[i];
+                  final source = (n['source'] ?? '').toString();
+                  final isRead = n['isRead'] == true;
+                  return _buildNotifTile(n, source, isRead)
+                      .animate()
+                      .fadeIn(duration: 250.ms)
+                      .slideY(begin: 0.05);
+                },
+              ),
+            );
+          }
           return RefreshIndicator(
             onRefresh: prov.load,
             child: ListView.separated(
@@ -121,78 +149,82 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 final source = (n['source'] ?? '').toString();
                 final isRead = n['isRead'] == true;
 
-                return Container(
-                  decoration: BoxDecoration(
-                    color: isRead ? Colors.white : Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.03),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      )
-                    ],
-                  ),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.all(16),
-                    leading: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color:
-                            _getColor(source).withValues(alpha: 0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(_getIcon(source),
-                          color: _getColor(source), size: 24),
-                    ),
-                    title: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            (n['title'] ?? '-').toString(),
-                            style: TextStyle(
-                              fontWeight:
-                                  isRead ? FontWeight.w600 : FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ),
-                        if (!isRead)
-                          Container(
-                            margin: const EdgeInsets.only(left: 8),
-                            width: 8,
-                            height: 8,
-                            decoration: const BoxDecoration(
-                              color: Colors.red,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                      ],
-                    ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 6),
-                        Text(
-                          (n['message'] ?? '').toString(),
-                          style: TextStyle(
-                              color: Colors.grey.shade700, height: 1.3),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          _formatTime(n['createdAt']),
-                          style: TextStyle(
-                              color: Colors.grey.shade400, fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
+                return _buildNotifTile(n, source, isRead)
+                    .animate()
+                    .fadeIn(duration: 250.ms)
+                    .slideY(begin: 0.05);
               },
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildNotifTile(Map<String, dynamic> n, String source, bool isRead) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isRead
+            ? Colors.white
+            : ThemeConfig.colorInfo.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          )
+        ],
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(16),
+        leading: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: _getColor(source).withValues(alpha: 0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(_getIcon(source), color: _getColor(source), size: 24),
+        ),
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text(
+                (n['title'] ?? '-').toString(),
+                style: TextStyle(
+                  fontWeight: isRead ? FontWeight.w600 : FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+            if (!isRead)
+              Container(
+                margin: const EdgeInsets.only(left: 8),
+                width: 8,
+                height: 8,
+                decoration: const BoxDecoration(
+                  color: ThemeConfig.colorError,
+                  shape: BoxShape.circle,
+                ),
+              ),
+          ],
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 6),
+            Text(
+              (n['message'] ?? '').toString(),
+              style: TextStyle(color: Colors.grey.shade700, height: 1.3),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _formatTime(n['createdAt']),
+              style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+            ),
+          ],
+        ),
       ),
     );
   }

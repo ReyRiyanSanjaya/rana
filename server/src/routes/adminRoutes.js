@@ -17,6 +17,7 @@ router.get('/analytics', adminController.getBusinessAnalytics); // [NEW]
 // Subscription Packages
 router.get('/packages', adminController.getPackages);
 router.post('/packages', adminController.createPackage);
+router.put('/packages/:id', adminController.updatePackage);
 router.delete('/packages/:id', adminController.deletePackage);
 
 // Tickets & Support

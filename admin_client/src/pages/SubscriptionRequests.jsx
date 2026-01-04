@@ -132,7 +132,7 @@ export default function SubscriptionRequests() {
                                         <TableCell>
                                             {req.proofUrl ? (
                                                 <a
-                                                    href={req.proofUrl}
+                                                    href={req.proofUrl.startsWith('http') ? req.proofUrl : `http://localhost:4000${req.proofUrl}`}
                                                     target="_blank"
                                                     rel="noreferrer"
                                                     className="inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline"

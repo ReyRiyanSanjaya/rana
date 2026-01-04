@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:rana_market/data/market_api_service.dart';
 
 class FavoritesProvider with ChangeNotifier {
   final Set<String> _ids = {};
@@ -17,13 +18,41 @@ class FavoritesProvider with ChangeNotifier {
     return _ids.contains(s);
   }
 
-  void toggleFavorite(dynamic id) {
+  Future<void> toggleFavorite(dynamic id, {String? phone}) async {
     final s = id?.toString();
     if (s == null) return;
-    if (_ids.contains(s)) _ids.remove(s);
-    else _ids.add(s);
+    
+    // Optimistic Update
+    if (_ids.contains(s)) {
+      _ids.remove(s);
+    } else {
+      _ids.add(s);
+    }
     notifyListeners();
     _persist();
+
+    // Server Sync
+    if (phone != null && phone.isNotEmpty) {
+      try {
+        await MarketApiService().toggleFavorite(phone, s);
+      } catch (e) {
+        debugPrint('Fav Sync Error: $e');
+      }
+    }
+  }
+
+  Future<void> loadFromServer(String phone) async {
+    try {
+      final items = await MarketApiService().getFavorites(phone);
+      final serverIds = items.map((e) => e['id'].toString()).toSet();
+      if (serverIds.isNotEmpty) {
+        _ids.addAll(serverIds);
+        notifyListeners();
+        _persist();
+      }
+    } catch (e) {
+      debugPrint('Fav Load Error: $e');
+    }
   }
 
   Future<void> _load() async {

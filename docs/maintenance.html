@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maintenance - Dokumentasi Rana Market</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <nav class="sidebar">
+        <a href="index.html" class="brand">Rana Market 🐸</a>
+        <ul class="nav-links">
+            <li class="nav-item"><a href="index.html" class="nav-link">🏠 Pengantar</a></li>
+            <li class="nav-item"><a href="architecture.html" class="nav-link">🏗️ Arsitektur Sistem</a></li>
+            <li class="nav-item"><a href="database-schema.html" class="nav-link">💾 Database Schema</a></li>
+            <li class="nav-item"><a href="security.html" class="nav-link">🔒 Keamanan</a></li>
+            <li class="nav-item"><a href="server-deployment.html" class="nav-link">🖥️ Server Deployment</a></li>
+            <li class="nav-item"><a href="mobile-deployment.html" class="nav-link">📱 Mobile Deployment</a></li>
+            <li class="nav-item"><a href="api-integration.html" class="nav-link">🔌 Integrasi API</a></li>
+            <li class="nav-item"><a href="cicd.html" class="nav-link">🚀 CI/CD Pipeline</a></li>
+            <li class="nav-item"><a href="tools.html" class="nav-link">🛠️ Tools & Utils</a></li>
+            <li class="nav-item"><a href="user-manual.html" class="nav-link">📖 Panduan Admin</a></li>
+            <li class="nav-item"><a href="maintenance.html" class="nav-link active">🛠️ Maintenance & Ops</a></li>
+            <li class="nav-item"><a href="troubleshooting.html" class="nav-link">❓ Troubleshooting</a></li>
+        </ul>
+    </nav>
+
+    <main class="main-content">
+        <h1>Maintenance & Operasional</h1>
+        <p>Panduan untuk menjaga sistem tetap berjalan lancar, aman, dan terupdate.</p>
+
+        <h2>1. Backup Database</h2>
+        <p>Data adalah aset terpenting. Lakukan backup rutin.</p>
+        
+        <h3>Backup Manual</h3>
+        <pre><code>pg_dump -U rana_user -h localhost rana_market > backup_rana_$(date +%F).sql</code></pre>
+        
+        <h3>Restore Database</h3>
+        <pre><code>psql -U rana_user -h localhost -d rana_market < file_backup.sql</code></pre>
+
+        <div class="alert alert-info">
+            <strong>Saran:</strong> Buat cronjob (tugas otomatis) untuk menjalankan perintah backup setiap malam dan upload file ke Google Drive atau S3.
+        </div>
+
+        <h2>2. Monitoring Server</h2>
+        <p>Gunakan PM2 untuk memantau kesehatan aplikasi.</p>
+        
+        <ul>
+            <li><code>pm2 status</code>: Melihat status online/offline.</li>
+            <li><code>pm2 logs</code>: Melihat log error real-time.</li>
+            <li><code>pm2 monit</code>: Dashboard visual penggunaan CPU/RAM.</li>
+        </ul>
+
+        <h2>3. Update Aplikasi Server</h2>
+        <p>Jika ada perbaikan bug atau fitur baru dari developer:</p>
+        <ol>
+            <li>Masuk ke folder server: <code>cd /var/www/rana-server</code></li>
+            <li>Tarik kode terbaru: <code>git pull origin main</code></li>
+            <li>Install dependensi baru: <code>npm install</code></li>
+            <li>Migrasi database (jika ada perubahan skema): <code>npx prisma migrate deploy</code></li>
+            <li>Restart aplikasi: <code>pm2 restart rana-server</code></li>
+        </ol>
+
+        <h2>4. Keamanan Dasar</h2>
+        <ul>
+            <li><strong>Firewall:</strong> Gunakan UFW untuk menutup port yang tidak perlu.
+                <pre><code>sudo ufw allow ssh
+sudo ufw allow http
+sudo ufw allow https
+sudo ufw enable</code></pre>
+            </li>
+            <li><strong>Update Sistem Operasi:</strong> Jalankan <code>sudo apt update && sudo apt upgrade</code> secara berkala.</li>
+            <li><strong>SSL:</strong> Certbot biasanya otomatis memperbarui sertifikat SSL. Cek dengan <code>sudo certbot renew --dry-run</code>.</li>
+        </ul>
+
+        <footer>
+            &copy; 2026 Rana Market Team. All rights reserved.
+        </footer>
+    </main>
+    <script src="js/main.js"></script>
+</body>
+</html>

@@ -650,6 +650,28 @@ const createPackage = async (req, res) => {
     }
 };
 
+const updatePackage = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, price, durationDays, description, isActive } = req.body;
+
+        const updatedPackage = await prisma.subscriptionPackage.update({
+            where: { id },
+            data: {
+                name,
+                price: price !== undefined ? parseFloat(price) : undefined,
+                durationDays: durationDays !== undefined ? parseInt(durationDays) : undefined,
+                description,
+                isActive: isActive !== undefined ? isActive : undefined
+            }
+        });
+        successResponse(res, updatedPackage, "Package updated");
+    } catch (error) {
+        console.error(error);
+        errorResponse(res, "Failed to update package", 500);
+    }
+};
+
 const deletePackage = async (req, res) => {
     try {
         const { id } = req.params;
@@ -715,10 +737,29 @@ const getPayoutChart = async (req, res) => {
     }
 };
 
-// [NEW] Get Merchants List
+// [NEW] Get Merchants List with Filters
 const getMerchants = async (req, res) => {
     try {
+        const { status, search } = req.query;
+        const where = {};
+
+        // Filter by Subscription Status (Tenant level)
+        if (status) {
+            where.tenant = {
+                subscriptionStatus: status
+            };
+        }
+
+        // Search by Store Name or Tenant Name
+        if (search) {
+            where.OR = [
+                { name: { contains: search, mode: 'insensitive' } },
+                { tenant: { name: { contains: search, mode: 'insensitive' } } }
+            ];
+        }
+
         const merchants = await prisma.store.findMany({
+            where,
             include: {
                 tenant: {
                     select: {
@@ -726,7 +767,7 @@ const getMerchants = async (req, res) => {
                         plan: true,
                         subscriptionStatus: true,
                         trialEndsAt: true,
-                        subscriptionEndsAt: true // [NEW] Include subscription expiry
+                        subscriptionEndsAt: true
                     }
                 }
             },
@@ -1011,8 +1052,15 @@ const updateMerchantSubscription = async (req, res) => {
 const getMerchantProducts = async (req, res) => {
     try {
         const { storeId } = req.params;
+        const { includeInactive } = req.query; // Add query param
+        
+        const where = { storeId };
+        if (includeInactive !== 'true') {
+            where.isActive = true;
+        }
+
         const products = await prisma.product.findMany({
-            where: { storeId, isActive: true },
+            where,
             include: { category: true },
             orderBy: { name: 'asc' }
         });
@@ -1569,6 +1617,7 @@ module.exports = {
     deleteMerchantProduct,
     getPackages,
     createPackage,
+    updatePackage,
     deletePackage,
     getSubscriptionRequests,
     approveSubscriptionRequest,

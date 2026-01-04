@@ -3,6 +3,9 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:rana_market/config/app_config.dart';
+import 'package:rana_market/config/theme_config.dart';
+import 'package:rana_market/data/market_api_service.dart';
 import 'package:rana_market/providers/market_cart_provider.dart';
 import 'package:rana_market/providers/orders_provider.dart';
 import 'package:rana_market/providers/auth_provider.dart';
@@ -10,6 +13,7 @@ import 'package:rana_market/screens/login_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:lottie/lottie.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:rana_market/screens/main_screen.dart';
 import 'package:rana_market/widgets/buyer_bottom_nav.dart';
 
@@ -23,6 +27,8 @@ class MarketCartScreen extends StatefulWidget {
 class _MarketCartScreenState extends State<MarketCartScreen> {
   final _nameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
+  final _addressCtrl = TextEditingController();
+  String _fulfillmentType = 'PICKUP'; // PICKUP or DELIVERY
   bool _isLoading = false;
 
   @override
@@ -51,6 +57,9 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
             user['mobile'] ??
             '';
       }
+      if (_addressCtrl.text.isEmpty) {
+        _addressCtrl.text = user['address'] ?? user['alamat'] ?? '';
+      }
     }
   }
 
@@ -58,20 +67,63 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
     final prefs = await SharedPreferences.getInstance();
     final name = prefs.getString('buyer_name') ?? '';
     final phone = prefs.getString('buyer_phone') ?? '';
-    if (!mounted) return;
+    final address = prefs.getString('buyer_address') ?? '';
+    if (!context.mounted) return;
 
     // Only fill if empty (User data takes precedence if set, but local storage is good fallback)
     if (_nameCtrl.text.isEmpty && name.trim().isNotEmpty) _nameCtrl.text = name;
     if (_phoneCtrl.text.isEmpty && phone.trim().isNotEmpty) {
       _phoneCtrl.text = phone;
     }
+    if (_addressCtrl.text.isEmpty && address.trim().isNotEmpty) {
+      _addressCtrl.text = address;
+    }
   }
 
   Future<void> _saveContact(
-      {required String name, required String phone}) async {
+      {required String name,
+      required String phone,
+      required String address}) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('buyer_name', name);
     await prefs.setString('buyer_phone', phone);
+    if (address.isNotEmpty) {
+      await prefs.setString('buyer_address', address);
+    }
+  }
+
+  Future<void> _updateDeliveryFee() async {
+    final cart = context.read<MarketCartProvider>();
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        throw 'Layanan lokasi tidak aktif';
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          throw 'Izin lokasi ditolak';
+        }
+      }
+      if (permission == LocationPermission.deniedForever) {
+        throw 'Izin lokasi ditolak permanen';
+      }
+
+      Position position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
+      cart.updateDeliveryFee(position.latitude, position.longitude);
+    } catch (e) {
+      debugPrint('Delivery Fee Error: $e');
+      // Fallback if location off
+      cart.updateDeliveryFee(null, null);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content:
+                Text('Gagal mendeteksi lokasi: $e. Menggunakan tarif flat.')));
+      }
+    }
   }
 
   Future<void> _openStoreMaps(MarketCartProvider cart) async {
@@ -83,7 +135,7 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
         : (address ?? '');
     if (query.trim().isEmpty) return;
     final uri = Uri.parse(
-        'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(query)}');
+        '${AppConfig.googleMapsSearchUrl}${Uri.encodeComponent(query)}');
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
@@ -105,7 +157,7 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F7),
+      backgroundColor: ThemeConfig.beigeBackground,
       appBar: AppBar(
         title: const Text('Keranjang Belanja',
             style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
@@ -119,7 +171,7 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Lottie.network(
-                    'https://assets9.lottiefiles.com/packages/lf20_qh5z2v.json', // Empty Cart Animation
+                    AppConfig.emptyOrderLottieUrl, // Empty Cart Animation
                     width: 200,
                     height: 200,
                     errorBuilder: (_, __, ___) => Icon(
@@ -134,211 +186,597 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
                 ],
               ),
             )
-          : Column(
-              children: [
-                Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.all(16),
-                    children: [
-                      // Store Header
-                      _buildStoreHeader(cart),
-                      const SizedBox(height: 16),
-
-                      // Items
-                      ...cart.items.values.map((item) => _buildCartItem(item)),
-
-                      const SizedBox(height: 24),
-
-                      // Payment Details
-                      Container(
+          : (ThemeConfig.isTablet(context)
+              ? Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: ListView(
                         padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.05),
-                              blurRadius: 10,
-                              offset: const Offset(0, 2),
-                            )
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('Rincian Pembayaran',
-                                style: TextStyle(
-                                    fontWeight: FontWeight.bold, fontSize: 16)),
-                            const SizedBox(height: 16),
-                            _buildSummaryRow(
-                                'Total Harga', cart.totalOriginalAmount),
-                            if (cart.totalDiscount > 0)
-                              _buildSummaryRow(
-                                  'Total Diskon', -cart.totalDiscount,
-                                  color: Colors.green),
-                            _buildSummaryRow('Biaya Layanan', cart.serviceFee),
-                            const Divider(height: 24),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _buildStoreHeader(cart),
+                          const SizedBox(height: 16),
+                          ...cart.items.values
+                              .map((item) => _buildCartItem(item)),
+                          const SizedBox(height: 16),
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.05),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 2),
+                                )
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text('Total Bayar',
+                                const Text('Metode Pengambilan',
                                     style: TextStyle(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 16)),
-                                Text('Rp ${cart.grandTotal.toInt()}',
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 18,
-                                        color: Color(0xFFE07A5F))),
+                                const SizedBox(height: 12),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          setState(() =>
+                                              _fulfillmentType = 'PICKUP');
+                                          context
+                                              .read<MarketCartProvider>()
+                                              .clearDeliveryFee();
+                                        },
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 12),
+                                          decoration: BoxDecoration(
+                                            color: _fulfillmentType == 'PICKUP'
+                                                ? ThemeConfig.brandColor
+                                                : Colors.grey.shade100,
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                            border: Border.all(
+                                                color:
+                                                    _fulfillmentType == 'PICKUP'
+                                                        ? ThemeConfig.brandColor
+                                                        : Colors.transparent),
+                                          ),
+                                          child: Center(
+                                            child: Text(
+                                              'Ambil Sendiri',
+                                              style: TextStyle(
+                                                  color: _fulfillmentType ==
+                                                          'PICKUP'
+                                                      ? Colors.white
+                                                      : Colors.black,
+                                                  fontWeight: FontWeight.bold),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          setState(() =>
+                                              _fulfillmentType = 'DELIVERY');
+                                          _updateDeliveryFee();
+                                        },
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 12),
+                                          decoration: BoxDecoration(
+                                            color:
+                                                _fulfillmentType == 'DELIVERY'
+                                                    ? ThemeConfig.brandColor
+                                                    : Colors.grey.shade100,
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                            border: Border.all(
+                                                color: _fulfillmentType ==
+                                                        'DELIVERY'
+                                                    ? ThemeConfig.brandColor
+                                                    : Colors.transparent),
+                                          ),
+                                          child: Center(
+                                            child: Text(
+                                              'Diantar',
+                                              style: TextStyle(
+                                                  color: _fulfillmentType ==
+                                                          'DELIVERY'
+                                                      ? Colors.white
+                                                      : Colors.black,
+                                                  fontWeight: FontWeight.bold),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+                                if (_fulfillmentType == 'DELIVERY') ...[
+                                  TextField(
+                                      controller: _addressCtrl,
+                                      maxLines: 2,
+                                      decoration: InputDecoration(
+                                          labelText: 'Alamat Pengiriman',
+                                          filled: true,
+                                          fillColor: Colors.grey.shade50,
+                                          prefixIcon: const Icon(
+                                              Icons.location_on_outlined),
+                                          border: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              borderSide: BorderSide.none),
+                                          contentPadding:
+                                              const EdgeInsets.symmetric(
+                                                  horizontal: 16,
+                                                  vertical: 12))),
+                                  const SizedBox(height: 12),
+                                ],
+                                TextField(
+                                    controller: _nameCtrl,
+                                    decoration: InputDecoration(
+                                        labelText: 'Nama Pemesan',
+                                        filled: true,
+                                        fillColor: Colors.grey.shade50,
+                                        prefixIcon:
+                                            const Icon(Icons.person_outline),
+                                        border: OutlineInputBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                            borderSide: BorderSide.none),
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(
+                                                horizontal: 16, vertical: 12))),
+                                const SizedBox(height: 12),
+                                TextField(
+                                    controller: _phoneCtrl,
+                                    keyboardType: TextInputType.phone,
+                                    decoration: InputDecoration(
+                                        labelText: 'Nomor WhatsApp / HP',
+                                        filled: true,
+                                        fillColor: Colors.grey.shade50,
+                                        prefixIcon:
+                                            const Icon(Icons.phone_android),
+                                        border: OutlineInputBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                            borderSide: BorderSide.none),
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(
+                                                horizontal: 16, vertical: 12))),
+                                const SizedBox(height: 12),
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                      color: ThemeConfig.colorInfo
+                                          .withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(8)),
+                                  child: const Row(
+                                    children: [
+                                      Icon(Icons.info_outline,
+                                          size: 20,
+                                          color: ThemeConfig.colorInfo),
+                                      SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                            'Pastikan nomor HP benar untuk konfirmasi pesanan.',
+                                            style: TextStyle(
+                                                color: ThemeConfig.colorInfo,
+                                                fontSize: 12)),
+                                      ),
+                                    ],
+                                  ),
+                                )
                               ],
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-
-                      const SizedBox(height: 16),
-
-                      // User Info / Pickup Info
-                      Container(
+                    ),
+                    SizedBox(
+                      width: 340,
+                      child: ListView(
                         padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.05),
-                              blurRadius: 10,
-                              offset: const Offset(0, 2),
-                            )
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('Informasi Pengambilan',
-                                style: TextStyle(
-                                    fontWeight: FontWeight.bold, fontSize: 16)),
-                            const SizedBox(height: 12),
-
-                            // Always show input fields to allow editing/correction
-                            TextField(
-                                controller: _nameCtrl,
-                                decoration: InputDecoration(
-                                    labelText: 'Nama Pemesan',
-                                    filled: true,
-                                    fillColor: Colors.grey.shade50,
-                                    prefixIcon:
-                                        const Icon(Icons.person_outline),
-                                    border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                        borderSide: BorderSide.none),
-                                    contentPadding: const EdgeInsets.symmetric(
-                                        horizontal: 16, vertical: 12))),
-                            const SizedBox(height: 12),
-                            TextField(
-                                controller: _phoneCtrl,
-                                keyboardType: TextInputType.phone,
-                                decoration: InputDecoration(
-                                    labelText: 'Nomor WhatsApp / HP',
-                                    filled: true,
-                                    fillColor: Colors.grey.shade50,
-                                    prefixIcon: const Icon(Icons.phone_android),
-                                    border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                        borderSide: BorderSide.none),
-                                    contentPadding: const EdgeInsets.symmetric(
-                                        horizontal: 16, vertical: 12))),
-
-                            const SizedBox(height: 12),
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                  color: Colors.blue.shade50,
-                                  borderRadius: BorderRadius.circular(8)),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.info_outline,
-                                      size: 20, color: Colors.blue),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                        'Pastikan nomor HP benar untuk konfirmasi pesanan.',
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.05),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 2),
+                                )
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Rincian Pembayaran',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16)),
+                                const SizedBox(height: 16),
+                                _buildSummaryRow(
+                                    'Total Harga', cart.totalOriginalAmount),
+                                if (cart.totalDiscount > 0)
+                                  _buildSummaryRow(
+                                      'Total Diskon', -cart.totalDiscount,
+                                      color: ThemeConfig.colorSuccess),
+                                _buildSummaryRow(
+                                    'Biaya Layanan', cart.serviceFee),
+                                if (cart.deliveryFee > 0)
+                                  _buildSummaryRow(
+                                      'Ongkos Kirim', cart.deliveryFee),
+                                const Divider(height: 24),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text('Total Bayar',
                                         style: TextStyle(
-                                            color: Colors.blue.shade800,
-                                            fontSize: 12)),
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16)),
+                                    Text('Rp ${cart.grandTotal.toInt()}',
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 18,
+                                            color: ThemeConfig.brandColor)),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton(
+                              onPressed: _isLoading
+                                  ? null
+                                  : () => _handleCheckout(context, cart, auth),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: ThemeConfig.brandColor,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12)),
+                              ),
+                              child: _isLoading
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                          color: Colors.white, strokeWidth: 2))
+                                  : const Text('Pesan Sekarang',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  ],
+                )
+              : Column(
+                  children: [
+                    Expanded(
+                      child: ListView(
+                        padding: const EdgeInsets.all(16),
+                        children: [
+                          _buildStoreHeader(cart),
+                          const SizedBox(height: 16),
+                          ...cart.items.values
+                              .map((item) => _buildCartItem(item)),
+                          const SizedBox(height: 24),
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.05),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 2),
+                                )
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Rincian Pembayaran',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16)),
+                                const SizedBox(height: 16),
+                                _buildSummaryRow(
+                                    'Total Harga', cart.totalOriginalAmount),
+                                if (cart.totalDiscount > 0)
+                                  _buildSummaryRow(
+                                      'Total Diskon', -cart.totalDiscount,
+                                      color: ThemeConfig.colorSuccess),
+                                _buildSummaryRow(
+                                    'Biaya Layanan', cart.serviceFee),
+                                if (cart.deliveryFee > 0)
+                                  _buildSummaryRow(
+                                      'Ongkos Kirim', cart.deliveryFee),
+                                const Divider(height: 24),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text('Total Bayar',
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16)),
+                                    Text('Rp ${cart.grandTotal.toInt()}',
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 18,
+                                            color: ThemeConfig.brandColor)),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.05),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 2),
+                                )
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Metode Pengambilan',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16)),
+                                const SizedBox(height: 12),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          setState(() =>
+                                              _fulfillmentType = 'PICKUP');
+                                          context
+                                              .read<MarketCartProvider>()
+                                              .clearDeliveryFee();
+                                        },
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 12),
+                                          decoration: BoxDecoration(
+                                            color: _fulfillmentType == 'PICKUP'
+                                                ? ThemeConfig.brandColor
+                                                : Colors.grey.shade100,
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                            border: Border.all(
+                                                color:
+                                                    _fulfillmentType == 'PICKUP'
+                                                        ? ThemeConfig.brandColor
+                                                        : Colors.transparent),
+                                          ),
+                                          child: Center(
+                                            child: Text(
+                                              'Ambil Sendiri',
+                                              style: TextStyle(
+                                                  color: _fulfillmentType ==
+                                                          'PICKUP'
+                                                      ? Colors.white
+                                                      : Colors.black,
+                                                  fontWeight: FontWeight.bold),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          setState(() =>
+                                              _fulfillmentType = 'DELIVERY');
+                                          _updateDeliveryFee();
+                                        },
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 12),
+                                          decoration: BoxDecoration(
+                                            color:
+                                                _fulfillmentType == 'DELIVERY'
+                                                    ? ThemeConfig.brandColor
+                                                    : Colors.grey.shade100,
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                            border: Border.all(
+                                                color: _fulfillmentType ==
+                                                        'DELIVERY'
+                                                    ? ThemeConfig.brandColor
+                                                    : Colors.transparent),
+                                          ),
+                                          child: Center(
+                                            child: Text(
+                                              'Diantar',
+                                              style: TextStyle(
+                                                  color: _fulfillmentType ==
+                                                          'DELIVERY'
+                                                      ? Colors.white
+                                                      : Colors.black,
+                                                  fontWeight: FontWeight.bold),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+                                if (_fulfillmentType == 'DELIVERY') ...[
+                                  TextField(
+                                      controller: _addressCtrl,
+                                      maxLines: 2,
+                                      decoration: InputDecoration(
+                                          labelText: 'Alamat Pengiriman',
+                                          filled: true,
+                                          fillColor: Colors.grey.shade50,
+                                          prefixIcon: const Icon(
+                                              Icons.location_on_outlined),
+                                          border: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              borderSide: BorderSide.none),
+                                          contentPadding:
+                                              const EdgeInsets.symmetric(
+                                                  horizontal: 16,
+                                                  vertical: 12))),
+                                  const SizedBox(height: 12),
+                                ],
+                                TextField(
+                                    controller: _nameCtrl,
+                                    decoration: InputDecoration(
+                                        labelText: 'Nama Pemesan',
+                                        filled: true,
+                                        fillColor: Colors.grey.shade50,
+                                        prefixIcon:
+                                            const Icon(Icons.person_outline),
+                                        border: OutlineInputBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                            borderSide: BorderSide.none),
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(
+                                                horizontal: 16, vertical: 12))),
+                                const SizedBox(height: 12),
+                                TextField(
+                                    controller: _phoneCtrl,
+                                    keyboardType: TextInputType.phone,
+                                    decoration: InputDecoration(
+                                        labelText: 'Nomor WhatsApp / HP',
+                                        filled: true,
+                                        fillColor: Colors.grey.shade50,
+                                        prefixIcon:
+                                            const Icon(Icons.phone_android),
+                                        border: OutlineInputBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                            borderSide: BorderSide.none),
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(
+                                                horizontal: 16, vertical: 12))),
+                                const SizedBox(height: 12),
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                      color: ThemeConfig.colorInfo
+                                          .withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(8)),
+                                  child: const Row(
+                                    children: [
+                                      Icon(Icons.info_outline,
+                                          size: 20,
+                                          color: ThemeConfig.colorInfo),
+                                      SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                            'Pastikan nomor HP benar untuk konfirmasi pesanan.',
+                                            style: TextStyle(
+                                                color: ThemeConfig.colorInfo,
+                                                fontSize: 12)),
+                                      ),
+                                    ],
                                   ),
+                                )
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 10,
+                            offset: const Offset(0, -5),
+                          )
+                        ],
+                      ),
+                      child: SafeArea(
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('Total Pembayaran',
+                                      style: TextStyle(
+                                          color: Colors.grey, fontSize: 12)),
+                                  Text('Rp ${cart.grandTotal.toInt()}',
+                                      style: const TextStyle(
+                                          color: ThemeConfig.brandColor,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 20)),
                                 ],
                               ),
-                            )
+                            ),
+                            SizedBox(
+                              width: 150,
+                              child: FilledButton(
+                                onPressed: _isLoading
+                                    ? null
+                                    : () =>
+                                        _handleCheckout(context, cart, auth),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: ThemeConfig.brandColor,
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12)),
+                                ),
+                                child: _isLoading
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                            color: Colors.white,
+                                            strokeWidth: 2))
+                                    : const Text('Pesan Sekarang',
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.bold)),
+                              ),
+                            ),
                           ],
                         ),
                       ),
-                    ],
-                  ),
-                ),
-
-                // Sticky Bottom Bar
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    boxShadow: [
-                      BoxShadow(
-                        color:
-                            Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 10,
-                        offset: const Offset(0, -5),
-                      )
-                    ],
-                  ),
-                  child: SafeArea(
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('Total Pembayaran',
-                                  style: TextStyle(
-                                      color: Colors.grey, fontSize: 12)),
-                              Text('Rp ${cart.grandTotal.toInt()}',
-                                  style: const TextStyle(
-                                      color: Color(0xFFE07A5F),
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 20)),
-                            ],
-                          ),
-                        ),
-                        SizedBox(
-                          width: 150,
-                          child: FilledButton(
-                            onPressed: _isLoading
-                                ? null
-                                : () => _handleCheckout(context, cart, auth),
-                            style: FilledButton.styleFrom(
-                              backgroundColor: const Color(0xFFE07A5F),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12)),
-                            ),
-                            child: _isLoading
-                                ? const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                        color: Colors.white, strokeWidth: 2))
-                                : const Text('Pesan Sekarang',
-                                    style:
-                                        TextStyle(fontWeight: FontWeight.bold)),
-                          ),
-                        ),
-                      ],
                     ),
-                  ),
-                ),
-              ],
-            ),
+                  ],
+                )),
       bottomNavigationBar: BuyerBottomNav(
         selectedIndex: 0,
         onSelected: (index) {
@@ -390,7 +828,7 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
         children: [
           Row(
             children: [
-              const Icon(Icons.store, color: Color(0xFFE07A5F)),
+              const Icon(Icons.store, color: ThemeConfig.brandColor),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(cart.activeStoreName ?? 'Toko',
@@ -452,7 +890,7 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
             borderRadius: BorderRadius.circular(8),
             child: item.imageUrl != null && item.imageUrl!.isNotEmpty
                 ? Image.network(
-                    item.imageUrl!,
+                    MarketApiService().resolveFileUrl(item.imageUrl!),
                     width: 70,
                     height: 70,
                     fit: BoxFit.cover,
@@ -491,7 +929,7 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
                   ),
                 Text('Rp ${item.price.toInt()}',
                     style: const TextStyle(
-                        color: Color(0xFFE07A5F),
+                        color: ThemeConfig.brandColor,
                         fontWeight: FontWeight.bold,
                         fontSize: 14)),
               ],
@@ -585,6 +1023,7 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
     // 2. Validation
     final finalName = _nameCtrl.text.trim();
     final finalPhone = _phoneCtrl.text.trim();
+    final finalAddress = _addressCtrl.text.trim();
 
     if (finalName.isEmpty || finalPhone.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -592,13 +1031,22 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
       return;
     }
 
+    if (_fulfillmentType == 'DELIVERY' && finalAddress.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Mohon lengkapi alamat pengiriman')));
+      return;
+    }
+
     // Confirm Dialog
+    final message = _fulfillmentType == 'PICKUP'
+        ? 'Pesanan akan dibuat untuk diambil sendiri (Pickup). Pastikan kamu datang ke lokasi toko.'
+        : 'Pesanan akan dikirim ke alamat yang tertera. Pastikan alamat sudah benar.';
+
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Konfirmasi Pesanan'),
-        content: const Text(
-            'Pesanan akan dibuat dengan metode Bayar Ditempat. Pastikan kamu berada di lokasi toko.'),
+        content: Text(message),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
@@ -612,9 +1060,10 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
 
     if (confirm != true) return;
 
-    if (!mounted) return;
+    if (!context.mounted) return;
 
     // Show Custom Processing Dialog
+    if (!mounted) return;
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -624,7 +1073,10 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
 
     setState(() => _isLoading = true);
     try {
-      await _saveContact(name: finalName, phone: finalPhone);
+      await _saveContact(
+          name: finalName,
+          phone: finalPhone,
+          address: _fulfillmentType == 'DELIVERY' ? finalAddress : '');
 
       // Submit Order
       // Minimized delay because the dialog has its own pacing
@@ -633,6 +1085,8 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
       final order = await cart.submitOrder(
         customerName: finalName,
         phone: finalPhone,
+        fulfillmentType: _fulfillmentType,
+        deliveryAddress: _fulfillmentType == 'DELIVERY' ? finalAddress : null,
       );
 
       if (context.mounted) {

@@ -5,7 +5,7 @@ import { Table, Thead, Tbody, Th, Td, Tr } from '../components/ui/Table';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
-import { Plus, Trash, Check } from 'lucide-react';
+import { Plus, Trash, Check, Edit } from 'lucide-react';
 
 const Packages = () => {
     const [packages, setPackages] = useState([]);
@@ -14,6 +14,8 @@ const Packages = () => {
 
     // Form State
     const [form, setForm] = useState({ name: '', price: '', durationDays: 30, description: '' });
+    const [isEditing, setIsEditing] = useState(false);
+    const [editId, setEditId] = useState(null);
 
     const fetchPackages = async () => {
         try {
@@ -33,13 +35,33 @@ const Packages = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await api.post('/admin/packages', form);
+            if (isEditing) {
+                await api.put(`/admin/packages/${editId}`, form);
+                alert("Package updated successfully");
+            } else {
+                await api.post('/admin/packages', form);
+                alert("Package created successfully");
+            }
             setShowModal(false);
             setForm({ name: '', price: '', durationDays: 30, description: '' });
+            setIsEditing(false);
+            setEditId(null);
             fetchPackages();
         } catch (error) {
-            alert("Failed to create package");
+            alert(isEditing ? "Failed to update package" : "Failed to create package");
         }
+    };
+
+    const handleEdit = (pkg) => {
+        setForm({
+            name: pkg.name,
+            price: pkg.price,
+            durationDays: pkg.durationDays,
+            description: pkg.description
+        });
+        setIsEditing(true);
+        setEditId(pkg.id);
+        setShowModal(true);
     };
 
     const handleDelete = async (id) => {
@@ -52,6 +74,13 @@ const Packages = () => {
         }
     };
 
+    const openCreateModal = () => {
+        setForm({ name: '', price: '', durationDays: 30, description: '' });
+        setIsEditing(false);
+        setEditId(null);
+        setShowModal(true);
+    };
+
     const formatCurrency = (val) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val);
 
     return (
@@ -61,7 +90,7 @@ const Packages = () => {
                     <h1 className="text-2xl font-semibold text-slate-900">Subscription Packages</h1>
                     <p className="text-slate-500 mt-1">Manage pricing tiers and subscription options for merchants.</p>
                 </div>
-                <Button icon={Plus} onClick={() => setShowModal(true)}>New Package</Button>
+                <Button icon={Plus} onClick={openCreateModal}>New Package</Button>
             </div>
 
             <Card className="overflow-hidden border border-slate-200 shadow-sm">
@@ -91,9 +120,14 @@ const Packages = () => {
                                 <Td>{p.durationDays} Days</Td>
                                 <Td><span className="text-slate-500 text-sm truncate max-w-xs block">{p.description}</span></Td>
                                 <Td>
-                                    <button onClick={() => handleDelete(p.id)} className="text-red-500 hover:text-red-700 p-2">
-                                        <Trash size={18} />
-                                    </button>
+                                    <div className="flex items-center">
+                                        <button onClick={() => handleEdit(p)} className="text-blue-500 hover:text-blue-700 p-2">
+                                            <Edit size={18} />
+                                        </button>
+                                        <button onClick={() => handleDelete(p.id)} className="text-red-500 hover:text-red-700 p-2">
+                                            <Trash size={18} />
+                                        </button>
+                                    </div>
                                 </Td>
                             </Tr>
                         ))}
@@ -133,7 +167,7 @@ const Packages = () => {
                             </div>
                             <div className="flex justify-end space-x-3 pt-4">
                                 <Button type="button" variant="ghost" onClick={() => setShowModal(false)}>Cancel</Button>
-                                <Button type="submit">Create Package</Button>
+                                <Button type="submit">{isEditing ? 'Update Package' : 'Create Package'}</Button>
                             </div>
                         </form>
                     </Card>

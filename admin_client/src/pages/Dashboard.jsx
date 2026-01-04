@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import AdminLayout from '../components/AdminLayout';
 import Card from '../components/ui/Card';
+import Button from '../components/ui/Button';
 import { ArrowRight, Wallet, Settings, Users, TrendingUp, Clock, AlertCircle, Download } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import api from '../api';
@@ -83,13 +84,12 @@ const Dashboard = () => {
                         <p className="text-slate-500 mt-1">Overview of your store performance.</p>
                     </div>
                     <div className="flex items-center gap-2">
-                        <button
+                        <Button
                             onClick={handleExport}
-                            className="flex items-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition"
+                            icon={Download}
                         >
-                            <Download size={16} className="mr-2" />
                             Export Data
-                        </button>
+                        </Button>
                         <Badge variant="outline" className="px-3 py-1">
                             {new Date().toLocaleDateString('id-ID', { dateStyle: 'full' })}
                         </Badge>

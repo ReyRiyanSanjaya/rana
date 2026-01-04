@@ -1,12 +1,16 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:rana_market/screens/product_detail_screen.dart';
+import 'package:rana_market/config/app_config.dart';
+import 'package:rana_market/config/theme_config.dart';
 import 'package:rana_market/data/market_api_service.dart';
 import 'package:rana_market/providers/auth_provider.dart';
 import 'package:rana_market/screens/main_screen.dart';
-import 'package:rana_market/services/realtime_service.dart';
+import 'package:rana_market/services/socket_service.dart';
 import 'package:rana_market/widgets/buyer_bottom_nav.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -20,26 +24,36 @@ class OrderDetailScreen extends StatefulWidget {
 }
 
 class _OrderDetailScreenState extends State<OrderDetailScreen> {
-  final RealtimeService _realtime = RealtimeService();
   late Map<String, dynamic> _order;
   bool _refreshing = false;
-  void Function()? _unwatch;
+  StreamSubscription? _socketSub;
 
   @override
   void initState() {
     super.initState();
     _order = Map<String, dynamic>.from(widget.order);
-    _unwatch = _realtime.watchOrderStatus(_order['id'], onUpdate: (data) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _setupSocket();
+    });
+  }
+
+  void _setupSocket() {
+    final socket = Provider.of<SocketService>(context, listen: false);
+    final orderId = _order['id'].toString();
+    socket.joinOrder(orderId);
+    _socketSub = socket.orderStatusStream.listen((data) {
       if (!mounted) return;
-      setState(() {
-        _order = {..._order, ...data};
-      });
+      if (data['id'].toString() == orderId) {
+        setState(() {
+          _order = {..._order, ...data};
+        });
+      }
     });
   }
 
   @override
   void dispose() {
-    _unwatch?.call();
+    _socketSub?.cancel();
     super.dispose();
   }
 
@@ -92,7 +106,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         : (address ?? '');
     if (query.trim().isEmpty) return;
     final uri = Uri.parse(
-        'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(query)}');
+        '${AppConfig.googleMapsSearchUrl}${Uri.encodeComponent(query)}');
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
@@ -113,7 +127,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     }
 
     final uri = Uri.parse(
-        'https://wa.me/$formattedPhone?text=${Uri.encodeComponent('Halo, saya ingin menanyakan pesanan #${_order['id']}')}');
+        '${AppConfig.whatsappApiUrl}$formattedPhone?text=${Uri.encodeComponent('Halo, saya ingin menanyakan pesanan #${_order['id']}')}');
 
     try {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -150,6 +164,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             ? (store['address'] ?? store['location'] ?? store['alamat'])
             : null)
         ?.toString();
+    final deliveryAddress = _order['deliveryAddress']?.toString() ?? '-';
 
     // Determine status details
     Color statusColor;
@@ -159,34 +174,41 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
     switch (status) {
       case 'PENDING':
-        statusColor = Colors.orange;
+        statusColor = ThemeConfig.colorWarning;
         statusText = 'Menunggu Konfirmasi';
         statusIcon = Icons.hourglass_top;
         currentStep = 1;
         break;
       case 'ACCEPTED':
       case 'PROCESSING':
-        statusColor = Colors.blue;
+        statusColor = ThemeConfig.colorInfo;
         statusText = 'Sedang Diproses';
         statusIcon = Icons.soup_kitchen;
         currentStep = 2;
         break;
       case 'READY_TO_PICKUP':
       case 'READY':
-        statusColor = Colors.green;
+        statusColor = ThemeConfig.colorSuccess;
         statusText = 'Siap Diambil';
         statusIcon = Icons.shopping_bag;
         currentStep = 3;
         break;
+      case 'ON_DELIVERY':
+        statusColor = Colors.blue;
+        statusText = 'Sedang Diantar';
+        statusIcon = Icons.delivery_dining;
+        currentStep = 3;
+        break;
       case 'COMPLETED':
-        statusColor = Colors.green;
+      case 'DELIVERED':
+        statusColor = ThemeConfig.colorSuccess;
         statusText = 'Selesai';
         statusIcon = Icons.check_circle;
         currentStep = 4;
         break;
       case 'CANCELLED':
       case 'REJECTED':
-        statusColor = Colors.red;
+        statusColor = ThemeConfig.colorError;
         statusText = 'Dibatalkan';
         statusIcon = Icons.cancel;
         currentStep = 0;
@@ -198,7 +220,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F7),
+      backgroundColor: ThemeConfig.beigeBackground,
       appBar: AppBar(
         title: const Text('Detail Pesanan',
             style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
@@ -235,7 +257,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                       _buildLine(1, currentStep),
                       _buildStep(2, currentStep, 'Diproses'),
                       _buildLine(2, currentStep),
-                      _buildStep(3, currentStep, 'Siap'),
+                      _buildStep(3, currentStep,
+                          type == 'DELIVERY' ? 'Diantar' : 'Siap'),
                       _buildLine(3, currentStep),
                       _buildStep(4, currentStep, 'Selesai'),
                     ],
@@ -250,8 +273,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                        color:
-                            Colors.black.withValues(alpha: 0.05),
+                        color: Colors.black.withValues(alpha: 0.05),
                         blurRadius: 10,
                         offset: const Offset(0, 4))
                   ],
@@ -261,8 +283,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color:
-                            statusColor.withValues(alpha: 0.1),
+                        color: statusColor.withValues(alpha: 0.1),
                         borderRadius: const BorderRadius.vertical(
                             top: Radius.circular(16)),
                       ),
@@ -270,7 +291,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                         children: [
                           Container(
                             padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
+                            decoration: const BoxDecoration(
                               color: Colors.white,
                               shape: BoxShape.circle,
                             ),
@@ -388,7 +409,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                         child: Column(
                           children: [
                             Icon(Icons.cancel_outlined,
-                                size: 50, color: Colors.red.shade100),
+                                size: 50,
+                                color: ThemeConfig.colorError
+                                    .withValues(alpha: 0.2)),
                             const SizedBox(height: 8),
                             const Text(
                               'Pesanan ini telah dibatalkan',
@@ -423,7 +446,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                         color: Colors.grey.shade100,
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.store, color: Color(0xFFE07A5F)),
+                      child: const Icon(Icons.store,
+                          color: ThemeConfig.brandColor),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -450,7 +474,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     Column(
                       children: [
                         IconButton(
-                          icon: const Icon(Icons.map, color: Color(0xFFE07A5F)),
+                          icon: const Icon(Icons.map,
+                              color: ThemeConfig.brandColor),
                           onPressed: _openMapsForOrderStore,
                           tooltip: 'Lihat di Peta',
                         ),
@@ -467,6 +492,56 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   ],
                 ),
               ),
+
+              if (type == 'DELIVERY') ...[
+                const SizedBox(height: 24),
+                const Text('Informasi Pengiriman',
+                    style:
+                        TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 50,
+                        height: 50,
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(Icons.location_on,
+                            color: Colors.blue.shade700),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Alamat Tujuan',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 16),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              deliveryAddress,
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                  color: Colors.grey.shade600, fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
 
               const SizedBox(height: 24),
 
@@ -518,68 +593,166 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                             ? MarketApiService().resolveFileUrl(imageUrl)
                             : '';
 
-                        return Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              width: 60,
-                              height: 60,
-                              decoration: BoxDecoration(
-                                color: Colors.grey.shade100,
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: Colors.grey.shade200),
+                        final isCompleted =
+                            status == 'COMPLETED' || status == 'DELIVERED';
+
+                        return InkWell(
+                          onTap: () {
+                            // Navigate to Product Detail
+                            // Reconstruct product object from item
+                            final productMap = item['product'] is Map
+                                ? Map<String, dynamic>.from(item['product'])
+                                : <String, dynamic>{};
+
+                            // Ensure ID is present
+                            if (productMap['id'] == null) {
+                              productMap['id'] = item['productId'];
+                            }
+                            if (productMap['name'] == null) {
+                              productMap['name'] = prodName;
+                            }
+                            if (productMap['sellingPrice'] == null) {
+                              productMap['sellingPrice'] = price;
+                            }
+                            if (productMap['imageUrl'] == null) {
+                              productMap['imageUrl'] = imageUrl;
+                            }
+
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ProductDetailScreen(
+                                  product: productMap,
+                                  storeId: store is Map
+                                      ? store['id']
+                                      : (item['storeId'] ?? ''),
+                                  storeName: storeName ?? 'Toko',
+                                  storeAddress: storeAddress,
+                                ),
                               ),
-                              child: resolvedImage.isNotEmpty
-                                  ? ClipRRect(
-                                      borderRadius: BorderRadius.circular(10),
-                                      child: Image.network(resolvedImage,
-                                          fit: BoxFit.cover,
-                                          errorBuilder: (_, __, ___) =>
-                                              const Icon(
-                                                  Icons.image_not_supported,
-                                                  color: Colors.grey)),
-                                    )
-                                  : const Icon(Icons.fastfood,
-                                      color: Colors.grey),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
+                            );
+                          },
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    prodName,
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    '$qty x ${_formatCurrency(price)}',
-                                    style: TextStyle(
-                                        color: Colors.grey.shade600,
-                                        fontSize: 12),
-                                  ),
-                                  if (note != null && note.isNotEmpty)
-                                    Padding(
-                                      padding: const EdgeInsets.only(top: 4),
-                                      child: Text(
-                                        'Catatan: $note',
-                                        style: TextStyle(
-                                            color: Colors.orange.shade700,
-                                            fontSize: 11,
-                                            fontStyle: FontStyle.italic),
-                                      ),
+                                  Container(
+                                    width: 60,
+                                    height: 60,
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey.shade100,
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                          color: Colors.grey.shade200),
                                     ),
+                                    child: resolvedImage.isNotEmpty
+                                        ? ClipRRect(
+                                            borderRadius:
+                                                BorderRadius.circular(10),
+                                            child: Image.network(resolvedImage,
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (_, __, ___) =>
+                                                    const Icon(
+                                                        Icons
+                                                            .image_not_supported,
+                                                        color: Colors.grey)),
+                                          )
+                                        : const Icon(Icons.fastfood,
+                                            color: Colors.grey),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          prodName,
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          '$qty x ${_formatCurrency(price)}',
+                                          style: TextStyle(
+                                              color: Colors.grey.shade600,
+                                              fontSize: 12),
+                                        ),
+                                        if (note != null && note.isNotEmpty)
+                                          Padding(
+                                            padding:
+                                                const EdgeInsets.only(top: 4),
+                                            child: Text(
+                                              'Catatan: $note',
+                                              style: TextStyle(
+                                                  color: Colors.orange.shade700,
+                                                  fontSize: 11,
+                                                  fontStyle: FontStyle.italic),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                  Text(
+                                    _formatCurrency(total),
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold),
+                                  ),
                                 ],
                               ),
-                            ),
-                            Text(
-                              _formatCurrency(total),
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                          ],
+                              if (isCompleted)
+                                Padding(
+                                  padding:
+                                      const EdgeInsets.only(top: 8, left: 72),
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      // Same navigation logic
+                                      final productMap = item['product'] is Map
+                                          ? Map<String, dynamic>.from(
+                                              item['product'])
+                                          : <String, dynamic>{};
+                                      if (productMap['id'] == null) {
+                                        productMap['id'] = item['productId'];
+                                      }
+                                      if (productMap['name'] == null) {
+                                        productMap['name'] = prodName;
+                                      }
+                                      if (productMap['sellingPrice'] == null) {
+                                        productMap['sellingPrice'] = price;
+                                      }
+                                      if (productMap['imageUrl'] == null) {
+                                        productMap['imageUrl'] = imageUrl;
+                                      }
+
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => ProductDetailScreen(
+                                            product: productMap,
+                                            storeId: store is Map
+                                                ? store['id']
+                                                : (item['storeId'] ?? ''),
+                                            storeName: storeName ?? 'Toko',
+                                            storeAddress: storeAddress,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    child: const Text(
+                                      'Beri Ulasan',
+                                      style: TextStyle(
+                                        color: ThemeConfig.brandColor,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
                         );
                       },
                     ),
@@ -599,6 +772,11 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     const SizedBox(height: 8),
                     _buildPaymentRow(
                         'Biaya Layanan', (_order['buyerFee'] as num?) ?? 0),
+                    if ((_order['deliveryFee'] as num? ?? 0) > 0) ...[
+                      const SizedBox(height: 8),
+                      _buildPaymentRow(
+                          'Ongkos Kirim', (_order['deliveryFee'] as num?) ?? 0),
+                    ],
                     const SizedBox(height: 8),
                     const Divider(),
                     const SizedBox(height: 8),
@@ -613,7 +791,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                           style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 18,
-                              color: Color(0xFFE07A5F)),
+                              color: ThemeConfig.brandColor),
                         ),
                       ],
                     ),
@@ -629,8 +807,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         selectedIndex: 1,
         onSelected: (index) {
           Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(
-                builder: (_) => MainScreen(initialIndex: index)),
+            MaterialPageRoute(builder: (_) => MainScreen(initialIndex: index)),
             (route) => false,
           );
         },
@@ -660,7 +837,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             width: 24,
             height: 24,
             decoration: BoxDecoration(
-              color: isActive ? const Color(0xFFE07A5F) : Colors.grey.shade300,
+              color: isActive ? ThemeConfig.brandColor : Colors.grey.shade300,
               shape: BoxShape.circle,
             ),
             child: isCompleted

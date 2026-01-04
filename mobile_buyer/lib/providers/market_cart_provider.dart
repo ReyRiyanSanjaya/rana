@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:rana_market/data/market_api_service.dart';
+import 'package:geolocator/geolocator.dart';
 
 class MarketCartItem {
   final String productId;
@@ -34,10 +35,36 @@ class MarketCartProvider with ChangeNotifier {
   double? get activeStoreLat => _activeStoreLat;
   double? get activeStoreLong => _activeStoreLong;
   Map<String, MarketCartItem> get items => _items;
+  int get itemCount => _items.length;
   double _serviceFeeValue = 0;
   String _serviceFeeType = 'FLAT';
   double? _serviceFeeCapMin;
   double? _serviceFeeCapMax;
+
+  double _deliveryFee = 0;
+  double get deliveryFee => _deliveryFee;
+
+  void updateDeliveryFee(double? userLat, double? userLong) {
+    if (userLat == null ||
+        userLong == null ||
+        _activeStoreLat == null ||
+        _activeStoreLong == null) {
+      // Fallback if location not available: Flat 15.000
+      _deliveryFee = 15000;
+    } else {
+      double distInMeters = Geolocator.distanceBetween(
+          userLat, userLong, _activeStoreLat!, _activeStoreLong!);
+      double distInKm = distInMeters / 1000;
+      // Pricing: 5000 base + 2000 per km (rounded up)
+      _deliveryFee = 5000 + (distInKm.ceil() * 2000);
+    }
+    notifyListeners();
+  }
+
+  void clearDeliveryFee() {
+    _deliveryFee = 0;
+    notifyListeners();
+  }
 
   double get serviceFee {
     final subtotal = totalAmount;
@@ -76,7 +103,7 @@ class MarketCartProvider with ChangeNotifier {
 
   double get totalDiscount => totalOriginalAmount - totalAmount;
 
-  double get grandTotal => totalAmount + serviceFee;
+  double get grandTotal => totalAmount + serviceFee + _deliveryFee;
 
   Future<void> fetchServiceFee() async {
     try {
@@ -113,6 +140,7 @@ class MarketCartProvider with ChangeNotifier {
     double? storeLong,
     double? originalPrice,
     String? imageUrl,
+    int quantity = 1,
   }) {
     // If adding from different store, confirm reset
     if (_activeStoreId != null && _activeStoreId != storeId) {
@@ -126,14 +154,15 @@ class MarketCartProvider with ChangeNotifier {
     _activeStoreLong = storeLong ?? _activeStoreLong;
 
     if (_items.containsKey(productId)) {
-      _items[productId]!.quantity += 1;
+      _items[productId]!.quantity += quantity;
     } else {
       _items[productId] = MarketCartItem(
           productId: productId,
           name: name,
           price: price,
           originalPrice: originalPrice,
-          imageUrl: imageUrl);
+          imageUrl: imageUrl,
+          quantity: quantity);
     }
     notifyListeners();
   }
@@ -159,8 +188,12 @@ class MarketCartProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<Map<String, dynamic>> submitOrder(
-      {required String customerName, required String phone}) async {
+  Future<Map<String, dynamic>> submitOrder({
+    required String customerName,
+    required String phone,
+    required String fulfillmentType,
+    String? deliveryAddress,
+  }) async {
     if (_items.isEmpty || _activeStoreId == null) throw Exception('Empty');
 
     final orderItems = _items.values
@@ -176,8 +209,9 @@ class MarketCartProvider with ChangeNotifier {
         items: orderItems,
         customerName: customerName,
         customerPhone: phone,
-        deliveryAddress: '-',
-        fulfillmentType: 'PICKUP');
+        deliveryAddress: deliveryAddress ?? '-',
+        fulfillmentType: fulfillmentType,
+        deliveryFee: _deliveryFee);
 
     clearCart();
     return result;

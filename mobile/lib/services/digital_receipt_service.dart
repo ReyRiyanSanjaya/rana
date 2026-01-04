@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:rana_merchant/config/app_config.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart'; // Add url_launcher to pubspec
 
@@ -29,7 +30,8 @@ class DigitalReceiptService {
     if (raw != null && raw.trim().isNotEmpty) {
       final decoded = jsonDecode(raw);
       if (decoded is List) {
-        contacts = decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        contacts =
+            decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
       }
     }
 
@@ -55,29 +57,30 @@ class DigitalReceiptService {
 
     await prefs.setString(_promoContactsKey, jsonEncode(contacts));
   }
-  
-  static Future<void> sendViaWhatsApp(String phone, Map<String, dynamic> txn, List<Map<String, dynamic>> items) async {
+
+  static Future<void> sendViaWhatsApp(String phone, Map<String, dynamic> txn,
+      List<Map<String, dynamic>> items) async {
     // 1. Format Message
     final sb = StringBuffer();
     sb.writeln('*RANA POS RECEIPT*');
     sb.writeln('----------------');
     sb.writeln('Date: ${txn['occurredAt']}');
-    sb.writeln('ID: ${txn['offlineId'].toString().substring(0,8)}');
+    sb.writeln('ID: ${txn['offlineId'].toString().substring(0, 8)}');
     sb.writeln('----------------');
-    
+
     for (var item in items) {
       // Logic to find Item Name needed (usually passed or looked up)
       // Since history items might just have ID, ideally we pass name too.
       // For MVP, assuming item map has 'name' or we just show 'Item'
-      final name = item['name'] ?? 'Item'; 
+      final name = item['name'] ?? 'Item';
       final qty = item['quantity'];
       final price = item['price'];
       final sub = qty * price;
-      
+
       sb.writeln('${qty}x $name');
       sb.writeln('   Rp $sub');
     }
-    
+
     sb.writeln('----------------');
     if (txn['discount'] != null && txn['discount'] > 0) {
       sb.writeln('Disc: -Rp ${txn['discount']}');
@@ -96,18 +99,22 @@ class DigitalReceiptService {
       cleanPhone = '62${cleanPhone.substring(1)}';
     }
 
-    final url = Uri.parse("whatsapp://send?phone=$cleanPhone&text=${Uri.encodeComponent(sb.toString())}");
-    
+    final url = Uri.parse(
+        "${AppConfig.whatsappAppUrl}?phone=$cleanPhone&text=${Uri.encodeComponent(sb.toString())}");
+
     if (await canLaunchUrl(url)) {
       await launchUrl(url);
-      await _upsertPromoContact(phone: cleanPhone, name: txn['customerName']?.toString());
+      await _upsertPromoContact(
+          phone: cleanPhone, name: txn['customerName']?.toString());
     } else {
       debugPrint('Could not launch WhatsApp');
       // Fallback: try https link
-      final webUrl = Uri.parse("https://wa.me/$cleanPhone?text=${Uri.encodeComponent(sb.toString())}");
-      if(await canLaunchUrl(webUrl)) {
+      final webUrl = Uri.parse(
+          "${AppConfig.whatsappWebUrl}/$cleanPhone?text=${Uri.encodeComponent(sb.toString())}");
+      if (await canLaunchUrl(webUrl)) {
         await launchUrl(webUrl, mode: LaunchMode.externalApplication);
-        await _upsertPromoContact(phone: cleanPhone, name: txn['customerName']?.toString());
+        await _upsertPromoContact(
+            phone: cleanPhone, name: txn['customerName']?.toString());
       }
     }
   }

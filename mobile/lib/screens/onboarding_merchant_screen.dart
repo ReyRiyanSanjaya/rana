@@ -9,6 +9,7 @@ import 'package:rana_merchant/data/local/database_helper.dart';
 import 'package:rana_merchant/data/remote/api_service.dart';
 import 'package:rana_merchant/providers/auth_provider.dart';
 import 'package:rana_merchant/screens/home_screen.dart';
+import 'package:rana_merchant/config/assets_config.dart';
 
 class MerchantOnboardingScreen extends StatefulWidget {
   const MerchantOnboardingScreen({super.key});
@@ -296,7 +297,7 @@ class _MerchantOnboardingScreenState extends State<MerchantOnboardingScreen> {
       children: [
         SizedBox(
           height: 160,
-          child: Lottie.asset('assets/lottie/empty_store.json'),
+          child: Lottie.asset(AssetsConfig.lottieEmptyStore),
         ),
         const SizedBox(height: 24),
         const Text(
@@ -413,10 +414,8 @@ class _MerchantOnboardingScreenState extends State<MerchantOnboardingScreen> {
                   color: Colors.grey.shade100,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .primary
-                        .withOpacity(0.3),
+                    color:
+                        Theme.of(context).colorScheme.primary.withOpacity(0.3),
                   ),
                 ),
                 child: _pickedImageBytes == null

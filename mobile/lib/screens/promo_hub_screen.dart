@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:rana_merchant/config/app_config.dart';
 import 'package:rana_merchant/data/local/database_helper.dart';
 import 'package:rana_merchant/data/remote/api_service.dart';
 import 'package:rana_merchant/providers/auth_provider.dart';
@@ -164,8 +165,8 @@ class _PromoHubScreenState extends State<PromoHubScreen> {
 
     final whatsappUri = Uri.parse(
       normalizedPhone == null
-          ? 'whatsapp://send?text=${Uri.encodeComponent(message)}'
-          : 'whatsapp://send?phone=$normalizedPhone&text=${Uri.encodeComponent(message)}',
+          ? '${AppConfig.whatsappAppUrl}?text=${Uri.encodeComponent(message)}'
+          : '${AppConfig.whatsappAppUrl}?phone=$normalizedPhone&text=${Uri.encodeComponent(message)}',
     );
 
     try {
@@ -177,8 +178,8 @@ class _PromoHubScreenState extends State<PromoHubScreen> {
 
     final webUri = Uri.parse(
       normalizedPhone == null
-          ? 'https://wa.me/?text=${Uri.encodeComponent(message)}'
-          : 'https://wa.me/$normalizedPhone?text=${Uri.encodeComponent(message)}',
+          ? '${AppConfig.whatsappWebUrl}/?text=${Uri.encodeComponent(message)}'
+          : '${AppConfig.whatsappWebUrl}/$normalizedPhone?text=${Uri.encodeComponent(message)}',
     );
 
     try {
@@ -1198,38 +1199,37 @@ class _PromoCalculatorSheetState extends State<_PromoCalculatorSheet> {
             ),
             padding: const EdgeInsets.all(14),
             child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _ResultRow(
-                      label: 'Diskon',
-                      value: discountPct == null
-                          ? '-'
-                          : '${discountPct.clamp(0, 100).toStringAsFixed(1)}%'),
-                  const SizedBox(height: 8),
-                  _ResultRow(
-                      label: 'Harga promo',
-                      value: promo == null ? '-' : _formatRupiah(promo)),
-                  const SizedBox(height: 8),
-                  _ResultRow(
-                      label: 'Untung normal',
-                      value: profitNormal == null
-                          ? '-'
-                          : _formatRupiah(profitNormal)),
-                  const SizedBox(height: 8),
-                  _ResultRow(
-                      label: 'Untung promo',
-                      value: profitPromo == null
-                          ? '-'
-                          : _formatRupiah(profitPromo)),
-                  const SizedBox(height: 8),
-                  _ResultRow(
-                      label: 'Margin promo',
-                      value: marginPromo == null
-                          ? '-'
-                          : '${marginPromo.toStringAsFixed(1)}%'),
-                ],
-              ),
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _ResultRow(
+                    label: 'Diskon',
+                    value: discountPct == null
+                        ? '-'
+                        : '${discountPct.clamp(0, 100).toStringAsFixed(1)}%'),
+                const SizedBox(height: 8),
+                _ResultRow(
+                    label: 'Harga promo',
+                    value: promo == null ? '-' : _formatRupiah(promo)),
+                const SizedBox(height: 8),
+                _ResultRow(
+                    label: 'Untung normal',
+                    value: profitNormal == null
+                        ? '-'
+                        : _formatRupiah(profitNormal)),
+                const SizedBox(height: 8),
+                _ResultRow(
+                    label: 'Untung promo',
+                    value:
+                        profitPromo == null ? '-' : _formatRupiah(profitPromo)),
+                const SizedBox(height: 8),
+                _ResultRow(
+                    label: 'Margin promo',
+                    value: marginPromo == null
+                        ? '-'
+                        : '${marginPromo.toStringAsFixed(1)}%'),
+              ],
             ),
+          ),
         ],
       ),
     );
@@ -1537,8 +1537,7 @@ class _PromoRecommendationsSheetState
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                            color:
-                                const Color(0xFFE07A5F).withOpacity(0.15),
+                            color: const Color(0xFFE07A5F).withOpacity(0.15),
                             width: 1.5,
                           ),
                         ),
@@ -1569,45 +1568,44 @@ class _PromoRecommendationsSheetState
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
-                              color: const Color(0xFFE07A5F)
-                                  .withOpacity(0.15),
+                              color: const Color(0xFFE07A5F).withOpacity(0.15),
                               width: 1.5,
                             ),
                           ),
                           padding: const EdgeInsets.all(14),
                           child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(name,
-                                    style: GoogleFonts.poppins(
-                                        fontWeight: FontWeight.w800)),
-                                const SizedBox(height: 6),
-                                Text(
-                                  'Terjual: $qty | Omzet: ${_formatRupiah(revenue)} | Profit: ${_formatRupiah(profit)} | Margin: $marginPct%${stock == null ? '' : ' | Stok: $stock'}',
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(name,
                                   style: GoogleFonts.poppins(
-                                      fontSize: 12, color: Colors.grey[700]),
-                                ),
-                                const SizedBox(height: 10),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: OutlinedButton(
-                                        onPressed: () => _copy(name),
-                                        child: const Text('Copy Nama'),
-                                      ),
+                                      fontWeight: FontWeight.w800)),
+                              const SizedBox(height: 6),
+                              Text(
+                                'Terjual: $qty | Omzet: ${_formatRupiah(revenue)} | Profit: ${_formatRupiah(profit)} | Margin: $marginPct%${stock == null ? '' : ' | Stok: $stock'}',
+                                style: GoogleFonts.poppins(
+                                    fontSize: 12, color: Colors.grey[700]),
+                              ),
+                              const SizedBox(height: 10),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: OutlinedButton(
+                                      onPressed: () => _copy(name),
+                                      child: const Text('Copy Nama'),
                                     ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: FilledButton(
-                                        onPressed: _openFlashSale,
-                                        child: const Text('Buat Flash Sale'),
-                                      ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: FilledButton(
+                                      onPressed: _openFlashSale,
+                                      child: const Text('Buat Flash Sale'),
                                     ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          );
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        );
                       }).toList(),
                     );
                   },
@@ -1634,8 +1632,7 @@ class _PromoRecommendationsSheetState
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                            color:
-                                const Color(0xFFE07A5F).withOpacity(0.15),
+                            color: const Color(0xFFE07A5F).withOpacity(0.15),
                             width: 1.5,
                           ),
                         ),
@@ -1659,45 +1656,44 @@ class _PromoRecommendationsSheetState
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
-                              color: const Color(0xFFE07A5F)
-                                  .withOpacity(0.15),
+                              color: const Color(0xFFE07A5F).withOpacity(0.15),
                               width: 1.5,
                             ),
                           ),
                           padding: const EdgeInsets.all(14),
                           child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(name,
-                                    style: GoogleFonts.poppins(
-                                        fontWeight: FontWeight.w800)),
-                                const SizedBox(height: 6),
-                                Text(
-                                  '${stock == null ? '' : 'Stok: $stock'}${price == null ? '' : ' | Harga: ${_formatRupiah(price)}'}',
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(name,
                                   style: GoogleFonts.poppins(
-                                      fontSize: 12, color: Colors.grey[700]),
-                                ),
-                                const SizedBox(height: 10),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: OutlinedButton(
-                                        onPressed: () => _copy(name),
-                                        child: const Text('Copy Nama'),
-                                      ),
+                                      fontWeight: FontWeight.w800)),
+                              const SizedBox(height: 6),
+                              Text(
+                                '${stock == null ? '' : 'Stok: $stock'}${price == null ? '' : ' | Harga: ${_formatRupiah(price)}'}',
+                                style: GoogleFonts.poppins(
+                                    fontSize: 12, color: Colors.grey[700]),
+                              ),
+                              const SizedBox(height: 10),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: OutlinedButton(
+                                      onPressed: () => _copy(name),
+                                      child: const Text('Copy Nama'),
                                     ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: FilledButton(
-                                        onPressed: _openMarketing,
-                                        child: const Text('Buat Diskon'),
-                                      ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: FilledButton(
+                                      onPressed: _openMarketing,
+                                      child: const Text('Buat Diskon'),
                                     ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          );
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        );
                       }).toList(),
                     );
                   },

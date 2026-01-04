@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:rana_market/config/theme_config.dart';
 import 'package:rana_market/providers/auth_provider.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -80,9 +81,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            Text(
+            const Text(
               'Nikmati kemudahan belanja dari toko sekitar.',
-              style: TextStyle(color: Colors.grey.shade600),
+              style: TextStyle(color: ThemeConfig.textSecondary),
             ),
             const SizedBox(height: 32),
             TextField(

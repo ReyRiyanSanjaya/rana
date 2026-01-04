@@ -41,6 +41,12 @@ const initSocket = (server) => {
         if (socket.user?.tenantId) socket.join(`tenant:${socket.user.tenantId}`);
         if (socket.user?.storeId) socket.join(`store:${socket.user.storeId}`);
 
+        // Join Order Room (for Buyer Tracking)
+        socket.on('join_order', (orderId) => {
+             socket.join(`order:${orderId}`);
+             console.log(`User ${socket.user.userId} joined order order:${orderId}`);
+        });
+
         // Join Ticket Room
         socket.on('join_ticket', (ticketId) => {
             socket.join(ticketId);
@@ -119,4 +125,10 @@ const emitToTenant = (tenantId, event, payload) => {
     }
 };
 
-module.exports = { initSocket, getIo, emitToTenant };
+const emitToOrder = (orderId, event, data) => {
+    if (io) {
+        io.to(`order:${orderId}`).emit(event, data);
+    }
+};
+
+module.exports = { initSocket, getIo, emitToTenant, emitToOrder };

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:rana_market/config/theme_config.dart';
 import 'package:rana_market/screens/main_screen.dart'; // [NEW]
 import 'package:rana_market/services/notification_service.dart';
 
@@ -11,9 +11,7 @@ import 'package:rana_market/providers/favorites_provider.dart';
 import 'package:rana_market/providers/search_history_provider.dart';
 import 'package:rana_market/providers/reviews_provider.dart';
 import 'package:rana_market/providers/notifications_provider.dart';
-
-const Color kBrandColor = Color(0xFFE07A5F); // Soft Terra Cotta
-const Color kBeigeBackground = Color(0xFFFFF8F0); // Soft Beige
+import 'package:rana_market/services/socket_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,69 +33,54 @@ class RanaMarketApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => SearchHistoryProvider()),
         ChangeNotifierProvider(create: (_) => ReviewsProvider()),
         ChangeNotifierProvider(create: (_) => NotificationsProvider()),
+        ChangeNotifierProvider(create: (_) => SocketService()),
       ],
       child: MaterialApp(
         title: 'Rana Market',
         debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          useMaterial3: true,
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: kBrandColor,
-            primary: kBrandColor,
-            onPrimary: Colors.white,
-            secondary: kBrandColor,
-            surface: Colors.white,
-          ),
-          scaffoldBackgroundColor: kBeigeBackground,
-          textTheme: GoogleFonts.poppinsTextTheme(),
-          appBarTheme: const AppBarTheme(
-            backgroundColor: kBeigeBackground, // Soft Beige Header
-            elevation: 0,
-            centerTitle: false,
-            foregroundColor: kBrandColor,
-            iconTheme: IconThemeData(color: kBrandColor),
-            titleTextStyle: TextStyle(
-              color: kBrandColor,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          cardTheme: CardThemeData(
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: BorderSide(
-                color: kBrandColor.withValues(alpha: 0.1),
-              ),
-            ),
-            color: Colors.white,
-          ),
-          navigationBarTheme: const NavigationBarThemeData(
-            backgroundColor: Colors.white,
-            indicatorColor: kBrandColor,
-            iconTheme: WidgetStatePropertyAll(
-              IconThemeData(color: kBrandColor),
-            ),
-            labelTextStyle: WidgetStatePropertyAll(
-              TextStyle(color: kBrandColor, fontWeight: FontWeight.w600),
-            ),
-          ),
-          dividerColor: kBrandColor,
-          dividerTheme: const DividerThemeData(
-            color: kBrandColor,
-            thickness: 1,
-          ),
-        ),
+        theme: ThemeConfig.lightTheme,
         home: Consumer<AuthProvider>(
           builder: (context, auth, _) {
             if (auth.isLoading) {
               return const Scaffold(
                   body: Center(child: CircularProgressIndicator()));
             }
-            return const MainScreen();
+            return const SocketManager(child: MainScreen());
           },
         ),
       ),
     );
+  }
+}
+
+class SocketManager extends StatefulWidget {
+  final Widget child;
+  const SocketManager({super.key, required this.child});
+
+  @override
+  State<SocketManager> createState() => _SocketManagerState();
+}
+
+class _SocketManagerState extends State<SocketManager> {
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final auth = Provider.of<AuthProvider>(context);
+    final socket = Provider.of<SocketService>(context, listen: false);
+
+    if (auth.isAuthenticated && auth.token != null) {
+      if (!socket.isConnected) {
+        socket.init(auth.token!);
+      }
+    } else {
+      if (socket.isConnected) {
+        socket.disconnect();
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return widget.child;
   }
 }

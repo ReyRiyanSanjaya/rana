@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Schema - Dokumentasi Rana Market</title>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+</head>
+<body>
+    <nav class="sidebar">
+        <a href="index.html" class="brand">Rana Market 🐸</a>
+        <ul class="nav-links">
+            <li class="nav-item"><a href="index.html" class="nav-link">🏠 Pengantar</a></li>
+            <li class="nav-item"><a href="architecture.html" class="nav-link">🏗️ Arsitektur Sistem</a></li>
+            <li class="nav-item"><a href="database-schema.html" class="nav-link active">💾 Database Schema</a></li>
+            <li class="nav-item"><a href="security.html" class="nav-link">🔒 Keamanan</a></li>
+            <li class="nav-item"><a href="server-deployment.html" class="nav-link">🖥️ Server Deployment</a></li>
+            <li class="nav-item"><a href="mobile-deployment.html" class="nav-link">📱 Mobile Deployment</a></li>
+            <li class="nav-item"><a href="api-integration.html" class="nav-link">🔌 Integrasi API</a></li>
+            <li class="nav-item"><a href="cicd.html" class="nav-link">🚀 CI/CD Pipeline</a></li>
+            <li class="nav-item"><a href="tools.html" class="nav-link">🛠️ Tools & Utils</a></li>
+            <li class="nav-item"><a href="user-manual.html" class="nav-link">📖 Panduan Admin</a></li>
+            <li class="nav-item"><a href="maintenance.html" class="nav-link">🛠️ Maintenance & Ops</a></li>
+            <li class="nav-item"><a href="troubleshooting.html" class="nav-link">❓ Troubleshooting</a></li>
+        </ul>
+    </nav>
+
+    <main class="main-content">
+        <h1>Struktur Database (Schema)</h1>
+        <p>Dokumentasi lengkap schema database PostgreSQL yang digunakan Rana Market, berbasis Prisma ORM.</p>
+
+        <h2>Diagram Relasi (ERD)</h2>
+        <p>Struktur utama database berpusat pada <code>Tenant</code> (Penyewa SaaS) yang memiliki banyak <code>Store</code> (Toko) dan <code>User</code>.</p>
+        <div class="code-block">
+            <pre>
+Tenant (SaaS Subscriber)
+  ├── Users (Admin/Owner/Cashier)
+  ├── Stores (Outlet Cabang)
+  │     ├── Products
+  │     └── Transactions
+  ├── Customers (Pelanggan)
+  └── Reports (Sales, Cashflow)
+            </pre>
+        </div>
+
+        <h2>Definisi Schema Lengkap (Prisma)</h2>
+        <p>Berikut adalah definisi <code>schema.prisma</code> terkini:</p>
+
+        <div class="code-block">
+            <pre><code class="language-prisma">
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ================================
+// CORE TENANCY & IAM
+// ================================
+
+model Tenant {
+  id                 String             @id @default(uuid())
+  name               String
+  plan               SubscriptionPlan   @default(FREE)
+  trialEndsAt        DateTime?
+  subscriptionEndsAt DateTime?
+  subscriptionStatus SubscriptionStatus @default(TRIAL)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  // Relations
+  users        User[]
+  stores       Store[]
+  products     Product[]
+  categories   Category[]
+  customers    Customer[]
+  transactions Transaction[]
+  
+  // Reporting & Logs
+  dailySales           DailySalesSummary[]
+  productStats         ProductSalesSummary[]
+  cashLogs             CashflowLog[]
+  purchases            Purchase[]
+  debtRecords          DebtRecord[]
+  subscriptionRequests SubscriptionRequest[]
+  wholesaleOrders      WholesaleOrder[]
+  tickets              SupportTicket[]
+  notifications        Notification[]
+  ppobTransactions     PpobTransaction[]
+  flashSales           FlashSale[]
+  referralCodes        ReferralCode[]
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  tenantId  String
+  title     String
+  body      String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+}
+
+enum SubscriptionPlan {
+  FREE
+  BASIC
+  PREMIUM
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+// [NEW] Configurable Packages
+model SubscriptionPackage {
+  id           String   @id @default(uuid())
+  name         String // e.g. "Bulanan", "Tahunan"
+  price        Float // e.g. 49000
+  durationDays Int // e.g. 30
+  description  String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  subscriptionRequests SubscriptionRequest[]
+}
+
+model SubscriptionRequest {
+  id        String        @id @default(uuid())
+  tenantId  String
+  packageId String?
+  proofUrl  String?
+  status    RequestStatus @default(PENDING)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  tenant  Tenant               @relation(fields: [tenantId], references: [id])
+  package SubscriptionPackage? @relation(fields: [packageId], references: [id])
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+            </code></pre>
+        </div>
+
+        <h2>Penjelasan Entitas Penting</h2>
+
+        <h3>1. Tenant (Penyewa)</h3>
+        <p>Tabel induk untuk setiap bisnis yang mendaftar. Semua data produk, transaksi, dan pelanggan terisolasi berdasarkan <code>tenantId</code>.</p>
+        
+        <h3>2. Subscription (Langganan)</h3>
+        <p>Sistem SaaS menggunakan model langganan:</p>
+        <ul>
+            <li><strong>SubscriptionPackage:</strong> Tabel master paket (contoh: "Paket Premium 1 Bulan").</li>
+            <li><strong>SubscriptionRequest:</strong> Tabel transaksi saat tenant meminta upgrade/perpanjangan dan mengupload bukti transfer.</li>
+        </ul>
+
+        <h3>3. Notification</h3>
+        <p>Menyimpan notifikasi in-app untuk tenant (misal: "Stok menipis", "Subscription hampir habis").</p>
+
+        <footer>
+            &copy; 2026 Rana Market Team. All rights reserved.
+        </footer>
+    </main>
+
+    <script src="js/main.js"></script>
+</body>
+</html>

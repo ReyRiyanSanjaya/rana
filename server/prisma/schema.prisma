@@ -156,6 +156,10 @@ model Store {
   category  String? // [NEW] UMKM Category (Apotik, Kedai, etc.)
   waNumber  String?  @unique // [NEW] For WhatsApp Notifications
   imageUrl  String?
+  bannerUrl String?  // [NEW] Store banner
+  description String? // [NEW] Store description
+  openingHours String? // [NEW] e.g. "09:00 - 21:00"
+  isActive     Boolean  @default(true) // [FIX] Added missing field
   balance   Float    @default(0) // [NEW] Digital Wallet Balance
   createdAt DateTime @default(now())
 
@@ -173,6 +177,7 @@ model Store {
   receivedTransfers WalletTransfer[]    @relation("ReceivedTransfers") // [NEW]
   ppobTransactions  PpobTransaction[] // [NEW]
   flashSales        FlashSale[] // [FIX] Added relation
+  products          Product[]
 }
 
 // [NEW] Withdrawal Request
@@ -199,11 +204,13 @@ enum WithdrawalStatus {
 
 // [NEW] Global Announcements
 model Announcement {
-  id        String   @id @default(uuid())
-  title     String
-  content   String
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
+  id          String   @id @default(uuid())
+  title       String
+  content     String
+  isActive    Boolean  @default(true)
+  target      String   @default("ALL") // ALL, PLAN, STATUS, STORE
+  targetValue String? // e.g. "PREMIUM", "ACTIVE", or StoreID
+  createdAt   DateTime @default(now())
 }
 
 model Supplier {
@@ -261,6 +268,7 @@ model Product {
   updatedAt    DateTime @updatedAt
 
   tenant        Tenant            @relation(fields: [tenantId], references: [id])
+  store         Store?            @relation(fields: [storeId], references: [id])
   category      Category?         @relation(fields: [categoryId], references: [id])
   stocks        Stock[]
   sales         TransactionItem[]
@@ -271,6 +279,35 @@ model Product {
   originalPrice  Float? // For storing price before discount
   discountLabel  String? // e.g. "Flash Sale"
   flashSaleItems FlashSaleItem[] // [FIX] Added relation
+  
+  // [NEW] Favorites & Reviews
+  favorites     Favorite[]
+  reviews       Review[]
+  averageRating Float      @default(0)
+  reviewCount   Int        @default(0)
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  productId String
+  userId    String?  // Optional if we want to link to User/Customer
+  userName  String   // Display Name
+  rating    Int      // 1-5
+  comment   String?
+  createdAt DateTime @default(now())
+
+  product   Product  @relation(fields: [productId], references: [id])
+}
+
+model Favorite {
+  id        String   @id @default(uuid())
+  phone     String   // Customer Phone (Simple Auth)
+  productId String
+  createdAt DateTime @default(now())
+
+  product   Product  @relation(fields: [productId], references: [id])
+  
+  @@unique([phone, productId])
 }
 
 enum InventoryType {
@@ -339,6 +376,7 @@ model Transaction {
   buyerFee      Float  @default(0)
   merchantFee   Float  @default(0)
   platformFee   Float  @default(0)
+  deliveryFee   Float  @default(0) // [NEW] Delivery Cost
 
   // O2O Fields
   orderStatus     String // PENDING, COMPLETED, CANCELLED

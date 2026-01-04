@@ -67,7 +67,7 @@ const AuditLogs = () => {
                                     </div>
                                 </Td>
                                 <Td>
-                                    <Badge variant={log.action.includes("DELETE") ? "error" : "primary"}>
+                                    <Badge variant={log.action.includes("DELETE") ? "error" : "brand"}>
                                         {log.action}
                                     </Badge>
                                 </Td>

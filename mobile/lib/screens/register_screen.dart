@@ -9,6 +9,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_dragmarker/flutter_map_dragmarker.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:rana_merchant/config/app_config.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -293,9 +294,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
           lat: p.latitude,
           long: p.longitude,
           address: _locationAddress,
-          referralCode: _referralCtrl.text.isEmpty
-              ? null
-              : _referralCtrl.text.trim());
+          referralCode:
+              _referralCtrl.text.isEmpty ? null : _referralCtrl.text.trim());
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -439,8 +439,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   border: const OutlineInputBorder(),
                   focusedBorder: const OutlineInputBorder(
                       borderSide: BorderSide(color: Color(0xFFE07A5F))),
-                  floatingLabelStyle:
-                      const TextStyle(color: Color(0xFFE07A5F)),
+                  floatingLabelStyle: const TextStyle(color: Color(0xFFE07A5F)),
                   suffixIcon: IconButton(
                     icon: Icon(
                       _obscurePass ? Icons.visibility_off : Icons.visibility,
@@ -565,8 +564,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ),
                               children: [
                                 TileLayer(
-                                  urlTemplate:
-                                      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                  urlTemplate: AppConfig.mapTileUrl,
                                   userAgentPackageName:
                                       'com.example.rana_merchant',
                                 ),
@@ -627,36 +625,37 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   ],
                                 ),
                                 child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          _isLocationResolving
-                                              ? 'Mengambil alamat...'
-                                              : (_locationAddress ??
-                                                  'Geser pin untuk menentukan lokasi'),
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(
-                                            color: Colors.grey.shade800,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 10),
-                                        SizedBox(
-                                          width: double.infinity,
-                                          height: 44,
-                                          child: FilledButton(
-                                            onPressed: _isLocationResolving
-                                                ? null
-                                                : () {
-                                                    _cancelLocationStream();
-                                                    setState(() =>
-                                                        _isLocationVerified = true);
-                                                  },
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _isLocationResolving
+                                          ? 'Mengambil alamat...'
+                                          : (_locationAddress ??
+                                              'Geser pin untuk menentukan lokasi'),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: Colors.grey.shade800,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 10),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      height: 44,
+                                      child: FilledButton(
+                                        onPressed: _isLocationResolving
+                                            ? null
+                                            : () {
+                                                _cancelLocationStream();
+                                                setState(() =>
+                                                    _isLocationVerified = true);
+                                              },
                                         style: FilledButton.styleFrom(
                                           backgroundColor: _isLocationVerified
-                                              ? const Color(0xFF81B29A) // Sage Green for success
+                                              ? const Color(
+                                                  0xFF81B29A) // Sage Green for success
                                               : const Color(0xFFE07A5F),
                                         ),
                                         child: Text(_isLocationVerified

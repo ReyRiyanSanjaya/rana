@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Keamanan - Dokumentasi Rana Market</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <nav class="sidebar">
+        <a href="index.html" class="brand">Rana Market 🐸</a>
+        <ul class="nav-links">
+            <li class="nav-item"><a href="index.html" class="nav-link">🏠 Pengantar</a></li>
+            <li class="nav-item"><a href="architecture.html" class="nav-link">🏗️ Arsitektur Sistem</a></li>
+            <li class="nav-item"><a href="database-schema.html" class="nav-link">💾 Database Schema</a></li>
+            <li class="nav-item"><a href="security.html" class="nav-link active">🔒 Keamanan</a></li>
+            <li class="nav-item"><a href="server-deployment.html" class="nav-link">🖥️ Server Deployment</a></li>
+            <li class="nav-item"><a href="mobile-deployment.html" class="nav-link">📱 Mobile Deployment</a></li>
+            <li class="nav-item"><a href="api-integration.html" class="nav-link">🔌 Integrasi API</a></li>
+            <li class="nav-item"><a href="cicd.html" class="nav-link">🚀 CI/CD Pipeline</a></li>
+            <li class="nav-item"><a href="tools.html" class="nav-link">🛠️ Tools & Utils</a></li>
+            <li class="nav-item"><a href="user-manual.html" class="nav-link">📖 Panduan Admin</a></li>
+            <li class="nav-item"><a href="maintenance.html" class="nav-link">🛠️ Maintenance & Ops</a></li>
+            <li class="nav-item"><a href="troubleshooting.html" class="nav-link">❓ Troubleshooting</a></li>
+        </ul>
+    </nav>
+
+    <main class="main-content">
+        <h1>Panduan Keamanan (Hardening)</h1>
+        <p>Aplikasi production harus aman dari serangan dasar. Berikut adalah langkah-langkah hardening server dan aplikasi.</p>
+
+        <h2>1. Firewall (UFW)</h2>
+        <p>Tutup semua port kecuali yang benar-benar dibutuhkan.</p>
+        <pre><code># Install UFW
+sudo apt install ufw
+
+# Izinkan SSH (Penting agar tidak terkunci!)
+sudo ufw allow ssh
+
+# Izinkan Web Server
+sudo ufw allow http
+sudo ufw allow https
+
+# Deny port database dari luar (Hanya localhost yang boleh akses)
+sudo ufw deny 5432
+
+# Aktifkan
+sudo ufw enable</code></pre>
+
+        <h2>2. Pengamanan SSH</h2>
+        <p>Edit file konfigurasi SSH: <code>/etc/ssh/sshd_config</code></p>
+        <ul>
+            <li>Disable Root Login: <code>PermitRootLogin no</code></li>
+            <li>Disable Password Auth (Gunakan SSH Key): <code>PasswordAuthentication no</code></li>
+            <li>Ganti Port (Opsional): <code>Port 2222</code></li>
+        </ul>
+        <p>Restart SSH: <code>sudo systemctl restart sshd</code></p>
+
+        <h2>3. Rate Limiting (Nginx)</h2>
+        <p>Cegah serangan DDoS sederhana dengan membatasi jumlah request per IP.</p>
+        <p>Edit <code>/etc/nginx/nginx.conf</code>, tambahkan di dalam blok <code>http</code>:</p>
+        <pre><code>limit_req_zone $binary_remote_addr zone=one:10m rate=10r/s;</code></pre>
+        <p>Gunakan di blok <code>location /</code> pada file config situs Anda:</p>
+        <pre><code>location / {
+    limit_req zone=one burst=20 nodelay;
+    proxy_pass http://localhost:4000;
+    ...
+}</code></pre>
+
+        <h2>4. Header Keamanan (Helmet)</h2>
+        <p>Aplikasi Node.js sudah menggunakan library <code>helmet</code>. Pastikan ini selalu aktif di <code>index.js</code>:</p>
+        <pre><code>const helmet = require('helmet');
+app.use(helmet());</code></pre>
+
+        <h2>5. Backup Database Aman</h2>
+        <p>Jangan simpan file backup SQL di folder public web server!</p>
+        <p>Simpan di folder home user atau upload langsung ke cloud storage (S3/Gdrive).</p>
+
+        <h2>6. Update Berkala</h2>
+        <p>Sistem operasi dan library yang usang adalah celah keamanan terbesar.</p>
+        <pre><code># Update OS
+sudo apt update && sudo apt upgrade -y
+
+# Update Library Node.js
+npm audit fix</code></pre>
+
+        <footer>
+            &copy; 2026 Rana Market Team. All rights reserved.
+        </footer>
+    </main>
+    <script src="js/main.js"></script>
+</body>
+</html>

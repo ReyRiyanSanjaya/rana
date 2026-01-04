@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panduan Admin - Dokumentasi Rana Market</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <nav class="sidebar">
+        <a href="index.html" class="brand">Rana Market 🐸</a>
+        <ul class="nav-links">
+            <li class="nav-item"><a href="index.html" class="nav-link">🏠 Pengantar</a></li>
+            <li class="nav-item"><a href="architecture.html" class="nav-link">🏗️ Arsitektur Sistem</a></li>
+            <li class="nav-item"><a href="database-schema.html" class="nav-link">💾 Database Schema</a></li>
+            <li class="nav-item"><a href="security.html" class="nav-link">🔒 Keamanan</a></li>
+            <li class="nav-item"><a href="server-deployment.html" class="nav-link">🖥️ Server Deployment</a></li>
+            <li class="nav-item"><a href="mobile-deployment.html" class="nav-link">📱 Mobile Deployment</a></li>
+            <li class="nav-item"><a href="api-integration.html" class="nav-link">🔌 Integrasi API</a></li>
+            <li class="nav-item"><a href="cicd.html" class="nav-link">🚀 CI/CD Pipeline</a></li>
+            <li class="nav-item"><a href="user-manual.html" class="nav-link active">📖 Panduan Admin</a></li>
+            <li class="nav-item"><a href="maintenance.html" class="nav-link">🛠️ Maintenance & Ops</a></li>
+            <li class="nav-item"><a href="troubleshooting.html" class="nav-link">❓ Troubleshooting</a></li>
+        </ul>
+    </nav>
+
+    <main class="main-content">
+        <h1>Panduan Operasional Admin</h1>
+        <p>SOP (Standard Operating Procedures) untuk administrator sistem sehari-hari.</p>
+
+        <h2>Menambah Admin Baru</h2>
+        <p>Untuk saat ini, penambahan Super Admin dilakukan langsung via database atau API Registration (jika diaktifkan).</p>
+        <p><strong>Via Database:</strong></p>
+        <pre><code>INSERT INTO "User" (name, email, role, passwordHash) 
+VALUES ('Admin Baru', 'admin@rana.com', 'SUPER_ADMIN', 'hashed_password');</code></pre>
+
+        <h2>Proses Refund Transaksi</h2>
+        <ol>
+            <li>Buka Dashboard Admin.</li>
+            <li>Cari ID Transaksi yang dikeluhkan pelanggan.</li>
+            <li>Verifikasi status transaksi (harus COMPLETED).</li>
+            <li>Jika valid, lakukan transfer manual pengembalian dana.</li>
+            <li>Tandai transaksi sebagai <code>VOID</code> atau <code>REFUNDED</code> di database untuk menjaga akurasi laporan keuangan.</li>
+        </ol>
+
+        <h2>Menangani Laporan Error dari User</h2>
+        <p>Jika ada user melapor "Aplikasi error tidak bisa checkout":</p>
+        <ol>
+            <li>Tanya jam berapa kejadiannya.</li>
+            <li>Cek log server: <code>pm2 logs --lines 100</code>.</li>
+            <li>Cari pesan error di sekitar jam tersebut.</li>
+            <li>Jika error PPOB (Digiflazz), cek saldo deposit di dashboard Digiflazz.</li>
+        </ol>
+
+        <h2>Backup Data Mingguan</h2>
+        <p>Setiap hari Jumat sore, lakukan:</p>
+        <ol>
+            <li>Jalankan script backup database.</li>
+            <li>Download file hasil backup ke laptop/cloud storage.</li>
+            <li>Cek ukuran file (pastikan tidak 0 bytes).</li>
+        </ol>
+
+        <footer>
+            &copy; 2026 Rana Market Team. All rights reserved.
+        </footer>
+    </main>
+    <script src="js/main.js"></script>
+</body>
+</html>

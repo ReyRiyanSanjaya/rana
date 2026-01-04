@@ -4,6 +4,7 @@ import api from '../api';
 import AdminLayout from '../components/AdminLayout';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
+import Button from '../components/ui/Button';
 import { Table, Thead, Tbody, Th, Td, Tr } from '../components/ui/Table';
 import Input from "../components/ui/Input"; // [NEW]
 
@@ -13,6 +14,10 @@ const MerchantDetail = () => {
     const [merchant, setMerchant] = useState(null);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('overview');
+
+    // Tab Data
+    const [products, setProducts] = useState([]);
+    const [transactions, setTransactions] = useState([]);
 
     // Modals
     const [showWalletModal, setShowWalletModal] = useState(false);
@@ -31,15 +36,64 @@ const MerchantDetail = () => {
         fetchDetail();
     }, [id]);
 
+    useEffect(() => {
+        if (activeTab === 'products' && merchant?.storeId) fetchProducts();
+        if (activeTab === 'transactions' && merchant?.storeId) fetchTransactions();
+    }, [activeTab, merchant]);
+
     const fetchDetail = async () => {
         try {
             const res = await api.get(`/admin/merchants/${id}`);
-            setMerchant(res.data.data);
+            // Normalize data: ensure storeId is available easily if merchant is store object
+            const data = res.data.data;
+            if (data.id && !data.storeId) data.storeId = data.id; // If returned object is Store
+            
+            setMerchant(data);
             setLoading(false);
         } catch (error) {
             console.error(error);
             alert("Failed to fetch merchant details");
             navigate('/merchants');
+        }
+    };
+
+    const fetchProducts = async () => {
+        try {
+            const res = await api.get(`/admin/merchants/${merchant.storeId}/products?includeInactive=true`);
+            setProducts(res.data.data);
+        } catch (error) {
+            console.error("Failed to fetch products", error);
+        }
+    };
+
+    const fetchTransactions = async () => {
+        try {
+            const res = await api.get(`/admin/transactions?storeId=${merchant.storeId}&limit=50`);
+            setTransactions(res.data.data.transactions);
+        } catch (error) {
+            console.error("Failed to fetch transactions", error);
+        }
+    };
+
+    const handleSuspend = async () => {
+        if (!confirm('Are you sure you want to suspend this merchant? This will cancel their subscription.')) return;
+        try {
+            await api.put(`/admin/merchants/${merchant.tenantId}/subscription`, { subscriptionStatus: 'CANCELLED' });
+            alert('Merchant suspended successfully');
+            fetchDetail();
+        } catch (error) {
+            alert('Failed to suspend merchant');
+        }
+    };
+
+    const handleActivate = async () => {
+        if (!confirm('Are you sure you want to activate this merchant?')) return;
+        try {
+            await api.put(`/admin/merchants/${merchant.tenantId}/subscription`, { subscriptionStatus: 'ACTIVE' });
+            alert('Merchant activated successfully');
+            fetchDetail();
+        } catch (error) {
+            alert('Failed to activate merchant');
         }
     };
 
@@ -85,6 +139,16 @@ const MerchantDetail = () => {
 
     const formatCurrency = (val) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(val);
 
+    const getStatusBadge = (status) => {
+        switch(status) {
+            case 'ACTIVE': return 'success';
+            case 'TRIAL': return 'warning';
+            case 'CANCELLED': return 'error';
+            case 'EXPIRED': return 'error';
+            default: return 'neutral';
+        }
+    };
+
     if (loading) return <AdminLayout><div className="flex justify-center p-10">Loading...</div></AdminLayout>;
     if (!merchant) return null;
 
@@ -92,9 +156,9 @@ const MerchantDetail = () => {
         <AdminLayout>
             {/* Header */}
             <div className="mb-8">
-                <button onClick={() => navigate('/merchants')} className="text-slate-500 hover:text-slate-800 mb-2 flex items-center gap-1">
+                <Button variant="ghost" onClick={() => navigate('/merchants')} className="mb-2 pl-0 hover:bg-transparent hover:text-slate-800 text-slate-500 justify-start">
                     &larr; Back to Merchants
-                </button>
+                </Button>
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
                         <h1 className="text-3xl font-bold text-slate-900">{merchant.name}</h1>
@@ -102,8 +166,8 @@ const MerchantDetail = () => {
                     </div>
                     <div className="flex gap-2">
                         <Badge variant={merchant.tenant?.subscriptionStatus === 'ACTIVE' ? 'success' : 'warning'}>{merchant.tenant?.subscriptionStatus}</Badge>
-                        <button onClick={() => navigate(`/merchants/${id}/menu`)} className="px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 font-medium">Manage Menu</button>
-                        <button onClick={() => setShowNotifyModal(true)} className="px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 font-medium">Send Notification</button>
+                        <Button variant="outline" onClick={() => navigate(`/merchants/${id}/menu`)}>Manage Menu</Button>
+                        <Button variant="secondary" onClick={() => setShowNotifyModal(true)}>Send Notification</Button>
                     </div>
                 </div>
             </div>
@@ -133,6 +197,78 @@ const MerchantDetail = () => {
                 </div>
             )}
 
+            {activeTab === 'products' && (
+                <Card>
+                    <div className="flex justify-between items-center p-4 border-b">
+                        <h3 className="font-semibold">Merchant Products ({products.length})</h3>
+                    </div>
+                    <Table>
+                        <Thead>
+                            <Tr>
+                                <Th>Image</Th>
+                                <Th>Name</Th>
+                                <Th>Category</Th>
+                                <Th>Price</Th>
+                                <Th>Stock</Th>
+                                <Th>Status</Th>
+                            </Tr>
+                        </Thead>
+                        <Tbody>
+                            {products.length === 0 ? (
+                                <Tr><Td colSpan="6" className="text-center py-4">No products found</Td></Tr>
+                            ) : (
+                                products.map(p => (
+                                    <Tr key={p.id}>
+                                        <Td>
+                                            <div className="w-10 h-10 bg-slate-100 rounded bg-cover bg-center" style={{ backgroundImage: `url(${p.imageUrl})` }}></div>
+                                        </Td>
+                                        <Td>{p.name}</Td>
+                                        <Td>{p.category?.name || '-'}</Td>
+                                        <Td>{formatCurrency(p.sellingPrice)}</Td>
+                                        <Td>{p.stock}</Td>
+                                        <Td>
+                                            <Badge variant={p.isActive ? 'success' : 'neutral'}>{p.isActive ? 'Active' : 'Inactive'}</Badge>
+                                        </Td>
+                                    </Tr>
+                                ))
+                            )}
+                        </Tbody>
+                    </Table>
+                </Card>
+            )}
+
+            {activeTab === 'transactions' && (
+                <Card>
+                    <div className="flex justify-between items-center p-4 border-b">
+                        <h3 className="font-semibold">Recent Transactions</h3>
+                    </div>
+                    <Table>
+                        <Thead>
+                            <Tr>
+                                <Th>Date</Th>
+                                <Th>Customer</Th>
+                                <Th>Total</Th>
+                                <Th>Status</Th>
+                            </Tr>
+                        </Thead>
+                        <Tbody>
+                            {transactions.length === 0 ? (
+                                <Tr><Td colSpan="4" className="text-center py-4">No transactions found</Td></Tr>
+                            ) : (
+                                transactions.map(t => (
+                                    <Tr key={t.id}>
+                                        <Td>{new Date(t.occurredAt).toLocaleDateString()} {new Date(t.occurredAt).toLocaleTimeString()}</Td>
+                                        <Td>{t.store?.name || 'Customer'}</Td>
+                                        <Td>{formatCurrency(t.totalAmount)}</Td>
+                                        <Td><Badge variant={t.paymentStatus === 'PAID' ? 'success' : 'warning'}>{t.paymentStatus}</Badge></Td>
+                                    </Tr>
+                                ))
+                            )}
+                        </Tbody>
+                    </Table>
+                </Card>
+            )}
+
             {activeTab === 'wallet' && (
                 <div className="space-y-6">
                     <div className="flex justify-between items-center">
@@ -140,9 +276,9 @@ const MerchantDetail = () => {
                             <h3 className="text-white/70 text-sm font-medium uppercase">Current Balance</h3>
                             <p className="text-3xl font-bold mt-2">{formatCurrency(merchant.balance)}</p>
                         </Card>
-                        <button onClick={() => setShowWalletModal(true)} className="px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800">
+                        <Button onClick={() => setShowWalletModal(true)} className="bg-slate-900 text-white hover:bg-slate-800">
                             Adjust Balance
-                        </button>
+                        </Button>
                     </div>
 
                     <Card>
@@ -194,7 +330,7 @@ const MerchantDetail = () => {
                                     <Td>{u.email}</Td>
                                     <Td><Badge>{u.role}</Badge></Td>
                                     <Td>
-                                        <button onClick={() => { setSelectedUser(u); setShowResetModal(true); }} className="text-xs text-indigo-600 hover:underline">Reset Password</button>
+                                        <Button variant="link" className="text-xs text-indigo-600 hover:underline h-auto p-0" onClick={() => { setSelectedUser(u); setShowResetModal(true); }}>Reset Password</Button>
                                     </Td>
                                 </Tr>
                             ))}
@@ -240,8 +376,8 @@ const MerchantDetail = () => {
                             </div>
                         </div>
                         <div className="flex justify-end gap-3 mt-8">
-                            <button onClick={() => setShowWalletModal(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
-                            <button onClick={handleAdjustWallet} className="px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800">Confirm</button>
+                            <Button variant="ghost" onClick={() => setShowWalletModal(false)}>Cancel</Button>
+                            <Button className="bg-slate-900 text-white hover:bg-slate-800" onClick={handleAdjustWallet}>Confirm</Button>
                         </div>
                     </div>
                 </div>
@@ -273,8 +409,8 @@ const MerchantDetail = () => {
                             </div>
                         </div>
                         <div className="flex justify-end gap-3 mt-8">
-                            <button onClick={() => setShowNotifyModal(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
-                            <button onClick={handleSendNotification} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Send</button>
+                            <Button variant="ghost" onClick={() => setShowNotifyModal(false)}>Cancel</Button>
+                            <Button onClick={handleSendNotification}>Send</Button>
                         </div>
                     </div>
                 </div>
@@ -298,8 +434,8 @@ const MerchantDetail = () => {
                             </div>
                         </div>
                         <div className="flex justify-end gap-3 mt-8">
-                            <button onClick={() => setShowResetModal(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
-                            <button onClick={handleResetPassword} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Reset Password</button>
+                            <Button variant="ghost" onClick={() => setShowResetModal(false)}>Cancel</Button>
+                            <Button variant="destructive" onClick={handleResetPassword}>Reset Password</Button>
                         </div>
                     </div>
                 </div>

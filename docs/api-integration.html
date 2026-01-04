@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Integrasi API - Dokumentasi Rana Market</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <nav class="sidebar">
+        <a href="index.html" class="brand">Rana Market 🐸</a>
+        <ul class="nav-links">
+            <li class="nav-item"><a href="index.html" class="nav-link">🏠 Pengantar</a></li>
+            <li class="nav-item"><a href="architecture.html" class="nav-link">🏗️ Arsitektur Sistem</a></li>
+            <li class="nav-item"><a href="database-schema.html" class="nav-link">💾 Database Schema</a></li>
+            <li class="nav-item"><a href="security.html" class="nav-link">🔒 Keamanan</a></li>
+            <li class="nav-item"><a href="server-deployment.html" class="nav-link">🖥️ Server Deployment</a></li>
+            <li class="nav-item"><a href="mobile-deployment.html" class="nav-link">📱 Mobile Deployment</a></li>
+            <li class="nav-item"><a href="api-integration.html" class="nav-link active">🔌 Integrasi API</a></li>
+            <li class="nav-item"><a href="cicd.html" class="nav-link">🚀 CI/CD Pipeline</a></li>
+            <li class="nav-item"><a href="tools.html" class="nav-link">🛠️ Tools & Utils</a></li>
+            <li class="nav-item"><a href="user-manual.html" class="nav-link">📖 Panduan Admin</a></li>
+            <li class="nav-item"><a href="maintenance.html" class="nav-link">🛠️ Maintenance & Ops</a></li>
+            <li class="nav-item"><a href="troubleshooting.html" class="nav-link">❓ Troubleshooting</a></li>
+        </ul>
+    </nav>
+
+    <main class="main-content">
+        <h1>Integrasi Layanan Pihak Ketiga</h1>
+        <p>Rana Market terhubung dengan beberapa layanan eksternal untuk fitur pembayaran PPOB, Peta, dan Notifikasi.</p>
+
+        <h2>1. Digiflazz (PPOB)</h2>
+        <p>Digiflazz digunakan sebagai penyedia (biller) untuk Pulsa, Paket Data, Token Listrik, dan E-Wallet.</p>
+
+        <h3>Langkah Konfigurasi:</h3>
+        <ol>
+            <li>Daftar akun di <a href="https://member.digiflazz.com/" target="_blank">Member Digiflazz</a>.</li>
+            <li>Lakukan Topup Deposit.</li>
+            <li>Masuk ke menu <strong>Developer / API</strong>.</li>
+            <li>Generate <strong>Production Key</strong>.</li>
+            <li><strong>PENTING:</strong> Masukkan IP Address VPS Anda ke dalam Whitelist IP di dashboard Digiflazz. Jika tidak, transaksi akan gagal.</li>
+            <li>Masukkan Username dan API Key ke file <code>.env</code> di server.</li>
+        </ol>
+
+        <h3>Contoh Payload Transaksi (Topup)</h3>
+        <p>Request ke endpoint Digiflazz:</p>
+        <div class="code-block">
+            <pre>
+{
+    "username": "user123",
+    "buyer_sku_code": "xld10",
+    "customer_no": "087800001234",
+    "ref_id": "trx-123456",
+    "sign": "md5(username + key + ref_id)"
+}
+            </pre>
+        </div>
+
+        <h3>Markup Harga</h3>
+        <p>Anda bisa mengatur keuntungan otomatis di <code>.env</code>:</p>
+        <ul>
+            <li><code>DIGIFLAZZ_MARKUP_FLAT="500"</code> (Menambah Rp 500 per transaksi)</li>
+        </ul>
+
+        <h2>2. WhatsApp Gateway</h2>
+        <p>Digunakan untuk mengirim notifikasi pesanan kepada pembeli dan penjual.</p>
+        
+        <p>Saat ini sistem mendukung integrasi generik. Anda bisa menggunakan provider seperti Fonnte, Twilio, atau Watzap.id.</p>
+        
+        <div class="alert alert-warning">
+            <strong>Implementasi:</strong> Lihat file <code>services/whatsappService.js</code>. Anda perlu menyesuaikan kode request HTTP sesuai dokumentasi provider yang Anda pilih.
+        </div>
+
+        <h3>Contoh Payload (Generic Provider)</h3>
+        <div class="code-block">
+            <pre>
+POST https://api.fonnte.com/send
+Headers: { Authorization: "TOKEN" }
+Body:
+{
+    "target": "08123456789",
+    "message": "Halo, pesanan #TRX-999 Anda sedang diproses. Terima kasih telah berbelanja!"
+}
+            </pre>
+        </div>
+
+        <h2>3. Peta (Maps)</h2>
+        <p>Aplikasi menggunakan kombinasi OpenStreetMap (OSM) dan Google Maps Intent.</p>
+        <ul>
+            <li><strong>Tampilan Peta:</strong> Menggunakan <code>flutter_map</code> (OpenStreetMap) - Gratis, tanpa API Key.</li>
+            <li><strong>Pencarian/Navigasi:</strong> Melempar ke aplikasi Google Maps eksternal via URL Scheme - Gratis, tanpa API Key.</li>
+        </ul>
+
+        <footer>
+            &copy; 2026 Rana Market Team. All rights reserved.
+        </footer>
+    </main>
+    <script src="js/main.js"></script>
+</body>
+</html>

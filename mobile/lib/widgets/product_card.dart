@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:flutter_animate/flutter_animate.dart'; // [NEW]
-import 'package:rana_merchant/constants.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:rana_merchant/config/api_config.dart'; // [NEW] Config
+import 'package:rana_merchant/config/theme_config.dart'; // [NEW] Config
 
 class ProductCard extends StatelessWidget {
   final Map<String, dynamic> product;
@@ -26,7 +27,7 @@ class ProductCard extends StatelessWidget {
         ? null
         : (rawImageUrl.startsWith('http')
             ? rawImageUrl
-            : '${AppConstants.baseUrl}$rawImageUrl');
+            : '${ApiConfig.serverUrl}$rawImageUrl');
     final productName = (product['name'] ?? '').toString();
     final initial = productName.isNotEmpty
         ? productName.substring(0, 1).toUpperCase()
@@ -88,7 +89,7 @@ class ProductCard extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFE07A5F),
+                          color: ThemeConfig.brandColor,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(

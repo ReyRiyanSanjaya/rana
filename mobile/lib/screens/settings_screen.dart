@@ -100,7 +100,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           image: (user?['storeImage'] != null &&
                                   user!['storeImage'].toString().isNotEmpty)
                               ? DecorationImage(
-                                  image: NetworkImage(user['storeImage']),
+                                  image: NetworkImage(ApiService()
+                                      .resolveFileUrl(user['storeImage'])),
                                   fit: BoxFit.cover,
                                 )
                               : null,

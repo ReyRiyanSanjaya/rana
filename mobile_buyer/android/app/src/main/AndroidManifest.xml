@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="rana_market"
+        android:label="Rana Market"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

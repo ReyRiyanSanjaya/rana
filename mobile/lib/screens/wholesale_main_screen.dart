@@ -11,6 +11,7 @@ import 'package:rana_merchant/screens/wholesale_scan_screen.dart';
 import 'package:rana_merchant/utils/format_utils.dart';
 import 'package:rana_merchant/models/wholesale_product.dart';
 import 'package:rana_merchant/data/remote/api_service.dart';
+import 'package:rana_merchant/config/theme_config.dart';
 
 class WholesaleMainScreen extends StatefulWidget {
   const WholesaleMainScreen({super.key});
@@ -89,14 +90,14 @@ class _WholesaleMainScreenState extends State<WholesaleMainScreen> {
           height: 70,
           elevation: 0,
           backgroundColor: Colors.white,
-          indicatorColor: const Color(0xFFE07A5F).withOpacity(0.2),
+          indicatorColor: ThemeConfig.brandColor.withOpacity(0.2),
           selectedIndex:
               _selectedIndex > 1 ? 0 : _selectedIndex, // Prevent selecting Scan
           onDestinationSelected: _onItemTapped,
           destinations: const [
             NavigationDestination(
               icon: Icon(Icons.store_outlined),
-              selectedIcon: Icon(Icons.store, color: Color(0xFFE07A5F)),
+              selectedIcon: Icon(Icons.store, color: ThemeConfig.brandColor),
               label: 'Belanja',
             ),
             NavigationDestination(

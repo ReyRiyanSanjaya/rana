@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:rana_market/config/theme_config.dart';
 import 'package:rana_market/services/notification_service.dart';
 
 class BuyerBottomNav extends StatelessWidget {
@@ -14,14 +15,12 @@ class BuyerBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const kBrandColor = Color(0xFFE07A5F);
-
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFE07A5F).withValues(alpha: 0.1),
+            color: ThemeConfig.brandColor.withValues(alpha: 0.1),
             blurRadius: 25,
             offset: const Offset(0, -5),
           ),
@@ -34,18 +33,19 @@ class BuyerBottomNav extends StatelessWidget {
               return const TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: kBrandColor,
+                color: ThemeConfig.brandColor,
               );
             }
-            return TextStyle(
+            return const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w500,
-              color: Colors.grey.shade500,
+              color: ThemeConfig.textSecondary,
             );
           }),
           iconTheme: WidgetStateProperty.resolveWith((states) {
             if (states.contains(WidgetState.selected)) {
-              return const IconThemeData(color: kBrandColor, size: 26);
+              return const IconThemeData(
+                  color: ThemeConfig.brandColor, size: 26);
             }
             return IconThemeData(color: Colors.grey.shade500, size: 24);
           }),
@@ -55,7 +55,7 @@ class BuyerBottomNav extends StatelessWidget {
           elevation: 0,
           backgroundColor: Colors.white,
           surfaceTintColor: Colors.white,
-          indicatorColor: kBrandColor.withValues(alpha: 0.15),
+          indicatorColor: ThemeConfig.brandColor.withValues(alpha: 0.15),
           selectedIndex: selectedIndex,
           animationDuration: const Duration(milliseconds: 600),
           onDestinationSelected: onSelected,
@@ -81,7 +81,7 @@ class BuyerBottomNav extends StatelessWidget {
                   return Badge(
                     isLabelVisible: count > 0,
                     label: Text('$count'),
-                    backgroundColor: kBrandColor,
+                    backgroundColor: ThemeConfig.brandColor,
                     child: const Icon(Icons.notifications_outlined),
                   );
                 },
@@ -104,4 +104,3 @@ class BuyerBottomNav extends StatelessWidget {
     );
   }
 }
-

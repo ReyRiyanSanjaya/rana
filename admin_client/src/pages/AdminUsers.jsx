@@ -82,12 +82,12 @@ const AdminUsers = () => {
                             <Tr key={a.id}>
                                 <Td><span className="font-semibold text-slate-900">{a.name}</span></Td>
                                 <Td>{a.email}</Td>
-                                <Td><Badge variant="primary">{a.role}</Badge></Td>
+                                <Td><Badge variant="brand">{a.role}</Badge></Td>
                                 <Td>{new Date(a.createdAt).toLocaleDateString()}</Td>
                                 <Td>
-                                    <button onClick={() => handleDelete(a.id)} className="text-red-500 hover:text-red-700 p-2">
+                                    <Button variant="ghost" size="icon" onClick={() => handleDelete(a.id)} className="text-red-500 hover:text-red-700 hover:bg-red-50">
                                         <Trash size={18} />
-                                    </button>
+                                    </Button>
                                 </Td>
                             </Tr>
                         ))}

@@ -10,6 +10,8 @@ import 'dart:io';
 import 'package:flutter_animate/flutter_animate.dart'; // [NEW]
 import 'package:provider/provider.dart'; // [NEW]
 import '../providers/auth_provider.dart'; // [NEW]
+import 'package:rana_merchant/config/assets_config.dart';
+import 'package:rana_merchant/config/theme_config.dart';
 import 'package:lottie/lottie.dart';
 import 'package:rana_merchant/data/remote/api_service.dart';
 
@@ -216,8 +218,9 @@ class _MarketingScreenState extends State<MarketingScreen>
         body: Center(
           child: SizedBox(
             height: 180,
-            child: _safeLottie('lottie/loading_creator.json', repeat: true) ??
-                const CircularProgressIndicator(),
+            child:
+                _safeLottie(AssetsConfig.lottieLoadingCreator, repeat: true) ??
+                    const CircularProgressIndicator(),
           ),
         ),
       );
@@ -272,81 +275,77 @@ class _MarketingScreenState extends State<MarketingScreen>
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: const Color(0xFFE07A5F).withOpacity(0.15),
+                          color: ThemeConfig.brandColor.withOpacity(0.15),
                           width: 1.5,
                         ),
                       ),
                       padding: const EdgeInsets.all(16.0),
                       child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Pilih Produk',
-                                style: GoogleFonts.poppins(
-                                    fontWeight: FontWeight.w600)),
-                            const SizedBox(height: 8),
-                            Container(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 12),
-                              decoration: BoxDecoration(
-                                  border: Border.all(
-                                      color: Colors.grey.shade300),
-                                  borderRadius: BorderRadius.circular(8)),
-                              child: DropdownButtonHideUnderline(
-                                child: DropdownButton<String>(
-                                  isExpanded: true,
-                                  value: _selectedProductId,
-                                  items: _products.map((p) {
-                                    final price = NumberFormat.currency(
-                                            locale: 'id_ID',
-                                            symbol: 'Rp ',
-                                            decimalDigits: 0)
-                                        .format(p['sellingPrice']);
-                                    return DropdownMenuItem<String>(
-                                      value: p['id'],
-                                      child: Text(
-                                        "${p['name']} - $price",
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    );
-                                  }).toList(),
-                                  onChanged: (val) {
-                                    setState(
-                                        () => _selectedProductId = val);
-                                    _generateCaption();
-                                  },
-                                ),
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Pilih Produk',
+                              style: GoogleFonts.poppins(
+                                  fontWeight: FontWeight.w600)),
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey.shade300),
+                                borderRadius: BorderRadius.circular(8)),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                isExpanded: true,
+                                value: _selectedProductId,
+                                items: _products.map((p) {
+                                  final price = NumberFormat.currency(
+                                          locale: 'id_ID',
+                                          symbol: 'Rp ',
+                                          decimalDigits: 0)
+                                      .format(p['sellingPrice']);
+                                  return DropdownMenuItem<String>(
+                                    value: p['id'],
+                                    child: Text(
+                                      "${p['name']} - $price",
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  );
+                                }).toList(),
+                                onChanged: (val) {
+                                  setState(() => _selectedProductId = val);
+                                  _generateCaption();
+                                },
                               ),
                             ),
-                            const SizedBox(height: 16),
-                            Text('Pilih Template',
-                                style: GoogleFonts.poppins(
-                                    fontWeight: FontWeight.w600)),
-                            const SizedBox(height: 8),
-                            TemplateCarousel(
-                              templates: _templates,
-                              selected: _selectedTemplate,
-                              onSelect: (t) {
-                                setState(() {
-                                  _selectedTemplate = t;
-                                  _resetLayout();
-                                });
-                                _generateCaption();
-                              },
-                            ),
-                            if (_products.isEmpty) ...[
-                              const SizedBox(height: 12),
-                              Center(
-                                child: SizedBox(
-                                  height: 140,
-                                  child: _safeLottie(
-                                      'lottie/empty_store.json',
-                                      repeat: true),
-                                ),
+                          ),
+                          const SizedBox(height: 16),
+                          Text('Pilih Template',
+                              style: GoogleFonts.poppins(
+                                  fontWeight: FontWeight.w600)),
+                          const SizedBox(height: 8),
+                          TemplateCarousel(
+                            templates: _templates,
+                            selected: _selectedTemplate,
+                            onSelect: (t) {
+                              setState(() {
+                                _selectedTemplate = t;
+                                _resetLayout();
+                              });
+                              _generateCaption();
+                            },
+                          ),
+                          if (_products.isEmpty) ...[
+                            const SizedBox(height: 12),
+                            Center(
+                              child: SizedBox(
+                                height: 140,
+                                child: _safeLottie('lottie/empty_store.json',
+                                    repeat: true),
                               ),
-                            ],
+                            ),
                           ],
-                        ),
+                        ],
                       ),
+                    ),
                     const SizedBox(height: 16),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -361,11 +360,10 @@ class _MarketingScreenState extends State<MarketingScreen>
                             IconButton(
                               onPressed: _selectedProduct == null
                                   ? null
-                                  : () => setState(
-                                      () => _editMode = !_editMode),
-                              icon: Icon(_editMode
-                                  ? Icons.check_circle
-                                  : Icons.tune),
+                                  : () =>
+                                      setState(() => _editMode = !_editMode),
+                              icon: Icon(
+                                  _editMode ? Icons.check_circle : Icons.tune),
                               tooltip: _editMode ? 'Selesai' : 'Edit',
                             ),
                             IconButton(
@@ -379,8 +377,8 @@ class _MarketingScreenState extends State<MarketingScreen>
                                 style: GoogleFonts.poppins(fontSize: 12)),
                             Switch(
                                 value: _showWatermark,
-                                onChanged: (val) => setState(
-                                    () => _showWatermark = val),
+                                onChanged: (val) =>
+                                    setState(() => _showWatermark = val),
                                 activeColor: Colors.pinkAccent),
                           ],
                         )
@@ -415,8 +413,8 @@ class _MarketingScreenState extends State<MarketingScreen>
                                             fontWeight: FontWeight.w700)),
                                   ),
                                   TextButton(
-                                    onPressed: () => setState(
-                                        () => _editMode = false),
+                                    onPressed: () =>
+                                        setState(() => _editMode = false),
                                     child: const Text('Selesai'),
                                   ),
                                 ],
@@ -444,9 +442,8 @@ class _MarketingScreenState extends State<MarketingScreen>
                                 min: 0.7,
                                 max: 1.4,
                                 divisions: 14,
-                                label:
-                                    (_layerScales[_activeLayerId] ?? 1.0)
-                                        .toStringAsFixed(2),
+                                label: (_layerScales[_activeLayerId] ?? 1.0)
+                                    .toStringAsFixed(2),
                                 onChanged: (v) => setState(
                                     () => _layerScales[_activeLayerId] = v),
                               ),
@@ -470,8 +467,7 @@ class _MarketingScreenState extends State<MarketingScreen>
                           children: [
                             Row(
                               children: [
-                                const Icon(Icons.percent,
-                                    color: Colors.orange),
+                                const Icon(Icons.percent, color: Colors.orange),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
@@ -479,8 +475,7 @@ class _MarketingScreenState extends State<MarketingScreen>
                                         CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                          _selectedTemplate ==
-                                                  'Flash Sale'
+                                          _selectedTemplate == 'Flash Sale'
                                               ? "Flash Sale Price"
                                               : "Discount Price",
                                           style: GoogleFonts.poppins(
@@ -508,16 +503,13 @@ class _MarketingScreenState extends State<MarketingScreen>
                                       filled: true,
                                       fillColor: Colors.white,
                                       border: OutlineInputBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(8),
+                                        borderRadius: BorderRadius.circular(8),
                                         borderSide: BorderSide(
-                                            color: Colors
-                                                .orange.shade200),
+                                            color: Colors.orange.shade200),
                                       ),
                                       contentPadding:
                                           const EdgeInsets.symmetric(
-                                              horizontal: 12,
-                                              vertical: 8),
+                                              horizontal: 12, vertical: 8),
                                     ),
                                   ),
                                 ),
@@ -534,16 +526,13 @@ class _MarketingScreenState extends State<MarketingScreen>
                                       filled: true,
                                       fillColor: Colors.white,
                                       border: OutlineInputBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(8),
+                                        borderRadius: BorderRadius.circular(8),
                                         borderSide: BorderSide(
-                                            color: Colors
-                                                .orange.shade200),
+                                            color: Colors.orange.shade200),
                                       ),
                                       contentPadding:
                                           const EdgeInsets.symmetric(
-                                              horizontal: 8,
-                                              vertical: 8),
+                                              horizontal: 8, vertical: 8),
                                     ),
                                   ),
                                 ),
@@ -562,8 +551,7 @@ class _MarketingScreenState extends State<MarketingScreen>
                               Text(
                                 "Harga asli: ${NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0).format(_selectedProduct!['originalPrice'] ?? _selectedProduct!['sellingPrice'])} | Durasi: berlaku selama ${_durationController.text} hari",
                                 style: GoogleFonts.poppins(
-                                    fontSize: 11,
-                                    color: Colors.grey[600]),
+                                    fontSize: 11, color: Colors.grey[600]),
                               ),
                             ],
                           ],
@@ -575,13 +563,11 @@ class _MarketingScreenState extends State<MarketingScreen>
                       controller: _captionController,
                       onRegenerate: _generateCaption,
                       onImprove: () {
-                        final txt =
-                            _captionController.text.trim();
+                        final txt = _captionController.text.trim();
                         if (txt.isEmpty) return;
                         final improved =
                             "$txt\n\n✨ Hemat, cepat, dan berkualitas.\n#RanaStore #Promo";
-                        setState(() =>
-                            _captionController.text = improved);
+                        setState(() => _captionController.text = improved);
                       },
                     ),
                     const SizedBox(height: 80),
@@ -590,8 +576,7 @@ class _MarketingScreenState extends State<MarketingScreen>
                         child: Text(
                           "Poster dibuat hari ini: $_shareCountToday",
                           style: GoogleFonts.poppins(
-                              fontSize: 12,
-                              color: Colors.grey[700]),
+                              fontSize: 12, color: Colors.grey[700]),
                         ),
                       ),
                     if (_badges.isNotEmpty)
@@ -599,9 +584,8 @@ class _MarketingScreenState extends State<MarketingScreen>
                         padding: const EdgeInsets.only(top: 6),
                         child: Wrap(
                           spacing: 8,
-                          children: _badges
-                              .map((b) => Chip(label: Text(b)))
-                              .toList(),
+                          children:
+                              _badges.map((b) => Chip(label: Text(b))).toList(),
                         ),
                       ),
                   ],
@@ -1073,7 +1057,10 @@ class _MarketingScreenState extends State<MarketingScreen>
                         const Icon(Icons.phone_android,
                             color: Colors.white, size: 10),
                         const SizedBox(width: 3),
-                        Text(_resolvedStorePhone.isEmpty ? '-' : _resolvedStorePhone,
+                        Text(
+                            _resolvedStorePhone.isEmpty
+                                ? '-'
+                                : _resolvedStorePhone,
                             style: GoogleFonts.poppins(
                                 color: Colors.white, fontSize: 9)),
                       ],
@@ -1606,7 +1593,7 @@ class _CaptionComposerState extends State<CaptionComposer> {
                     SizedBox(
                         height: 40,
                         width: 40,
-                        child: Lottie.asset('lottie/live_pulse.json',
+                        child: Lottie.asset(AssetsConfig.lottieLivePulse,
                             repeat: false)),
                 ],
               )

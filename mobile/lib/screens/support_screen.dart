@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rana_merchant/config/app_config.dart';
 import 'package:rana_merchant/data/remote/api_service.dart';
 import 'package:rana_merchant/screens/ticket_detail_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -37,49 +38,49 @@ class _SupportScreenState extends State<SupportScreen> {
     final messageController = TextEditingController();
 
     await showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Tiket Bantuan Baru'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-                controller: titleController,
-                decoration:
-                    const InputDecoration(labelText: 'Judul keluhan/pertanyaan')),
-            TextField(
-                controller: messageController,
-                decoration:
-                    const InputDecoration(labelText: 'Ceritakan kendalamu di sini'),
-                maxLines: 3),
-          ],
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Batal')),
-          ElevatedButton(
-            onPressed: () async {
-              if (titleController.text.isNotEmpty && messageController.text.isNotEmpty) {
-                Navigator.pop(context);
-                setState(() => isLoading = true);
-                try {
-                  await ApiService().createTicket(titleController.text, messageController.text);
-                  await _fetch();
-                } catch (e) {
-                   if (mounted) {
-                     ScaffoldMessenger.of(context).showSnackBar(
-                         SnackBar(content: Text('Gagal membuat tiket: $e')));
-                   }
-                   setState(() => isLoading = false);
-                }
-              }
-            },
-            child: const Text('Kirim')
-          )
-        ],
-      )
-    );
+        context: context,
+        builder: (context) => AlertDialog(
+              title: const Text('Tiket Bantuan Baru'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                      controller: titleController,
+                      decoration: const InputDecoration(
+                          labelText: 'Judul keluhan/pertanyaan')),
+                  TextField(
+                      controller: messageController,
+                      decoration: const InputDecoration(
+                          labelText: 'Ceritakan kendalamu di sini'),
+                      maxLines: 3),
+                ],
+              ),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Batal')),
+                ElevatedButton(
+                    onPressed: () async {
+                      if (titleController.text.isNotEmpty &&
+                          messageController.text.isNotEmpty) {
+                        Navigator.pop(context);
+                        setState(() => isLoading = true);
+                        try {
+                          await ApiService().createTicket(
+                              titleController.text, messageController.text);
+                          await _fetch();
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                content: Text('Gagal membuat tiket: $e')));
+                          }
+                          setState(() => isLoading = false);
+                        }
+                      }
+                    },
+                    child: const Text('Kirim'))
+              ],
+            ));
   }
 
   Future<void> _launchUrl(String urlString) async {
@@ -124,7 +125,7 @@ class _SupportScreenState extends State<SupportScreen> {
                         borderRadius: BorderRadius.circular(16)),
                     child: InkWell(
                       onTap: () => _launchUrl(
-                          'https://wa.me/628887992299?text=Halo%20Admin%20Rana%20POS,%20saya%20butuh%20bantuan'),
+                          '${AppConfig.supportWhatsAppUrl}?text=Halo%20Admin%20Rana%20POS,%20saya%20butuh%20bantuan'),
                       borderRadius: BorderRadius.circular(16),
                       child: Padding(
                         padding: const EdgeInsets.all(24),
@@ -175,7 +176,7 @@ class _SupportScreenState extends State<SupportScreen> {
                             final ticket = tickets[index];
                             final status = ticket['status'] ?? 'OPEN';
                             final date = _formatDate(ticket['createdAt']);
-                            
+
                             return Card(
                               margin: const EdgeInsets.only(bottom: 12),
                               elevation: 2,
@@ -194,8 +195,7 @@ class _SupportScreenState extends State<SupportScreen> {
                                 title: Text(ticket['subject'] ?? 'No Subject',
                                     style: const TextStyle(
                                         fontWeight: FontWeight.bold)),
-                                subtitle: Text(
-                                    '$status • $date',
+                                subtitle: Text('$status • $date',
                                     style: TextStyle(
                                         color: status == 'OPEN'
                                             ? Colors.green

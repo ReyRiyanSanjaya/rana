@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server Deployment - Dokumentasi Rana Market</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <nav class="sidebar">
+        <a href="index.html" class="brand">Rana Market 🐸</a>
+        <ul class="nav-links">
+            <li class="nav-item"><a href="index.html" class="nav-link">🏠 Pengantar</a></li>
+            <li class="nav-item"><a href="architecture.html" class="nav-link">🏗️ Arsitektur Sistem</a></li>
+            <li class="nav-item"><a href="database-schema.html" class="nav-link">💾 Database Schema</a></li>
+            <li class="nav-item"><a href="security.html" class="nav-link">🔒 Keamanan</a></li>
+            <li class="nav-item"><a href="server-deployment.html" class="nav-link active">🖥️ Server Deployment</a></li>
+            <li class="nav-item"><a href="mobile-deployment.html" class="nav-link">📱 Mobile Deployment</a></li>
+            <li class="nav-item"><a href="api-integration.html" class="nav-link">🔌 Integrasi API</a></li>
+            <li class="nav-item"><a href="cicd.html" class="nav-link">🚀 CI/CD Pipeline</a></li>
+            <li class="nav-item"><a href="tools.html" class="nav-link">🛠️ Tools & Utils</a></li>
+            <li class="nav-item"><a href="user-manual.html" class="nav-link">📖 Panduan Admin</a></li>
+            <li class="nav-item"><a href="maintenance.html" class="nav-link">🛠️ Maintenance & Ops</a></li>
+            <li class="nav-item"><a href="troubleshooting.html" class="nav-link">❓ Troubleshooting</a></li>
+        </ul>
+    </nav>
+
+    <main class="main-content">
+        <h1>Panduan Deployment Server</h1>
+        <p>Panduan langkah demi langkah untuk menyebarkan aplikasi backend ke Virtual Private Server (VPS).</p>
+
+        <div class="alert alert-warning">
+            <strong>Prasyarat:</strong> VPS Ubuntu 20.04/22.04 LTS, Akses Root/Sudo, Domain yang sudah diarahkan ke IP Server.
+        </div>
+
+        <h2>1. Persiapan Lingkungan (Environment)</h2>
+        <p>Login ke server Anda via SSH dan jalankan perintah berikut:</p>
+        <pre><code># Update paket sistem
+sudo apt update && sudo apt upgrade -y
+
+# Install Node.js (Versi 18 LTS)
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt install -y nodejs
+
+# Install Process Manager (PM2)
+sudo npm install -g pm2
+
+# Install Nginx & Database
+sudo apt install -y nginx postgresql postgresql-contrib git certbot python3-certbot-nginx</code></pre>
+
+        <h2>2. Konfigurasi Database</h2>
+        <p>Buat database dan user PostgreSQL:</p>
+        <pre><code>sudo -i -u postgres
+psql
+
+# Dalam prompt SQL:
+CREATE DATABASE rana_market;
+CREATE USER rana_user WITH ENCRYPTED PASSWORD 'password_aman_anda';
+GRANT ALL PRIVILEGES ON DATABASE rana_market TO rana_user;
+ALTER DATABASE rana_market OWNER TO rana_user;
+\q
+exit</code></pre>
+
+        <h2>3. Setup Kode Aplikasi</h2>
+        <p>Upload atau clone kode sumber ke <code>/var/www/rana-server</code>.</p>
+        <pre><code>cd /var/www/rana-server
+npm install</code></pre>
+
+        <h2>4. Konfigurasi .env</h2>
+        <p>Buat file <code>.env</code> di root folder server. Ini adalah konfigurasi paling vital.</p>
+        <pre><code>nano .env</code></pre>
+        
+        <p>Isi dengan template berikut (sesuaikan nilainya):</p>
+        <pre><code># SERVER
+PORT=4000
+NODE_ENV=production
+
+# DATABASE
+DATABASE_URL="postgresql://rana_user:password_aman_anda@localhost:5432/rana_market?schema=public"
+
+# SECURITY
+JWT_SECRET="rahasia_sangat_panjang_dan_acak_12345"
+SETTINGS_ENCRYPTION_KEY="kunci_enkripsi_lainnya"
+
+# DIGIFLAZZ (PPOB)
+DIGIFLAZZ_USERNAME="user_digiflazz"
+DIGIFLAZZ_API_KEY="api_key_prod"
+DIGIFLAZZ_MODE="production"
+DIGIFLAZZ_BASE_URL="https://api.digiflazz.com/v1"
+DIGIFLAZZ_MARKUP_FLAT="500"
+
+# WHATSAPP (Optional)
+WA_GATEWAY_URL="https://api.fonnte.com/send"
+WA_API_KEY="api_key_wa"</code></pre>
+
+        <h2>5. Migrasi & Seeding</h2>
+        <p>Siapkan struktur database:</p>
+        <pre><code>npx prisma generate
+npx prisma migrate deploy
+
+# Isi data awal (Menu & PPOB)
+npm run seed:ppob
+npm run seed:menus</code></pre>
+
+        <h2>6. Menjalankan Aplikasi</h2>
+        <p>Gunakan PM2 agar aplikasi berjalan di background dan auto-restart jika crash.</p>
+        <pre><code>pm2 start ecosystem.config.js --env production
+pm2 save
+pm2 startup</code></pre>
+
+        <h2>7. Konfigurasi Nginx & SSL</h2>
+        <p>Setup Reverse Proxy agar aplikasi bisa diakses via domain (port 80/443) bukan port 4000.</p>
+        <pre><code># Copy template config
+sudo cp deploy/nginx.conf /etc/nginx/sites-available/rana-market
+
+# Edit domain
+sudo nano /etc/nginx/sites-available/rana-market
+# Ubah server_name api.ranamarket.com; menjadi domain Anda
+
+# Aktifkan
+sudo ln -s /etc/nginx/sites-available/rana-market /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl restart nginx
+
+# SSL Gratis (HTTPS)
+sudo certbot --nginx -d domain_anda.com</code></pre>
+
+        <h2>8. Go Live Checklist (Wajib)</h2>
+        <p>Sebelum meluncurkan aplikasi ke publik, pastikan:</p>
+        <ul class="checklist">
+            <li><input type="checkbox" checked disabled> <strong>Environment:</strong> <code>NODE_ENV=production</code> sudah diset.</li>
+            <li><input type="checkbox" checked disabled> <strong>Database:</strong> Password database kuat dan tidak default.</li>
+            <li><input type="checkbox" checked disabled> <strong>Firewall:</strong> UFW aktif, hanya port 22, 80, 443 terbuka.</li>
+            <li><input type="checkbox" checked disabled> <strong>SSL:</strong> Sertifikat HTTPS valid dan auto-renew aktif.</li>
+            <li><input type="checkbox" checked disabled> <strong>Backup:</strong> Cronjob backup database sudah berjalan.</li>
+            <li><input type="checkbox" checked disabled> <strong>API Keys:</strong> Kunci Digiflazz/WA yang dipakai adalah versi PRODUCTION (bukan sandbox).</li>
+        </ul>
+
+        <footer>
+            &copy; 2026 Rana Market Team. All rights reserved.
+        </footer>
+    </main>
+    <script src="js/main.js"></script>
+</body>
+</html>

@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:rana_merchant/data/local/database_helper.dart';
-import 'package:flutter/foundation.dart'; // [NEW] For kIsWeb check
+import 'package:rana_merchant/config/api_config.dart'; // [NEW] Config
 
 class ApiService {
   // Singleton Pattern
@@ -10,25 +11,13 @@ class ApiService {
     return _instance;
   }
 
-  // CONFIGURATION
-  // static const String _prodUrl = 'https://api.yourdomain.com/api';
-  static const String _devUrl = 'http://10.0.2.2:4000/api';
-
-  // Set this to TRUE for production build
-  static const bool _isProduction =
-      bool.fromEnvironment('RANA_PROD', defaultValue: kReleaseMode);
-
-  static const String _apiBaseUrlOverride =
-      String.fromEnvironment('API_BASE_URL', defaultValue: '');
-
   late final Dio _dio;
 
   ApiService._internal() {
-    final resolvedBaseUrl = _resolveBaseUrl();
     _dio = Dio(BaseOptions(
-      baseUrl: resolvedBaseUrl,
-      connectTimeout: const Duration(seconds: 30),
-      receiveTimeout: const Duration(seconds: 30),
+      baseUrl: ApiConfig.baseUrl,
+      connectTimeout: ApiConfig.connectTimeout,
+      receiveTimeout: ApiConfig.receiveTimeout,
     ));
 
     if (kDebugMode) {
@@ -43,19 +32,13 @@ class ApiService {
 
   Dio get dio => _dio;
 
-  String _resolveBaseUrl() {
-    final override = _apiBaseUrlOverride.trim();
-    if (override.isNotEmpty) return override;
-
-    if (_isProduction) return 'https://api.rana-app.com/api';
-
-    if (kIsWeb) {
-      final host = Uri.base.host;
-      if (host.isEmpty) return 'http://localhost:4000/api';
-      return 'http://$host:4000/api';
-    }
-
-    return _devUrl;
+  String resolveFileUrl(dynamic value) {
+    final raw = value?.toString().trim() ?? '';
+    if (raw.isEmpty) return '';
+    if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
+    final base = ApiConfig.serverUrl;
+    if (raw.startsWith('/')) return '$base$raw';
+    return '$base/$raw';
   }
 
   bool _isSuccess(dynamic body) {
@@ -125,7 +108,7 @@ class ApiService {
         'referralCode': referralCode,
       };
 
-      final response = await _dio.post('/auth/register', data: payload);
+      final response = await _dio.post(ApiConfig.authRegister, data: payload);
 
       if (response.data['status'] != 'success') {
         throw Exception(response.data['message']);
@@ -144,8 +127,8 @@ class ApiService {
   Future<dynamic> login(
       {required String phone, required String password}) async {
     try {
-      final response = await _dio
-          .post('/auth/login', data: {'phone': phone, 'password': password});
+      final response = await _dio.post(ApiConfig.authLogin,
+          data: {'phone': phone, 'password': password});
       return response.data;
     } on DioException catch (e) {
       if (e.response?.statusCode == 401) {
@@ -162,7 +145,7 @@ class ApiService {
 
   Future<Map<String, dynamic>> getProfile() async {
     try {
-      final response = await _dio.get('/auth/me',
+      final response = await _dio.get(ApiConfig.authMe,
           options: Options(headers: {'Authorization': 'Bearer ${_token}'}));
       if (_isSuccess(response.data)) {
         return response.data['data'];
@@ -181,7 +164,7 @@ class ApiService {
       String? latitude,
       String? longitude}) async {
     try {
-      await _dio.put('/auth/store',
+      await _dio.put(ApiConfig.authStore,
           data: {
             'businessName': businessName,
             'waNumber': waNumber,
@@ -198,7 +181,7 @@ class ApiService {
 
   Future<void> changePassword(String oldPassword, String newPassword) async {
     try {
-      final response = await _dio.put('/auth/change-password',
+      final response = await _dio.put(ApiConfig.authChangePassword,
           data: {
             'oldPassword': oldPassword,
             'newPassword': newPassword,
@@ -222,7 +205,7 @@ class ApiService {
       {required String supplierName,
       required List<Map<String, dynamic>> items}) async {
     try {
-      await _dio.post('/purchases',
+      await _dio.post(ApiConfig.purchases,
           data: {'supplierName': supplierName, 'items': items});
     } catch (e) {
       throw Exception('Purchase failed: $e');
@@ -231,7 +214,7 @@ class ApiService {
 
   Future<Map<String, dynamic>> getReferralInfo() async {
     try {
-      final response = await _dio.get('/referral/me',
+      final response = await _dio.get(ApiConfig.referralMe,
           options: Options(headers: {'Authorization': 'Bearer ${_token}'}));
       if (_isSuccess(response.data)) {
         return Map<String, dynamic>.from(response.data['data'] ?? {});
@@ -244,7 +227,7 @@ class ApiService {
 
   Future<List<dynamic>> getMyReferrals() async {
     try {
-      final response = await _dio.get('/referral/me/referrals',
+      final response = await _dio.get(ApiConfig.referralReferrals,
           options: Options(headers: {'Authorization': 'Bearer ${_token}'}));
       if (_isSuccess(response.data)) {
         return List<dynamic>.from(response.data['data']['items'] ?? []);
@@ -259,7 +242,7 @@ class ApiService {
   Future<void> fetchAndSaveProducts() async {
     try {
       // 1. Fetch from Server
-      final response = await _dio.get('/products',
+      final response = await _dio.get(ApiConfig.products,
           options: Options(headers: {'Authorization': 'Bearer ${_token}'}));
       final List<dynamic> serverProducts = response.data['data'];
 
@@ -293,13 +276,13 @@ class ApiService {
   // --- Product Management ---
   Future<Map<String, dynamic>> createProduct(Map<String, dynamic> data) async {
     // data: {sku, name, sellingPrice, costPrice}
-    final response = await _dio.post('/products', data: data);
+    final response = await _dio.post(ApiConfig.products, data: data);
     return response.data['data'];
   }
 
   Future<Map<String, dynamic>> updateProduct(
       String id, Map<String, dynamic> data) async {
-    final response = await _dio.put('/products/$id', data: data);
+    final response = await _dio.put('${ApiConfig.products}/$id', data: data);
     return response.data['data'];
   }
 
@@ -311,7 +294,7 @@ class ApiService {
     int durationDays,
   ) async {
     final response = await _dio.post(
-      '/products/$productId/apply-discount',
+      '${ApiConfig.products}/$productId/apply-discount',
       data: {
         'newPrice': newPrice,
         'promoType': promoType,
@@ -327,7 +310,7 @@ class ApiService {
   }
 
   Future<void> deleteProduct(String id) async {
-    await _dio.delete('/products/$id');
+    await _dio.delete('${ApiConfig.products}/$id');
   }
 
   // --- Upload Proof ---
@@ -365,7 +348,7 @@ class ApiService {
     List<Map<String, dynamic>> items = const [],
   }) async {
     final response = await _dio.post(
-      '/products/flashsales',
+      ApiConfig.flashSales,
       data: {
         'title': title,
         'startAt': startAt.toIso8601String(),
@@ -383,7 +366,7 @@ class ApiService {
 
   Future<List<dynamic>> getMyFlashSales() async {
     final response = await _dio.get(
-      '/products/flashsales',
+      ApiConfig.flashSales,
       options: Options(headers: {'Authorization': 'Bearer ${_token}'}),
     );
     if (!_isSuccess(response.data)) {
@@ -401,7 +384,7 @@ class ApiService {
     int? saleStock,
   }) async {
     await _dio.post(
-      '/products/flashsales/$saleId/items',
+      '${ApiConfig.flashSales}/$saleId/items',
       data: {
         'productId': productId,
         'salePrice': salePrice,
@@ -417,7 +400,7 @@ class ApiService {
     required String itemId,
   }) async {
     await _dio.delete(
-      '/products/flashsales/$saleId/items/$itemId',
+      '${ApiConfig.flashSales}/$saleId/items/$itemId',
       options: Options(headers: {'Authorization': 'Bearer ${_token}'}),
     );
   }
@@ -432,7 +415,7 @@ class ApiService {
 
   Future<List<dynamic>> getSubscriptionPackages() async {
     try {
-      final response = await _dio.get('/subscriptions/packages');
+      final response = await _dio.get(ApiConfig.subscriptionsPackages);
       return response.data['data'];
     } catch (e) {
       return []; // Return empty on error
@@ -441,7 +424,7 @@ class ApiService {
 
   Future<Map<String, dynamic>> getSubscriptionStatus() async {
     try {
-      final response = await _dio.get('/subscriptions/status',
+      final response = await _dio.get(ApiConfig.subscriptionsStatus,
           options: Options(headers: {'Authorization': 'Bearer ${_token}'}));
       return response.data['data'];
     } catch (e) {
@@ -451,7 +434,7 @@ class ApiService {
 
   Future<void> requestSubscription(String proofUrl, {String? packageId}) async {
     try {
-      await _dio.post('/subscriptions/request',
+      await _dio.post(ApiConfig.subscriptionsRequest,
           data: {
             'proofUrl': proofUrl,
             'packageId': packageId // [NEW] Include selected package
@@ -466,7 +449,7 @@ class ApiService {
   // --- Wallet & O2O ---
   Future<Map<String, dynamic>> getWalletData() async {
     try {
-      final response = await _dio.get('/wallet',
+      final response = await _dio.get(ApiConfig.wallet,
           options: Options(headers: {'Authorization': 'Bearer ${_token}'}));
       if (response.data['status'] == 'success') return response.data['data'];
       throw Exception(response.data['message']);
@@ -480,7 +463,7 @@ class ApiService {
       required String bankName,
       required String accountNumber}) async {
     try {
-      final response = await _dio.post('/wallet/withdraw',
+      final response = await _dio.post(ApiConfig.walletWithdraw,
           data: {
             'amount': amount,
             'bankName': bankName,
@@ -520,7 +503,7 @@ class ApiService {
       // Wait, I can just accept base64 string from Provider. That keeps ApiService clean of IO.
       // Yes, `topUp({required double amount, required String proofBase64})`.
 
-      await _dio.post('/wallet/topup',
+      await _dio.post(ApiConfig.walletTopup,
           data: {
             'amount': amount,
             'proofImage': proofPath // Expecting Base64 string here
@@ -536,7 +519,7 @@ class ApiService {
       required double amount,
       String? note}) async {
     try {
-      await _dio.post('/wallet/transfer',
+      await _dio.post(ApiConfig.walletTransfer,
           data: {
             'targetStoreId': targetStoreId,
             'amount': amount,
@@ -558,7 +541,7 @@ class ApiService {
       required String description,
       String category = 'PURCHASE'}) async {
     try {
-      await _dio.post('/wallet/transaction',
+      await _dio.post(ApiConfig.walletTransaction,
           data: {
             'amount': amount,
             'description': description,
@@ -577,7 +560,7 @@ class ApiService {
       required String type,
       String? reason}) async {
     try {
-      final response = await _dio.post('/inventory/adjust',
+      final response = await _dio.post(ApiConfig.inventoryAdjust,
           data: {
             'productId': productId,
             'quantity': quantity,
@@ -597,7 +580,7 @@ class ApiService {
   Future<List<dynamic>> getIncomingMarketOrders() async {
     try {
       final response = await _dio.get(
-        '/orders',
+        ApiConfig.orders,
         options: Options(headers: {'Authorization': 'Bearer ${_token}'}),
       );
       if (response.data['status'] == 'success') {
@@ -612,7 +595,7 @@ class ApiService {
   Future<void> updateMarketOrderStatus(String orderId, String status) async {
     try {
       final response = await _dio.put(
-        '/orders/status',
+        ApiConfig.ordersStatus,
         data: {'orderId': orderId, 'status': status},
         options: Options(headers: {'Authorization': 'Bearer ${_token}'}),
       );
@@ -627,7 +610,7 @@ class ApiService {
   Future<Map<String, dynamic>> scanMarketOrderPickup(String pickupCode) async {
     try {
       final response = await _dio.post(
-        '/orders/scan',
+        ApiConfig.ordersScan,
         data: {'pickupCode': pickupCode},
         options: Options(headers: {'Authorization': 'Bearer ${_token}'}),
       );
@@ -644,7 +627,7 @@ class ApiService {
 
   Future<Map<String, dynamic>> scanQrOrder(String code) async {
     try {
-      final response = await _dio.post('/wholesale/orders/scan',
+      final response = await _dio.post(ApiConfig.wholesaleOrdersScan,
           data: {'pickupCode': code},
           options: Options(headers: {'Authorization': 'Bearer ${_token}'}));
       if (response.data['status'] != 'success') {
@@ -660,7 +643,7 @@ class ApiService {
 
   Future<void> uploadTransaction(Map<String, dynamic> payload) async {
     try {
-      final response = await _dio.post('/transactions/sync',
+      final response = await _dio.post(ApiConfig.transactionsSync,
           data: payload,
           options: Options(headers: {'Authorization': 'Bearer ${_token}'}));
       if (response.data['status'] != 'success')

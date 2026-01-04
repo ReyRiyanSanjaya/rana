@@ -1,12 +1,17 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:rana_market/providers/orders_provider.dart';
-import 'package:rana_market/services/realtime_service.dart';
+import 'package:rana_market/services/socket_service.dart';
+import 'package:rana_market/services/notification_service.dart';
 import 'package:rana_market/screens/order_detail_screen.dart';
 import 'package:rana_market/data/market_api_service.dart';
 import 'package:lottie/lottie.dart';
+import 'package:rana_market/config/app_config.dart';
+import 'package:rana_market/config/theme_config.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 class OrdersScreen extends StatefulWidget {
   const OrdersScreen({super.key});
@@ -16,8 +21,7 @@ class OrdersScreen extends StatefulWidget {
 }
 
 class _OrdersScreenState extends State<OrdersScreen> {
-  final RealtimeService _rt = RealtimeService();
-  final List<VoidCallback> _unwatchers = [];
+  StreamSubscription? _socketSub;
   bool _loading = true;
   String? _phone;
   final TextEditingController _phoneCtrl = TextEditingController();
@@ -60,25 +64,43 @@ class _OrdersScreenState extends State<OrdersScreen> {
       return;
     }
     final prov = Provider.of<OrdersProvider>(context, listen: false);
+    final socket = Provider.of<SocketService>(context, listen: false);
 
-    // Clear old watchers
-    for (final u in _unwatchers) u();
-    _unwatchers.clear();
+    // Cancel old subscription
+    _socketSub?.cancel();
 
     final list = await MarketApiService().getMyOrders(phone: phone);
     prov.setAll(list);
+
+    // Join all order rooms
     for (final o in prov.orders) {
-      _unwatchers.add(_rt.watchOrderStatus(o['id'], onUpdate: (data) {
-        prov.updateFromSocket(o['id'], data);
-      }));
+      final id = o['id'].toString();
+      socket.joinOrder(id);
     }
+
+    // Listen to updates
+    _socketSub = socket.orderStatusStream.listen((data) {
+      if (!mounted) return;
+      final id = data['id']?.toString();
+      if (id != null) {
+        prov.updateFromSocket(id, data);
+
+        final status = data['orderStatus'] ?? data['status'] ?? 'UPDATED';
+        NotificationService().show(
+          id: DateTime.now().millisecondsSinceEpoch % 100000,
+          title: 'Status Pesanan Diperbarui',
+          body: 'Order ${id.substring(0, 8)}: $status',
+          payload: id,
+        );
+      }
+    });
+
     if (mounted) setState(() => _loading = false);
   }
 
   @override
   void dispose() {
-    for (final u in _unwatchers) u();
-    _unwatchers.clear();
+    _socketSub?.cancel();
     _phoneCtrl.dispose();
     super.dispose();
   }
@@ -91,9 +113,13 @@ class _OrdersScreenState extends State<OrdersScreen> {
       case 'PROCESSING':
         return 'Sedang Diproses';
       case 'READY_TO_PICKUP':
-      case 'READY':
         return 'Siap Diambil';
+      case 'ON_DELIVERY':
+        return 'Sedang Diantar';
+      case 'READY':
+        return 'Siap';
       case 'COMPLETED':
+      case 'DELIVERED':
         return 'Selesai';
       case 'CANCELLED':
       case 'REJECTED':
@@ -106,18 +132,21 @@ class _OrdersScreenState extends State<OrdersScreen> {
   Color _getStatusColor(String status) {
     switch (status) {
       case 'PENDING':
-        return Colors.orange;
+        return ThemeConfig.colorWarning;
       case 'ACCEPTED':
       case 'PROCESSING':
+        return ThemeConfig.colorInfo;
+      case 'ON_DELIVERY':
         return Colors.blue;
       case 'READY_TO_PICKUP':
       case 'READY':
-        return Colors.green;
+        return ThemeConfig.colorSuccess;
       case 'COMPLETED':
-        return Colors.green.shade700;
+      case 'DELIVERED':
+        return ThemeConfig.colorSuccess;
       case 'CANCELLED':
       case 'REJECTED':
-        return Colors.red;
+        return ThemeConfig.colorError;
       default:
         return Colors.grey;
     }
@@ -157,7 +186,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF8F0),
+      backgroundColor: ThemeConfig.beigeBackground,
       appBar: AppBar(
         title: const Text('Pesanan Saya'),
         backgroundColor: Colors.transparent,
@@ -188,8 +217,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
             if (prov.orders.isEmpty) {
               return ListView(
                 children: [
-                  SizedBox(
-                      height: MediaQuery.of(context).size.height * 0.15),
+                  SizedBox(height: MediaQuery.of(context).size.height * 0.15),
                   Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -197,11 +225,12 @@ class _OrdersScreenState extends State<OrdersScreen> {
                         SizedBox(
                           height: 160,
                           child: Lottie.network(
-                            'https://assets9.lottiefiles.com/packages/lf20_qh5z2v.json',
+                            AppConfig.emptyOrderLottieUrl,
                             fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) =>
-                                const Icon(Icons.shopping_bag_outlined,
-                                    size: 80, color: Colors.grey),
+                            errorBuilder: (_, __, ___) => const Icon(
+                                Icons.shopping_bag_outlined,
+                                size: 80,
+                                color: Colors.grey),
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -214,6 +243,67 @@ class _OrdersScreenState extends State<OrdersScreen> {
               );
             }
 
+            final isTab = ThemeConfig.isTablet(context);
+            if (isTab) {
+              final cols = ThemeConfig.gridColumns(context, mobile: 1);
+              return GridView.builder(
+                padding: const EdgeInsets.all(16),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: cols,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                  childAspectRatio: 1.9,
+                ),
+                itemCount: prov.orders.length,
+                itemBuilder: (ctx, i) {
+                  final o = prov.orders[i];
+                  final status = o['orderStatus'] ?? 'PENDING';
+                  final statusText = _getStatusText(status);
+                  final statusColor = _getStatusColor(status);
+                  final total = o['totalAmount'] ?? 0;
+                  final storeName = o['store']?['name'] ?? 'Toko';
+                  final fulfillment = o['fulfillmentType'] == 'DELIVERY'
+                      ? 'Diantar'
+                      : 'Ambil Sendiri';
+                  final date = o['createdAt'] != null
+                      ? DateTime.tryParse(o['createdAt'].toString())
+                      : null;
+                  final dateStr = date != null
+                      ? DateFormat('dd MMM HH:mm').format(date)
+                      : '';
+                  final items = o['transactionItems'] as List<dynamic>? ?? [];
+                  String? firstImage;
+                  if (items.isNotEmpty) {
+                    final firstItem = items.first;
+                    final product = firstItem['product'];
+                    if (product is Map) {
+                      final raw = product['imageUrl'] ?? product['image'];
+                      if (raw != null) {
+                        firstImage =
+                            MarketApiService().resolveFileUrl(raw.toString());
+                      }
+                    }
+                  }
+                  return InkWell(
+                    onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => OrderDetailScreen(order: o))),
+                    borderRadius: BorderRadius.circular(16),
+                    child: _buildOrderCard(
+                      storeName: storeName,
+                      fulfillment: fulfillment,
+                      statusText: statusText,
+                      statusColor: statusColor,
+                      dateStr: dateStr,
+                      firstImage: firstImage,
+                      total: total,
+                      summary: _getItemSummary(o),
+                    ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.05),
+                  );
+                },
+              );
+            }
             return ListView.separated(
               padding: const EdgeInsets.all(16),
               itemCount: prov.orders.length,
@@ -225,6 +315,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
                 final statusColor = _getStatusColor(status);
                 final total = o['totalAmount'] ?? 0;
                 final storeName = o['store']?['name'] ?? 'Toko';
+                final fulfillment = o['fulfillmentType'] == 'DELIVERY'
+                    ? 'Diantar'
+                    : 'Ambil Sendiri';
                 final date = o['createdAt'] != null
                     ? DateTime.tryParse(o['createdAt'].toString())
                     : null;
@@ -276,16 +369,28 @@ class _OrdersScreenState extends State<OrdersScreen> {
                               child: Row(
                                 children: [
                                   const Icon(Icons.store,
-                                      size: 18, color: Color(0xFFE07A5F)),
+                                      size: 18, color: ThemeConfig.brandColor),
                                   const SizedBox(width: 8),
                                   Expanded(
-                                    child: Text(
-                                      storeName,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 14),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          storeName,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14),
+                                        ),
+                                        Text(
+                                          fulfillment,
+                                          style: TextStyle(
+                                              fontSize: 10,
+                                              color: Colors.grey.shade600),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ],
@@ -296,8 +401,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
-                                color:
-                                    statusColor.withValues(alpha: 0.1),
+                                color: statusColor.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
@@ -388,7 +492,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                                   style: const TextStyle(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 16,
-                                      color: Color(0xFFE07A5F)),
+                                      color: ThemeConfig.brandColor),
                                 ),
                               ],
                             )
@@ -402,6 +506,160 @@ class _OrdersScreenState extends State<OrdersScreen> {
             );
           },
         ),
+      ),
+    );
+  }
+
+  Widget _buildOrderCard({
+    required String storeName,
+    required String fulfillment,
+    required String statusText,
+    required Color statusColor,
+    required String dateStr,
+    required String? firstImage,
+    required num total,
+    required String summary,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          )
+        ],
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    const Icon(Icons.store,
+                        size: 18, color: ThemeConfig.brandColor),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            storeName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 14),
+                          ),
+                          Text(
+                            fulfillment,
+                            style: TextStyle(
+                                fontSize: 10, color: Colors.grey.shade600),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  statusText,
+                  style: TextStyle(
+                      color: statusColor,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Divider(height: 1),
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: firstImage != null
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.network(
+                          firstImage,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const Icon(
+                              Icons.image_not_supported,
+                              color: Colors.grey,
+                              size: 24),
+                        ),
+                      )
+                    : const Icon(Icons.shopping_bag_outlined,
+                        color: Colors.grey, size: 24),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      summary,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontSize: 14, fontWeight: FontWeight.w500),
+                    ),
+                    if (dateStr.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          dateStr,
+                          style: TextStyle(
+                              color: Colors.grey.shade400, fontSize: 11),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  const Text('Total Belanja',
+                      style: TextStyle(fontSize: 10, color: Colors.grey)),
+                  Text(
+                    _formatCurrency(total),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: ThemeConfig.brandColor),
+                  ),
+                ],
+              )
+            ],
+          )
+        ],
       ),
     );
   }

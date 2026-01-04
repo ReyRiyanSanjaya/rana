@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CI/CD - Dokumentasi Rana Market</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <nav class="sidebar">
+        <a href="index.html" class="brand">Rana Market 🐸</a>
+        <ul class="nav-links">
+            <li class="nav-item"><a href="index.html" class="nav-link">🏠 Pengantar</a></li>
+            <li class="nav-item"><a href="architecture.html" class="nav-link">🏗️ Arsitektur Sistem</a></li>
+            <li class="nav-item"><a href="database-schema.html" class="nav-link">💾 Database Schema</a></li>
+            <li class="nav-item"><a href="security.html" class="nav-link">🔒 Keamanan</a></li>
+            <li class="nav-item"><a href="server-deployment.html" class="nav-link">🖥️ Server Deployment</a></li>
+            <li class="nav-item"><a href="mobile-deployment.html" class="nav-link">📱 Mobile Deployment</a></li>
+            <li class="nav-item"><a href="api-integration.html" class="nav-link">🔌 Integrasi API</a></li>
+            <li class="nav-item"><a href="cicd.html" class="nav-link active">🚀 CI/CD Pipeline</a></li>
+            <li class="nav-item"><a href="tools.html" class="nav-link">🛠️ Tools & Utils</a></li>
+            <li class="nav-item"><a href="user-manual.html" class="nav-link">📖 Panduan Admin</a></li>
+            <li class="nav-item"><a href="maintenance.html" class="nav-link">🛠️ Maintenance & Ops</a></li>
+            <li class="nav-item"><a href="troubleshooting.html" class="nav-link">❓ Troubleshooting</a></li>
+        </ul>
+    </nav>
+
+    <main class="main-content">
+        <h1>CI/CD Pipeline (Automation)</h1>
+        <p>Panduan untuk mengotomatisasi proses deployment menggunakan GitHub Actions. Ini memungkinkan kode di-deploy ke server secara otomatis setiap kali Anda melakukan <code>git push</code>.</p>
+
+        <h2>Workflow GitHub Actions</h2>
+        <p>Buat file <code>.github/workflows/deploy.yml</code> di repositori Anda.</p>
+
+        <pre><code>name: Deploy to VPS
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /var/www/rana-server
+            git pull origin main
+            npm install
+            npx prisma migrate deploy
+            pm2 restart rana-server
+            echo "Deployment Successful! 🚀"
+</code></pre>
+
+        <h2>Konfigurasi Secrets</h2>
+        <p>Di repositori GitHub Anda, masuk ke <strong>Settings > Secrets and variables > Actions</strong>.</p>
+        <p>Tambahkan Repository Secrets berikut:</p>
+        <ul>
+            <li><code>VPS_HOST</code>: IP Address server Anda (misal: 103.x.x.x).</li>
+            <li><code>VPS_USER</code>: Username SSH (misal: root).</li>
+            <li><code>SSH_PRIVATE_KEY</code>: Isi Private Key SSH Anda (isi file id_rsa).</li>
+        </ul>
+
+        <h2>Manfaat CI/CD</h2>
+        <ul>
+            <li><strong>Cepat:</strong> Tidak perlu login SSH manual untuk update.</li>
+            <li><strong>Konsisten:</strong> Menghindari kesalahan manusia (human error) saat deployment.</li>
+            <li><strong>History:</strong> Setiap deployment tercatat di GitHub Actions log.</li>
+        </ul>
+
+        <footer>
+            &copy; 2026 Rana Market Team. All rights reserved.
+        </footer>
+    </main>
+    <script src="js/main.js"></script>
+</body>
+</html>

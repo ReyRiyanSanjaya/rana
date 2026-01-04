@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rana_merchant/config/api_config.dart';
 import 'package:rana_merchant/data/remote/api_service.dart';
 import 'package:rana_merchant/constants.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO; // [NEW]
@@ -26,39 +27,40 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
   }
 
   void _connectSocket() {
-    socket = IO.io(AppConstants.baseUrl, IO.OptionBuilder()
-       .setTransports(['websocket', 'polling'])
-       .setAuth({'token': ApiService().token}) // Access token from ApiService (Need getter)
-       .build()
-    );
+    socket = IO.io(
+        ApiConfig.baseUrl,
+        IO.OptionBuilder().setTransports(['websocket', 'polling']).setAuth({
+          'token': ApiService().token
+        }) // Access token from ApiService (Need getter)
+            .build());
 
     socket!.onConnect((_) {
-       print('Connected to Socket');
-       if (widget.ticketId.isNotEmpty) {
-         socket!.emit('join_ticket', widget.ticketId);
-       }
+      print('Connected to Socket');
+      if (widget.ticketId.isNotEmpty) {
+        socket!.emit('join_ticket', widget.ticketId);
+      }
     });
 
     socket!.on('new_message', (data) {
-       if (mounted) {
-         setState(() {
-           if (ticket != null) {
-              List msgs = ticket!['messages'];
-              msgs.add(data);
-              ticket!['messages'] = msgs;
-           }
-         });
-       }
+      if (mounted) {
+        setState(() {
+          if (ticket != null) {
+            List msgs = ticket!['messages'];
+            msgs.add(data);
+            ticket!['messages'] = msgs;
+          }
+        });
+      }
     });
 
     socket!.on('typing', (data) {
-       // data = { userId, role, isTyping }
-       if (data['role'] == 'MERCHANT') return; // Ignore self
-       if (mounted) {
-         setState(() {
-            typingUser = data['isTyping'] ? "Admin is typing..." : null;
-         });
-       }
+      // data = { userId, role, isTyping }
+      if (data['role'] == 'MERCHANT') return; // Ignore self
+      if (mounted) {
+        setState(() {
+          typingUser = data['isTyping'] ? "Admin is typing..." : null;
+        });
+      }
     });
   }
 
@@ -112,42 +114,54 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
       body: Column(
         children: [
           Expanded(
-            child: isLoading 
-              ? const Center(child: CircularProgressIndicator()) 
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: ticket?['messages']?.length ?? 0,
-                  itemBuilder: (context, index) {
-                    final msg = ticket!['messages'][index];
-                    final isMe = msg['senderType'] == 'MERCHANT' || msg['isAdmin'] == false;
-                    return Align(
-                      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(vertical: 4),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: isMe ? Colors.indigo : Colors.grey[200],
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              msg['message'] ?? '',
-                              style: TextStyle(color: isMe ? Colors.white : Colors.black87),
+              child: isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: ticket?['messages']?.length ?? 0,
+                      itemBuilder: (context, index) {
+                        final msg = ticket!['messages'][index];
+                        final isMe = msg['senderType'] == 'MERCHANT' ||
+                            msg['isAdmin'] == false;
+                        return Align(
+                          alignment: isMe
+                              ? Alignment.centerRight
+                              : Alignment.centerLeft,
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(vertical: 4),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: isMe ? Colors.indigo : Colors.grey[200],
+                              borderRadius: BorderRadius.circular(12),
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              msg['createdAt'] != null ? msg['createdAt'].toString().substring(11, 16) : '',
-                              style: TextStyle(fontSize: 10, color: isMe ? Colors.indigo[100] : Colors.grey[600]),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  msg['message'] ?? '',
+                                  style: TextStyle(
+                                      color:
+                                          isMe ? Colors.white : Colors.black87),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  msg['createdAt'] != null
+                                      ? msg['createdAt']
+                                          .toString()
+                                          .substring(11, 16)
+                                      : '',
+                                  style: TextStyle(
+                                      fontSize: 10,
+                                      color: isMe
+                                          ? Colors.indigo[100]
+                                          : Colors.grey[600]),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                )
-          ),
+                          ),
+                        );
+                      },
+                    )),
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Column(
@@ -156,21 +170,34 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                   Align(
                     alignment: Alignment.centerLeft,
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                      child: Text(typingUser!, style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: Colors.grey)),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 4),
+                      child: Text(typingUser!,
+                          style: const TextStyle(
+                              fontSize: 12,
+                              fontStyle: FontStyle.italic,
+                              color: Colors.grey)),
                     ),
                   ),
                 Row(
                   children: [
-                    Expanded(child: TextField(
-                      controller: _msgController, 
-                      decoration: const InputDecoration(hintText: 'Type reply...', border: OutlineInputBorder()),
+                    Expanded(
+                        child: TextField(
+                      controller: _msgController,
+                      decoration: const InputDecoration(
+                          hintText: 'Type reply...',
+                          border: OutlineInputBorder()),
                       onChanged: (val) {
-                          // Allow user to emit typing event
-                          socket?.emit('typing', {'ticketId': widget.ticketId, 'isTyping': val.isNotEmpty});
+                        // Allow user to emit typing event
+                        socket?.emit('typing', {
+                          'ticketId': widget.ticketId,
+                          'isTyping': val.isNotEmpty
+                        });
                       },
                     )),
-                    IconButton(onPressed: _reply, icon: const Icon(Icons.send, color: Colors.indigo))
+                    IconButton(
+                        onPressed: _reply,
+                        icon: const Icon(Icons.send, color: Colors.indigo))
                   ],
                 ),
               ],

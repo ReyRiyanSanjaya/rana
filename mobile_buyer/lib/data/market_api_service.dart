@@ -1,22 +1,21 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:rana_market/config/api_config.dart';
 
 class MarketApiService {
   static final MarketApiService _instance = MarketApiService._internal();
   factory MarketApiService() => _instance;
 
   late Dio _dio;
-  static const bool _isProduction =
-      bool.fromEnvironment('RANA_PROD', defaultValue: kReleaseMode);
-  final String _baseUrl = _isProduction
-      ? 'https://api.rana-app.com/api'
-      : (kIsWeb ? 'http://localhost:4000/api' : 'http://10.0.2.2:4000/api');
+
+  // Uses ApiConfig for base URL resolution
+  final String _baseUrl = ApiConfig.baseUrl;
 
   MarketApiService._internal() {
     _dio = Dio(BaseOptions(
       baseUrl: _baseUrl,
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 10),
+      connectTimeout: ApiConfig.connectTimeout,
+      receiveTimeout: ApiConfig.receiveTimeout,
     ));
 
     _dio.interceptors
@@ -29,9 +28,7 @@ class MarketApiService {
     final raw = value?.toString().trim() ?? '';
     if (raw.isEmpty) return '';
     if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
-    final base = _baseUrl.endsWith('/api')
-        ? _baseUrl.substring(0, _baseUrl.length - 4)
-        : _baseUrl;
+    final base = ApiConfig.serverUrl;
     if (raw.startsWith('/')) return '$base$raw';
     return '$base/$raw';
   }
@@ -122,8 +119,9 @@ class MarketApiService {
       final response = await _dio.post('/auth/login',
           data: {'email': email, 'password': password, 'role': 'BUYER'});
 
-      if (_isSuccess(response.data))
+      if (_isSuccess(response.data)) {
         return Map<String, dynamic>.from(response.data['data'] ?? {});
+      }
       throw Exception(_messageFromBody(response.data, fallback: 'Login gagal'));
     } catch (e) {
       throw _toApiException(e, fallback: 'Login gagal');
@@ -141,12 +139,59 @@ class MarketApiService {
         'role': 'BUYER'
       });
 
-      if (_isSuccess(response.data))
+      if (_isSuccess(response.data)) {
         return Map<String, dynamic>.from(response.data['data'] ?? {});
+      }
       throw Exception(
           _messageFromBody(response.data, fallback: 'Daftar gagal'));
     } catch (e) {
       throw _toApiException(e, fallback: 'Daftar gagal');
+    }
+  }
+
+  Future<List<dynamic>> searchGlobal({
+    String? query,
+    String? category,
+    String? sort,
+    int? limit,
+    double? lat,
+    double? long,
+  }) async {
+    try {
+      final response = await _dio.get('/market/search', queryParameters: {
+        if (query != null && query.isNotEmpty) 'q': query,
+        if (category != null && category != 'Semua') 'category': category,
+        if (sort != null) 'sort': sort,
+        if (limit != null) 'limit': limit,
+        if (lat != null) 'lat': lat,
+        if (long != null) 'long': long,
+      });
+      return response.data['data'] as List<dynamic>? ?? [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<bool> toggleFavorite(String phone, String productId) async {
+    try {
+      final response = await _dio.post('/market/favorites', data: {
+        'phone': phone,
+        'productId': productId,
+      });
+      return response.data['data']['isFavorite'] ?? false;
+    } catch (e) {
+      throw _toApiException(e, fallback: 'Gagal update favorit');
+    }
+  }
+
+  Future<List<dynamic>> getFavorites(String phone) async {
+    try {
+      final response = await _dio.get('/market/favorites', queryParameters: {
+        'phone': phone,
+      });
+      return response.data['data'] ?? [];
+    } catch (e) {
+      return [];
     }
   }
 
@@ -161,6 +206,23 @@ class MarketApiService {
     } catch (e) {
       debugPrint('Nearby Error: $e');
       return []; // Return empty on error for fail-soft
+    }
+  }
+
+  Future<Map<String, dynamic>> getStoreReviews(String storeId,
+      {int page = 1, int limit = 10}) async {
+    try {
+      final response = await _dio.get(
+        '/market/store/$storeId/reviews',
+        queryParameters: {'page': page, 'limit': limit},
+      );
+      if (_isSuccess(response.data)) {
+        return Map<String, dynamic>.from(response.data['data'] ?? {});
+      }
+      return {};
+    } catch (e) {
+      debugPrint('Store Reviews Error: $e');
+      return {};
     }
   }
 
@@ -189,7 +251,8 @@ class MarketApiService {
       required String customerName,
       required String customerPhone,
       required String deliveryAddress,
-      required String fulfillmentType}) async {
+      required String fulfillmentType,
+      double deliveryFee = 0}) async {
     try {
       final response = await _dio.post('/market/order', data: {
         'storeId': storeId,
@@ -197,7 +260,8 @@ class MarketApiService {
         'customerName': customerName,
         'customerPhone': customerPhone,
         'deliveryAddress': deliveryAddress,
-        'fulfillmentType': fulfillmentType
+        'fulfillmentType': fulfillmentType,
+        'deliveryFee': deliveryFee
       });
 
       if (!_isSuccess(response.data)) {
@@ -213,8 +277,9 @@ class MarketApiService {
   Future<Map<String, dynamic>> getPaymentInfo() async {
     try {
       final response = await _dio.get('/market/config/payment');
-      if (_isSuccess(response.data))
+      if (_isSuccess(response.data)) {
         return Map<String, dynamic>.from(response.data['data'] ?? {});
+      }
       throw Exception(_messageFromBody(response.data,
           fallback: 'Gagal memuat konfigurasi pembayaran'));
     } catch (e) {
@@ -226,9 +291,10 @@ class MarketApiService {
     try {
       final response =
           await _dio.post('/market/order/confirm', data: {'orderId': orderId});
-      if (!_isSuccess(response.data))
+      if (!_isSuccess(response.data)) {
         throw Exception(_messageFromBody(response.data,
             fallback: 'Gagal konfirmasi pembayaran'));
+      }
       return Map<String, dynamic>.from(response.data['data'] ?? {});
     } catch (e) {
       throw _toApiException(e, fallback: 'Gagal konfirmasi pembayaran');
@@ -253,9 +319,14 @@ class MarketApiService {
     }
   }
 
-  Future<List<dynamic>> getFlashSaleProducts(double lat, double long) async {
+  Future<List<dynamic>> getFlashSaleProducts(double lat, double long,
+      {String? storeId}) async {
     try {
-      final response = await _dio.get('/market/flashsales');
+      final params = <String, dynamic>{};
+      if (storeId != null) params['storeId'] = storeId;
+
+      final response =
+          await _dio.get('/market/flashsales', queryParameters: params);
       if (!_isSuccess(response.data)) return [];
 
       final sales = response.data['data'] as List<dynamic>;

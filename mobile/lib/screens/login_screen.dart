@@ -6,6 +6,7 @@ import 'package:rana_merchant/screens/register_screen.dart';
 import 'package:rana_merchant/screens/home_screen.dart';
 import 'package:rana_merchant/screens/onboarding_merchant_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:rana_merchant/config/theme_config.dart'; // [NEW] Config
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -75,8 +76,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     labelText: 'Nomor HP / WhatsApp',
                     border: OutlineInputBorder(),
                     focusedBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Color(0xFFE07A5F))),
-                    floatingLabelStyle: TextStyle(color: Color(0xFFE07A5F))),
+                        borderSide: BorderSide(color: ThemeConfig.brandColor)),
+                    floatingLabelStyle: TextStyle(color: ThemeConfig.brandColor)),
               ),
               const SizedBox(height: 16),
               TextField(
@@ -86,8 +87,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     labelText: 'Password',
                     border: OutlineInputBorder(),
                     focusedBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Color(0xFFE07A5F))),
-                    floatingLabelStyle: TextStyle(color: Color(0xFFE07A5F))),
+                        borderSide: BorderSide(color: ThemeConfig.brandColor)),
+                    floatingLabelStyle: TextStyle(color: ThemeConfig.brandColor)),
               ),
               const SizedBox(height: 24),
               SizedBox(

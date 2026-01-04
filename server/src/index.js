@@ -6,6 +6,7 @@ const helmet = require('helmet');
 const path = require('path'); // [FIX] Added path module
 
 const compression = require('compression');
+const rateLimit = require('express-rate-limit');
 const reportRoutes = require('./routes/reportRoutes');
 const transactionRoutes = require('./routes/transactionRoutes');
 const authRoutes = require('./routes/authRoutes');
@@ -25,6 +26,16 @@ app.use(helmet({
     crossOriginResourcePolicy: false, // [FIX] Allow resources to be loaded cross-origin
 }));
 app.use(compression()); // Gzip Compression
+
+// Rate Limiting
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 3000, // Limit each IP to 3000 requests per windowMs
+    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+});
+app.use(limiter);
+
 app.use(express.json({ limit: '50mb' })); // [FIX] Increase limit for Base64 uploads
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(morgan('dev'));

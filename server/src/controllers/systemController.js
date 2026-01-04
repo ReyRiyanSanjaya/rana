@@ -151,7 +151,34 @@ const getAppMenus = async (req, res) => {
 const getActiveAnnouncements = async (req, res) => {
     try {
         const announcements = await prisma.announcement.findMany({
-            where: { isActive: true },
+            where: { 
+                isActive: true,
+                target: 'ALL' 
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+        successResponse(res, announcements);
+    } catch (error) {
+        errorResponse(res, "Failed to fetch announcements", 500);
+    }
+};
+
+const getMyAnnouncements = async (req, res) => {
+    try {
+        const { tenantId } = req.user;
+        const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+        
+        if (!tenant) return successResponse(res, []);
+
+        const announcements = await prisma.announcement.findMany({
+            where: {
+                isActive: true,
+                OR: [
+                    { target: 'ALL' },
+                    { target: 'PLAN', targetValue: tenant.plan },
+                    { target: 'STATUS', targetValue: tenant.subscriptionStatus }
+                ]
+            },
             orderBy: { createdAt: 'desc' }
         });
         successResponse(res, announcements);
@@ -283,12 +310,14 @@ const getAllAnnouncements = async (req, res) => {
 
 const createAnnouncement = async (req, res) => {
     try {
-        const { title, content, isActive } = req.body;
+        const { title, content, isActive, target, targetValue } = req.body;
         const announcement = await prisma.announcement.create({
             data: {
                 title,
                 content,
-                isActive: isActive ?? true
+                isActive: isActive ?? true,
+                target: target || 'ALL',
+                targetValue: targetValue || null
             }
         });
         successResponse(res, announcement, "Announcement Created");
@@ -300,10 +329,16 @@ const createAnnouncement = async (req, res) => {
 const updateAnnouncement = async (req, res) => {
     try {
         const { id } = req.params;
-        const { title, content, isActive } = req.body;
+        const { title, content, isActive, target, targetValue } = req.body;
         const announcement = await prisma.announcement.update({
             where: { id },
-            data: { title, content, isActive }
+            data: { 
+                title, 
+                content, 
+                isActive,
+                target,
+                targetValue
+            }
         });
         successResponse(res, announcement, "Announcement Updated");
     } catch (error) {
@@ -327,6 +362,7 @@ module.exports = {
     getFeeSettings,
     updateFeeSettings,
     getActiveAnnouncements,
+    getMyAnnouncements,
     getAllAnnouncements, // Admin
     createAnnouncement, // Admin
     updateAnnouncement, // Admin

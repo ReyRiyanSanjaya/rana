@@ -11,7 +11,7 @@ import Badge from '../components/ui/Badge';
 const Broadcasts = () => {
     const [announcements, setAnnouncements] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [form, setForm] = useState({ title: '', content: '' });
+    const [form, setForm] = useState({ title: '', content: '', target: 'ALL', targetValue: '' });
 
     const fetchAnnouncements = async () => {
         try {
@@ -30,9 +30,11 @@ const Broadcasts = () => {
 
     const handleCreate = async () => {
         if (!form.title || !form.content) return alert("Please fill all fields");
+        if (form.target !== 'ALL' && !form.targetValue) return alert("Please select a target value");
+
         try {
             await api.post('/admin/announcements', { ...form, isActive: true });
-            setForm({ title: '', content: '' });
+            setForm({ title: '', content: '', target: 'ALL', targetValue: '' });
             fetchAnnouncements();
             alert("Broadcast created!");
         } catch (error) {
@@ -94,6 +96,51 @@ const Broadcasts = () => {
                                     onChange={e => setForm({ ...form, content: e.target.value })}
                                 />
                             </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Target Audience</label>
+                                <select 
+                                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none text-sm bg-white"
+                                    value={form.target}
+                                    onChange={e => setForm({ ...form, target: e.target.value, targetValue: '' })}
+                                >
+                                    <option value="ALL">All Users</option>
+                                    <option value="PLAN">By Plan</option>
+                                    <option value="STATUS">By Subscription Status</option>
+                                </select>
+                            </div>
+
+                            {form.target !== 'ALL' && (
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                                        {form.target === 'PLAN' ? 'Select Plan' : 'Select Status'}
+                                    </label>
+                                    {form.target === 'PLAN' ? (
+                                        <select
+                                            className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none text-sm bg-white"
+                                            value={form.targetValue}
+                                            onChange={e => setForm({ ...form, targetValue: e.target.value })}
+                                        >
+                                            <option value="">-- Select Plan --</option>
+                                            <option value="FREE">Free</option>
+                                            <option value="PREMIUM">Premium</option>
+                                            <option value="ENTERPRISE">Enterprise</option>
+                                        </select>
+                                    ) : (
+                                        <select
+                                            className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none text-sm bg-white"
+                                            value={form.targetValue}
+                                            onChange={e => setForm({ ...form, targetValue: e.target.value })}
+                                        >
+                                            <option value="">-- Select Status --</option>
+                                            <option value="ACTIVE">Active</option>
+                                            <option value="TRIAL">Trial</option>
+                                            <option value="EXPIRED">Expired</option>
+                                            <option value="CANCELLED">Cancelled</option>
+                                        </select>
+                                    )}
+                                </div>
+                            )}
+
                             <Button onClick={handleCreate} className="w-full">
                                 Send Broadcast
                             </Button>
@@ -123,6 +170,13 @@ const Broadcasts = () => {
                                         <Td>
                                             <div className="font-medium text-slate-900">{item.title}</div>
                                             <div className="text-sm text-slate-500 truncate max-w-xs">{item.content}</div>
+                                            {item.target && item.target !== 'ALL' && (
+                                                <div className="mt-1">
+                                                    <Badge variant="warning" className="text-[10px] px-2 py-0.5 inline-flex items-center gap-1">
+                                                        <span className="font-bold">{item.target}:</span> {item.targetValue}
+                                                    </Badge>
+                                                </div>
+                                            )}
                                         </Td>
                                         <Td>
                                             <button onClick={() => toggleActive(item.id, item.isActive)}>
@@ -137,12 +191,14 @@ const Broadcasts = () => {
                                             </span>
                                         </Td>
                                         <Td>
-                                            <button
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
                                                 onClick={() => handleDelete(item.id)}
-                                                className="p-2 text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                                                className="text-rose-600 hover:bg-rose-50 hover:text-rose-700 h-8 w-8 p-0"
                                             >
                                                 <Trash2 size={16} />
-                                            </button>
+                                            </Button>
                                         </Td>
                                     </Tr>
                                 ))}

@@ -52,6 +52,9 @@ import 'package:rana_merchant/services/order_service.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:rana_merchant/config/assets_config.dart';
+import 'package:rana_merchant/config/theme_config.dart';
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -84,6 +87,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _shouldShowOnboardingSuccess = false;
   bool _showHomeTour = false;
   int _homeTourStep = 0;
+  int _desktopSelectedIndex = 0; // [NEW] Tablet/Desktop Navigation Index
 
   // [NEW] Icon Mapper
   IconData _getIcon(String name) {
@@ -184,8 +188,8 @@ class _HomeScreenState extends State<HomeScreen> {
               content: Text(
                   'Status: ${sub.status.toString().split('.').last} (Locked: ${sub.isLocked})'),
               backgroundColor: sub.isLocked
-                  ? const Color(0xFFE07A5F)
-                  : const Color(0xFF81B29A),
+                  ? ThemeConfig.brandColor
+                  : ThemeConfig.colorSuccess,
               duration: const Duration(seconds: 2),
             ),
           );
@@ -226,10 +230,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadBeginnerTipFlag() async {
     final prefs = await SharedPreferences.getInstance();
-    final hasCompleted =
-        prefs.getBool('has_completed_onboarding') ?? false;
-    final hasDismissed =
-        prefs.getBool('has_dismissed_beginner_tip') ?? false;
+    final hasCompleted = prefs.getBool('has_completed_onboarding') ?? false;
+    final hasDismissed = prefs.getBool('has_dismissed_beginner_tip') ?? false;
     if (!mounted) return;
     setState(() {
       _showBeginnerTip = hasCompleted && !hasDismissed;
@@ -247,10 +249,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _maybeStartHomeTour() async {
     final prefs = await SharedPreferences.getInstance();
-    final hasCompleted =
-        prefs.getBool('has_completed_onboarding') ?? false;
-    final hasSeenTour =
-        prefs.getBool('has_seen_home_tour') ?? false;
+    final hasCompleted = prefs.getBool('has_completed_onboarding') ?? false;
+    final hasSeenTour = prefs.getBool('has_seen_home_tour') ?? false;
     if (!mounted || !hasCompleted || hasSeenTour) return;
     setState(() {
       _showHomeTour = true;
@@ -390,7 +390,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 SizedBox(
                   height: 160,
                   child: Lottie.asset(
-                    'assets/lottie/confetti_success.json',
+                    AssetsConfig.lottieConfettiSuccess,
                     repeat: false,
                   ),
                 ),
@@ -866,196 +866,7 @@ class _HomeScreenState extends State<HomeScreen> {
           bool isDesktop = constraints.maxWidth >= 900;
 
           if (isDesktop) {
-            return Row(
-              // Desktop remains similar for now or can be adapted later
-              children: [
-                // ... Navigation Rail (unchanged) ...
-                SingleChildScrollView(
-                  child: ConstrainedBox(
-                    constraints:
-                        BoxConstraints(minHeight: constraints.maxHeight),
-                    child: IntrinsicHeight(
-                      child: NavigationRail(
-                        selectedIndex: 0,
-                        minWidth: 72,
-                        labelType: NavigationRailLabelType.all,
-                        onDestinationSelected: (int index) {
-                          if (index == 1) {
-                            Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) =>
-                                        const AddProductScreen())).then((val) {
-                              if (val == true) _loadProducts();
-                            });
-                          }
-                          if (index == 2) {
-                            Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) => const ReportScreen()));
-                          }
-                          if (index == 3) {
-                            Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) => const StockOpnameScreen()));
-                          }
-                          if (index == 4) {
-                            Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) => const OrderListScreen()));
-                          }
-                          if (index == 5) {
-                            Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) => const WalletScreen()));
-                          }
-                          if (index == 6) {
-                            Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) => const SettingsScreen()));
-                          }
-                          if (index == 7) {
-                            Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) => const PromoHubScreen()));
-                          }
-                        },
-                        leading: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 24),
-                          child: Icon(Icons.store,
-                              color: Theme.of(context).primaryColor, size: 32),
-                        ),
-                        destinations: [
-                          const NavigationRailDestination(
-                              icon: Icon(Icons.point_of_sale_outlined),
-                              selectedIcon: Icon(Icons.point_of_sale),
-                              label: Text('POS')),
-                          const NavigationRailDestination(
-                              icon: Icon(Icons.add_box_outlined),
-                              selectedIcon: Icon(Icons.add_box),
-                              label: Text('Tambah')),
-                          const NavigationRailDestination(
-                              icon: Icon(Icons.bar_chart_outlined),
-                              selectedIcon: Icon(Icons.bar_chart),
-                              label: Text('Laporan')),
-                          const NavigationRailDestination(
-                              icon: Icon(Icons.inventory_2_outlined),
-                              selectedIcon: Icon(Icons.inventory_2),
-                              label: Text('Stock')),
-                          NavigationRailDestination(
-                              icon: Stack(
-                                clipBehavior: Clip.none,
-                                children: [
-                                  const Icon(Icons.shopping_bag_outlined),
-                                  if (_newOrdersCount > 0)
-                                    Positioned(
-                                      right: -2,
-                                      top: -2,
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 6, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: Colors.red,
-                                          borderRadius:
-                                              BorderRadius.circular(999),
-                                        ),
-                                        constraints: const BoxConstraints(
-                                            minWidth: 18, minHeight: 18),
-                                        child: Center(
-                                          child: Text(
-                                            _newOrdersCount > 99
-                                                ? '99+'
-                                                : _newOrdersCount.toString(),
-                                            style: GoogleFonts.poppins(
-                                              color: Colors.white,
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                              selectedIcon: Stack(
-                                clipBehavior: Clip.none,
-                                children: [
-                                  const Icon(Icons.shopping_bag),
-                                  if (_newOrdersCount > 0)
-                                    Positioned(
-                                      right: -2,
-                                      top: -2,
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 6, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: Colors.red,
-                                          borderRadius:
-                                              BorderRadius.circular(999),
-                                        ),
-                                        constraints: const BoxConstraints(
-                                            minWidth: 18, minHeight: 18),
-                                        child: Center(
-                                          child: Text(
-                                            _newOrdersCount > 99
-                                                ? '99+'
-                                                : _newOrdersCount.toString(),
-                                            style: GoogleFonts.poppins(
-                                              color: Colors.white,
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                              label: const Text('Pesanan')),
-                          const NavigationRailDestination(
-                              icon: Icon(Icons.account_balance_wallet_outlined),
-                              selectedIcon: Icon(Icons.account_balance_wallet),
-                              label: Text('Dompet')),
-                          const NavigationRailDestination(
-                              icon: Icon(Icons.settings_outlined),
-                              selectedIcon: Icon(Icons.settings),
-                              label: Text('Setting')),
-                          const NavigationRailDestination(
-                              icon: Icon(Icons.local_offer_outlined),
-                              selectedIcon: Icon(Icons.local_offer),
-                              label: Text('Promosi')),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                VerticalDivider(
-                    thickness: 1, width: 1, color: Colors.grey[200]),
-
-                // MAIN CONTENT (Left Side)
-                Expanded(
-                  flex: 7,
-                  child: Column(
-                    children: [
-                      _buildHeader(context),
-                      // if (_aiInsight != null) _buildAiCard(context), // REMOVED (Moved to Header)
-                      _buildCategoryTabs(),
-                      Expanded(
-                        child: _buildProductGrid(context, cart,
-                            crossAxisCount: 4, aspectRatio: 0.8),
-                      ),
-                    ],
-                  ),
-                ),
-// ... Cart Sidebar (unchanged) ...
-              ],
-            );
+            return _buildDesktopLayout(context, constraints, cart);
           } else {
             final mobile = WillPopScope(
               onWillPop: () async {
@@ -1565,12 +1376,12 @@ class _HomeScreenState extends State<HomeScreen> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
         gradient: const LinearGradient(
-            colors: [Color(0xFFE07A5F), Color(0xFFE07A5F)],
+            colors: [ThemeConfig.brandColor, ThemeConfig.brandColor],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight),
         boxShadow: [
           BoxShadow(
-              color: const Color(0xFFE07A5F).withOpacity(0.3),
+              color: ThemeConfig.brandColor.withOpacity(0.3),
               blurRadius: 20,
               offset: const Offset(0, 10))
         ],
@@ -2997,5 +2808,202 @@ class _HomeScreenState extends State<HomeScreen> {
       return true;
     }
     return false;
+  }
+
+  void _filterProducts(String query) {
+    setState(() {
+      _searchQuery = query;
+    });
+  }
+
+  // --- Tablet/Desktop Layout Support ---
+
+  Widget _buildDesktopLayout(
+      BuildContext context, BoxConstraints constraints, CartProvider cart) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 1. Navigation Rail
+        _buildDesktopNavigationRail(),
+
+        // 2. Main Content
+        Expanded(
+          flex: 7,
+          child: _buildDesktopContent(context, cart),
+        ),
+
+        // 3. Persistent Cart Sidebar
+        Container(
+          width: 380, // Fixed width for sidebar
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border(left: BorderSide(color: Colors.grey[200]!)),
+            boxShadow: [
+              BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(-4, 0))
+            ],
+          ),
+          child: _buildCartSidebar(context, cart),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDesktopNavigationRail() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(right: BorderSide(color: Colors.grey[200]!)),
+      ),
+      child: NavigationRail(
+        selectedIndex: _desktopSelectedIndex,
+        onDestinationSelected: (int index) {
+          setState(() {
+            _desktopSelectedIndex = index;
+            // Map index to mobile bottom nav index for compatibility
+            if (index == 0) _bottomNavIndex = 0; // Home
+            if (index == 1) _bottomNavIndex = 1; // Activity
+            if (index == 2) _bottomNavIndex = 2; // Wallet
+            if (index == 3) _bottomNavIndex = 3; // Profile
+
+            // Handle specific routes for other items if needed
+            if (index == 4) Navigator.pushNamed(context, '/products');
+            if (index == 5) Navigator.pushNamed(context, '/report');
+          });
+        },
+        labelType: NavigationRailLabelType.all,
+        leading: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          child: Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+                color: const Color(0xFFE07A5F).withOpacity(0.1),
+                shape: BoxShape.circle),
+            child: const Icon(Icons.storefront,
+                color: Color(0xFFE07A5F), size: 28),
+          ),
+        ),
+        destinations: const [
+          NavigationRailDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home),
+            label: Text('Beranda'),
+          ),
+          NavigationRailDestination(
+            icon: Icon(Icons.history_outlined),
+            selectedIcon: Icon(Icons.history),
+            label: Text('Aktivitas'),
+          ),
+          NavigationRailDestination(
+            icon: Icon(Icons.account_balance_wallet_outlined),
+            selectedIcon: Icon(Icons.account_balance_wallet),
+            label: Text('Keuangan'),
+          ),
+          NavigationRailDestination(
+            icon: Icon(Icons.person_outline),
+            selectedIcon: Icon(Icons.person),
+            label: Text('Profil'),
+          ),
+          // Extra Tablet Items
+          NavigationRailDestination(
+            icon: Icon(Icons.inventory_2_outlined),
+            selectedIcon: Icon(Icons.inventory_2),
+            label: Text('Produk'),
+          ),
+          NavigationRailDestination(
+            icon: Icon(Icons.bar_chart_outlined),
+            selectedIcon: Icon(Icons.bar_chart),
+            label: Text('Laporan'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDesktopContent(BuildContext context, CartProvider cart) {
+    // If we are on Home tab (0), show the POS grid
+    if (_desktopSelectedIndex == 0) {
+      return Column(
+        children: [
+          // Tablet Header
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              border: Border(bottom: BorderSide(color: Color(0xFFF3F4F6))),
+            ),
+            child: Row(
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Kasir',
+                        style: GoogleFonts.outfit(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF1E293B))),
+                    Text(
+                        DateFormat('EEEE, d MMMM yyyy', 'id_ID')
+                            .format(DateTime.now()),
+                        style: GoogleFonts.outfit(
+                            color: Colors.grey[500], fontSize: 14))
+                  ],
+                ),
+                const Spacer(),
+                // Search Bar
+                Container(
+                  width: 300,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey[200]!)),
+                  child: TextField(
+                    onChanged: _filterProducts,
+                    decoration: const InputDecoration(
+                      hintText: 'Cari produk...',
+                      border: InputBorder.none,
+                      icon: Icon(Icons.search, color: Colors.grey),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                IconButton(
+                  onPressed: _loadProducts,
+                  icon: const Icon(Icons.refresh),
+                  tooltip: 'Refresh Data',
+                )
+              ],
+            ),
+          ),
+
+          // Categories
+          _buildCategoryTabs(),
+
+          // Product Grid
+          Expanded(
+            child: _buildProductGrid(context, cart,
+                crossAxisCount: 4, // 4 items per row on tablet
+                aspectRatio: 0.85),
+          ),
+        ],
+      );
+    }
+
+    // Placeholder for other tabs
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.construction, size: 64, color: Colors.grey[300]),
+          const SizedBox(height: 16),
+          Text('Fitur ini sedang dikembangkan',
+              style: GoogleFonts.outfit(fontSize: 18, color: Colors.grey[500]))
+        ],
+      ),
+    );
   }
 }

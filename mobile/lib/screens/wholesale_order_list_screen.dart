@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:rana_merchant/config/theme_config.dart';
 import 'package:rana_merchant/data/remote/api_service.dart';
 import 'package:rana_merchant/screens/wholesale_scan_screen.dart'; // Reuse scan screen
 
@@ -49,17 +50,17 @@ class _WholesaleOrderListScreenState extends State<WholesaleOrderListScreen> {
   Color _getStatusColor(String status) {
     switch (status) {
       case 'PENDING':
-        return const Color(0xFFE07A5F);
+        return ThemeConfig.brandColor;
       case 'PAID':
-        return const Color(0xFFE07A5F);
+        return ThemeConfig.brandColor;
       case 'PROCESSED':
-        return const Color(0xFFE07A5F);
+        return ThemeConfig.brandColor;
       case 'SHIPPED':
-        return const Color(0xFFE07A5F);
+        return ThemeConfig.brandColor;
       case 'DELIVERED':
-        return Colors.green;
+        return ThemeConfig.colorSuccess;
       case 'CANCELLED':
-        return Colors.red;
+        return ThemeConfig.colorError;
       default:
         return Colors.grey;
     }
@@ -71,13 +72,13 @@ class _WholesaleOrderListScreenState extends State<WholesaleOrderListScreen> {
         NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF8F0),
+      backgroundColor: ThemeConfig.beigeBackground,
       appBar: AppBar(
         title: Text('Pesanan Kulakan',
             style: GoogleFonts.poppins(
-                fontWeight: FontWeight.bold, color: const Color(0xFFE07A5F))),
+                fontWeight: FontWeight.bold, color: ThemeConfig.brandColor)),
         backgroundColor: Colors.transparent,
-        iconTheme: const IconThemeData(color: Color(0xFFE07A5F)),
+        iconTheme: const IconThemeData(color: ThemeConfig.brandColor),
         elevation: 0,
         actions: [
           IconButton(
@@ -144,20 +145,17 @@ class _WholesaleOrderListScreenState extends State<WholesaleOrderListScreen> {
               }
               if (snapshot.hasError) {
                 return Center(
-                    child:
-                        Text('Gagal memuat pesanan: ${snapshot.error}'));
+                    child: Text('Gagal memuat pesanan: ${snapshot.error}'));
               }
               if (!snapshot.hasData || snapshot.data!.isEmpty) {
                 return Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.history,
-                          size: 64, color: Colors.grey),
+                      const Icon(Icons.history, size: 64, color: Colors.grey),
                       const SizedBox(height: 16),
                       Text('Belum ada pesanan kulakan',
-                          style:
-                              GoogleFonts.poppins(color: Colors.grey)),
+                          style: GoogleFonts.poppins(color: Colors.grey)),
                     ],
                   ),
                 );
@@ -206,8 +204,8 @@ class _WholesaleOrderListScreenState extends State<WholesaleOrderListScreen> {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: _getStatusColor(status)
-                                      .withOpacity(0.1),
+                                  color:
+                                      _getStatusColor(status).withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(
@@ -231,8 +229,7 @@ class _WholesaleOrderListScreenState extends State<WholesaleOrderListScreen> {
                             child: Column(
                               children: items.map((item) {
                                 return Padding(
-                                  padding:
-                                      const EdgeInsets.only(bottom: 8.0),
+                                  padding: const EdgeInsets.only(bottom: 8.0),
                                   child: Row(
                                     children: [
                                       const Icon(
@@ -285,8 +282,7 @@ class _WholesaleOrderListScreenState extends State<WholesaleOrderListScreen> {
                             Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFE07A5F)
-                                    .withOpacity(0.1),
+                                color: const Color(0xFFE07A5F).withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Row(
@@ -388,83 +384,81 @@ class _WholesaleOrderListScreenState extends State<WholesaleOrderListScreen> {
                   ),
                   padding: const EdgeInsets.all(16),
                   child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              order['id'] ?? '-',
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            order['id'] ?? '-',
+                            style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFFE07A5F)),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: _getStatusColor(status).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              status,
+                              style: GoogleFonts.poppins(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: _getStatusColor(status),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF8F0),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          children: items.map((item) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 8.0),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.inventory_2_outlined,
+                                      size: 16, color: Color(0xFFE07A5F)),
+                                  const SizedBox(width: 8),
+                                  Text("${item['quantity']}x ",
+                                      style: GoogleFonts.poppins(
+                                          fontWeight: FontWeight.bold)),
+                                  Expanded(
+                                      child: Text(
+                                          item['productName'] ?? 'Produk',
+                                          style: GoogleFonts.poppins(),
+                                          overflow: TextOverflow.ellipsis)),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                      const Divider(),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Total Belanja',
+                              style: GoogleFonts.poppins(
+                                  fontWeight: FontWeight.bold)),
+                          Text(fmtPrice.format(total),
                               style: GoogleFonts.poppins(
                                   fontWeight: FontWeight.bold,
-                                  color: const Color(0xFFE07A5F)),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: _getStatusColor(status).withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                status,
-                                style: GoogleFonts.poppins(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  color: _getStatusColor(status),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFFF8F0),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Column(
-                            children: items.map((item) {
-                              return Padding(
-                                padding:
-                                    const EdgeInsets.only(bottom: 8.0),
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.inventory_2_outlined,
-                                        size: 16, color: Color(0xFFE07A5F)),
-                                    const SizedBox(width: 8),
-                                    Text("${item['quantity']}x ",
-                                        style: GoogleFonts.poppins(
-                                            fontWeight: FontWeight.bold)),
-                                    Expanded(
-                                        child: Text(
-                                            item['productName'] ?? 'Produk',
-                                            style: GoogleFonts.poppins(),
-                                            overflow:
-                                                TextOverflow.ellipsis)),
-                                  ],
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                        ),
-                        const Divider(),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text('Total Belanja',
-                                style: GoogleFonts.poppins(
-                                    fontWeight: FontWeight.bold)),
-                            Text(fmtPrice.format(total),
-                                style: GoogleFonts.poppins(
-                                    fontWeight: FontWeight.bold,
-                                    color: const Color(0xFFE07A5F))),
-                          ],
-                        ),
-                      ],
-                    ),
+                                  color: const Color(0xFFE07A5F))),
+                        ],
+                      ),
+                    ],
                   ),
+                ),
               ],
             ),
           ),

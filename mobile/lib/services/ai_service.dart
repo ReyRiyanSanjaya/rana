@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:rana_merchant/config/app_config.dart';
 import 'package:rana_merchant/data/local/database_helper.dart';
 
 class AiService {
@@ -98,7 +99,7 @@ class AiService {
         final double latitude = lat ?? -6.2088;
         final double longitude = lng ?? 106.8456;
         final weatherResponse = await _dio.get(
-            'https://api.open-meteo.com/v1/forecast?latitude=$latitude&longitude=$longitude&current_weather=true');
+            '${AppConfig.openMeteoBaseUrl}?latitude=$latitude&longitude=$longitude&current_weather=true');
         if (weatherResponse.statusCode == 200) {
           final weatherCode =
               weatherResponse.data['current_weather']['weathercode'];

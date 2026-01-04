@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Troubleshooting - Dokumentasi Rana Market</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <nav class="sidebar">
+        <a href="index.html" class="brand">Rana Market 🐸</a>
+        <ul class="nav-links">
+            <li class="nav-item"><a href="index.html" class="nav-link">🏠 Pengantar</a></li>
+            <li class="nav-item"><a href="architecture.html" class="nav-link">🏗️ Arsitektur Sistem</a></li>
+            <li class="nav-item"><a href="database-schema.html" class="nav-link">💾 Database Schema</a></li>
+            <li class="nav-item"><a href="security.html" class="nav-link">🔒 Keamanan</a></li>
+            <li class="nav-item"><a href="server-deployment.html" class="nav-link">🖥️ Server Deployment</a></li>
+            <li class="nav-item"><a href="mobile-deployment.html" class="nav-link">📱 Mobile Deployment</a></li>
+            <li class="nav-item"><a href="api-integration.html" class="nav-link">🔌 Integrasi API</a></li>
+            <li class="nav-item"><a href="cicd.html" class="nav-link">🚀 CI/CD Pipeline</a></li>
+            <li class="nav-item"><a href="tools.html" class="nav-link">🛠️ Tools & Utils</a></li>
+            <li class="nav-item"><a href="user-manual.html" class="nav-link">📖 Panduan Admin</a></li>
+            <li class="nav-item"><a href="maintenance.html" class="nav-link">🛠️ Maintenance & Ops</a></li>
+            <li class="nav-item"><a href="troubleshooting.html" class="nav-link active">❓ Troubleshooting</a></li>
+        </ul>
+    </nav>
+
+    <main class="main-content">
+        <h1>Troubleshooting</h1>
+        <p>Kumpulan masalah umum dan solusinya.</p>
+
+        <h2>Masalah Server</h2>
+
+        <h3>Error: 502 Bad Gateway</h3>
+        <p><strong>Penyebab:</strong> Nginx berjalan, tapi aplikasi Node.js mati atau tidak merespons.</p>
+        <p><strong>Solusi:</strong></p>
+        <ol>
+            <li>Cek status PM2: <code>pm2 status</code></li>
+            <li>Cek log error: <code>pm2 logs rana-server --lines 50</code></li>
+            <li>Jika error karena database, pastikan PostgreSQL berjalan: <code>sudo systemctl status postgresql</code></li>
+        </ol>
+
+        <h3>Error: Connection Refused (Database)</h3>
+        <p><strong>Penyebab:</strong> Password salah di .env atau service Postgres mati.</p>
+        <p><strong>Solusi:</strong> Cek file <code>.env</code> pastikan <code>DATABASE_URL</code> benar. Restart postgres: <code>sudo systemctl restart postgresql</code>.</p>
+
+        <h2>Masalah Mobile App</h2>
+
+        <h3>App Not Installed</h3>
+        <p><strong>Penyebab:</strong> Anda mencoba menginstall APK Release di HP yang sudah terinstall APK Debug (atau sebaliknya) dengan signature berbeda.</p>
+        <p><strong>Solusi:</strong> Uninstall aplikasi versi lama di HP, lalu install yang baru.</p>
+
+        <h3>Gambar Tidak Muncul</h3>
+        <p><strong>Penyebab:</strong></p>
+        <ul>
+            <li>Server tidak bisa diakses (Cek koneksi internet HP).</li>
+            <li>URL gambar masih mengarah ke <code>localhost</code> (Cek <code>api_config.dart</code>).</li>
+            <li>Nginx memblokir ukuran file besar (Cek <code>client_max_body_size</code> di nginx.conf).</li>
+        </ul>
+
+        <h3>Transaksi PPOB Gagal</h3>
+        <p><strong>Penyebab:</strong></p>
+        <ul>
+            <li>Saldo Digiflazz habis.</li>
+            <li>IP Server belum di-whitelist di Digiflazz.</li>
+            <li>API Key salah.</li>
+        </ul>
+        <p><strong>Solusi:</strong> Cek log server saat transaksi terjadi untuk melihat pesan error spesifik dari Digiflazz.</p>
+
+        <footer>
+            &copy; 2026 Rana Market Team. All rights reserved.
+        </footer>
+    </main>
+    <script src="js/main.js"></script>
+</body>
+</html>

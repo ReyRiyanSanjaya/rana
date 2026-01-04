@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:rana_market/config/theme_config.dart';
 import 'package:rana_market/providers/auth_provider.dart';
 import 'package:rana_market/screens/register_screen.dart';
 
@@ -51,7 +52,8 @@ class _LoginScreenState extends State<LoginScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Icon(Icons.storefront, size: 80, color: Color(0xFFE07A5F)),
+              const Icon(Icons.storefront,
+                  size: 80, color: ThemeConfig.brandColor),
               const SizedBox(height: 16),
               const Text(
                 'Masuk Rana Market',
@@ -59,10 +61,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
-              Text(
+              const Text(
                 'Silakan login untuk melanjutkan',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey.shade600),
+                style: TextStyle(color: ThemeConfig.textSecondary),
               ),
               const SizedBox(height: 32),
               TextField(

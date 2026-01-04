@@ -2,12 +2,12 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const { successResponse, errorResponse } = require('../utils/response');
 const crypto = require('crypto');
-const { emitToTenant } = require('../socket');
+const { emitToTenant, emitToOrder } = require('../socket');
 
 // BUYER: Create Order
 const createOrder = async (req, res) => {
     try {
-        const { storeId, items, customerName, customerPhone, deliveryAddress, fulfillmentType } = req.body;
+        const { storeId, items, customerName, customerPhone, deliveryAddress, fulfillmentType, deliveryFee } = req.body;
         // items: [{ productId, quantity, price }]
 
         if (!storeId || !items || items.length === 0) {
@@ -67,7 +67,9 @@ const createOrder = async (req, res) => {
         const maxCap = maxCapSetting ? parseFloat(maxCapSetting.value) : undefined;
         if (minCap !== undefined && buyerFee < minCap) buyerFee = minCap;
         if (maxCap !== undefined && buyerFee > maxCap) buyerFee = maxCap;
-        const totalAmount = subtotal + buyerFee;
+        
+        const validDeliveryFee = (fulfillmentType === 'DELIVERY' && deliveryFee) ? parseFloat(deliveryFee) : 0;
+        const totalAmount = subtotal + buyerFee + validDeliveryFee;
 
         // [NEW] Generate Pickup Code
         let pickupCode = null;
@@ -92,6 +94,7 @@ const createOrder = async (req, res) => {
                 totalAmount: totalAmount,
                 buyerFee: buyerFee, 
                 platformFee: buyerFee,
+                deliveryFee: validDeliveryFee,
                 paymentMethod: 'CASH', // [UPDATED] Always CASH for "Bayar Ditempat"
                 amountPaid: 0, // Not paid yet
                 change: 0,
@@ -117,6 +120,8 @@ const createOrder = async (req, res) => {
 
         try {
             emitToTenant(store.tenantId, 'orders:updated', result);
+            // Notify Buyer (though they just created it, good for sync)
+            emitToOrder(result.id, 'order_status', result);
         } catch (e) {
             console.error('Socket emit failed', e);
         }
@@ -158,6 +163,8 @@ const confirmPayment = async (req, res) => {
 
         try {
             emitToTenant(order.tenantId, 'orders:updated', order);
+            // Notify Buyer
+            emitToOrder(order.id, 'payment_status', order);
         } catch (e) {
             console.error('Socket emit failed', e);
         }

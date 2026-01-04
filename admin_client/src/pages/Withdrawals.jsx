@@ -119,16 +119,18 @@ const Withdrawals = () => {
                         </Button>
                         <div className="flex bg-slate-100 p-1 rounded-lg">
                             {['PENDING', 'APPROVED', 'REJECTED'].map(status => (
-                                <button
+                                <Button
                                     key={status}
                                     onClick={() => setFilter(status)}
-                                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${filter === status
-                                        ? 'bg-white text-slate-900 shadow-sm'
-                                        : 'text-slate-500 hover:text-slate-700'
+                                    variant={filter === status ? 'default' : 'ghost'}
+                                    className={`rounded-md text-sm font-medium transition-all ${filter === status
+                                        ? 'bg-white text-slate-900 shadow-sm hover:bg-white/90'
+                                        : 'text-slate-500 hover:text-slate-700 hover:bg-transparent'
                                         }`}
+                                    size="sm"
                                 >
                                     {status.charAt(0) + status.slice(1).toLowerCase()}
-                                </button>
+                                </Button>
                             ))}
                         </div>
                     </div>

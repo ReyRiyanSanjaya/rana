@@ -1,22 +1,9 @@
-import 'package:flutter/foundation.dart';
+import 'package:rana_merchant/config/api_config.dart';
+import 'package:rana_merchant/config/app_config.dart';
 
+// Deprecated: Use AppConfig or ApiConfig instead
 class AppConstants {
-  // API Base URL - matches ApiService configuration
-  static const String _devUrl = 'http://10.0.2.2:4000';
-  static const String _webDevUrl = 'http://localhost:4000';
-  static const bool _isProduction = false;
-  
-  static String get baseUrl => _isProduction 
-      ? 'https://api.rana-app.com' 
-      : (kIsWeb ? _webDevUrl : _devUrl);
+  static String get baseUrl => ApiConfig.baseUrl;
 
-  static const List<String> productCategories = [
-    'All',
-    'Beverage',
-    'Food',
-    'Beans',
-    'Merchandise',
-    'Snack',
-    'Non-Coffee'
-  ];
+  static const List<String> productCategories = AppConfig.productCategories;
 }

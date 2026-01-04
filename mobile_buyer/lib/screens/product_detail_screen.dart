@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:rana_market/config/theme_config.dart';
 import 'package:rana_market/data/market_api_service.dart';
 import 'package:rana_market/providers/auth_provider.dart';
 import 'package:rana_market/providers/favorites_provider.dart';
 import 'package:rana_market/providers/market_cart_provider.dart';
 import 'package:rana_market/providers/reviews_provider.dart';
 import 'package:rana_market/screens/login_screen.dart';
+import 'package:rana_market/screens/market_reviews_screen.dart';
 import 'package:rana_market/screens/store_detail_screen.dart';
-import 'package:rana_market/screens/main_screen.dart';
-import 'package:rana_market/widgets/buyer_bottom_nav.dart';
+import 'package:rana_market/screens/market_cart_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ProductDetailScreen extends StatefulWidget {
@@ -73,6 +74,36 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     await prefs.setStringList(key, list);
   }
 
+  void _addToCart() {
+    final cart = Provider.of<MarketCartProvider>(context, listen: false);
+    final productId = (widget.product['id'] ?? '').toString();
+    final name = (widget.product['name'] ?? 'Produk').toString();
+    final price = (widget.product['sellingPrice'] as num?)?.toDouble() ?? 0.0;
+    final originalPrice = (widget.product['originalPrice'] as num?)?.toDouble();
+    final imageUrl = MarketApiService()
+        .resolveFileUrl(widget.product['imageUrl'] ?? widget.product['image']);
+    cart.addToCart(
+      widget.storeId,
+      widget.storeName,
+      productId,
+      name,
+      price,
+      storeAddress: widget.storeAddress,
+      storeLat: widget.storeLat,
+      storeLong: widget.storeLong,
+      originalPrice: originalPrice,
+      imageUrl: imageUrl,
+      quantity: _quantity,
+    );
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Produk ditambahkan ke keranjang'),
+        backgroundColor: ThemeConfig.colorSuccess,
+        duration: Duration(seconds: 1),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _scrollCtrl.removeListener(_onScroll);
@@ -83,18 +114,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final price =
-        (widget.product['sellingPrice'] as num?)?.toDouble() ?? 0;
-    final originalPrice =
-        (widget.product['originalPrice'] as num?)?.toDouble();
-    final hasPromo = originalPrice != null &&
-        originalPrice > price &&
-        originalPrice > 0;
-    final discountPct = hasPromo
-        ? ((1 - price / originalPrice) * 100).round()
-        : null;
-    final savedAmount =
-        hasPromo ? (originalPrice - price).toInt() : null;
+    final price = (widget.product['sellingPrice'] as num?)?.toDouble() ?? 0;
+    final originalPrice = (widget.product['originalPrice'] as num?)?.toDouble();
+    final hasPromo =
+        originalPrice != null && originalPrice > price && originalPrice > 0;
+    final discountPct =
+        hasPromo ? ((1 - price / originalPrice) * 100).round() : null;
+    final savedAmount = hasPromo ? (originalPrice - price).toInt() : null;
     final imageUrl = MarketApiService().resolveFileUrl(
       widget.product['imageUrl'] ?? widget.product['image'],
     );
@@ -106,8 +132,111 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           IconButton(
             icon: const Icon(Icons.share),
             onPressed: () {},
-          )
+          ),
+          Stack(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.shopping_cart),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const MarketCartScreen()),
+                  );
+                },
+              ),
+              Positioned(
+                right: 4,
+                top: 4,
+                child: Consumer<MarketCartProvider>(
+                  builder: (context, cart, _) {
+                    if (cart.itemCount == 0) return const SizedBox.shrink();
+                    return Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        '${cart.itemCount}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
         ],
+      ),
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, -5),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          child: Row(
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.remove, size: 20),
+                      onPressed: () {
+                        if (_quantity > 1) {
+                          setState(() => _quantity--);
+                        }
+                      },
+                    ),
+                    Text(
+                      '$_quantity',
+                      style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.add, size: 20),
+                      onPressed: () {
+                        setState(() => _quantity++);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: _addToCart,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: ThemeConfig.brandColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    '+ Keranjang',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
       body: Column(
         children: [
@@ -118,7 +247,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   SizedBox(
-                    height: 250,
+                    height: ThemeConfig.isTablet(context) ? 320 : 250,
                     width: double.infinity,
                     child: Stack(
                       children: [
@@ -129,18 +258,36 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                   child: const Icon(Icons.image,
                                       size: 100, color: Colors.grey),
                                 )
-                              : Image.network(
-                                  imageUrl,
-                                  fit: BoxFit.cover,
-                                  errorBuilder:
-                                      (context, error, stackTrace) {
-                                    return Container(
-                                      color: Colors.grey.shade200,
-                                      child: const Icon(Icons.image,
-                                          size: 100, color: Colors.grey),
-                                    );
-                                  },
-                                ),
+                              : (ThemeConfig.isTablet(context)
+                                  ? Hero(
+                                      tag: widget.product['id'] ??
+                                          widget.product['imageUrl'] ??
+                                          widget.product['name'],
+                                      child: Image.network(
+                                        imageUrl,
+                                        fit: BoxFit.cover,
+                                        errorBuilder:
+                                            (context, error, stackTrace) {
+                                          return Container(
+                                            color: Colors.grey.shade200,
+                                            child: const Icon(Icons.image,
+                                                size: 100, color: Colors.grey),
+                                          );
+                                        },
+                                      ),
+                                    )
+                                  : Image.network(
+                                      imageUrl,
+                                      fit: BoxFit.cover,
+                                      errorBuilder:
+                                          (context, error, stackTrace) {
+                                        return Container(
+                                          color: Colors.grey.shade200,
+                                          child: const Icon(Icons.image,
+                                              size: 100, color: Colors.grey),
+                                        );
+                                      },
+                                    )),
                         ),
                         if (discountPct != null)
                           Positioned(
@@ -150,7 +297,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFE07A5F)
+                                color: ThemeConfig.brandColor
                                     .withValues(alpha: 0.9),
                                 borderRadius: BorderRadius.circular(12),
                               ),
@@ -172,8 +319,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                   fav.isFavorite(widget.product['id']);
                               return Container(
                                 decoration: BoxDecoration(
-                                  color:
-                                      Colors.white.withValues(alpha: 0.85),
+                                  color: Colors.white.withValues(alpha: 0.85),
                                   shape: BoxShape.circle,
                                 ),
                                 child: IconButton(
@@ -181,12 +327,17 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                     isFav
                                         ? Icons.favorite
                                         : Icons.favorite_border,
-                                    color: isFav
-                                        ? Colors.red
-                                        : Colors.grey,
+                                    color: isFav ? Colors.red : Colors.grey,
                                   ),
-                                  onPressed: () => fav
-                                      .toggleFavorite(widget.product['id']),
+                                  onPressed: () {
+                                    final auth = Provider.of<AuthProvider>(
+                                        context,
+                                        listen: false);
+                                    final phone =
+                                        auth.user?['phone'] as String?;
+                                    fav.toggleFavorite(widget.product['id'],
+                                        phone: phone);
+                                  },
                                 ),
                               );
                             },
@@ -206,7 +357,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                               fontSize: 24, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 8),
-        if (hasPromo) ...[
+                        if (hasPromo) ...[
                           Text(
                             'Rp ${originalPrice.toInt()}',
                             style: const TextStyle(
@@ -222,21 +373,21 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                 style: const TextStyle(
                                     fontSize: 22,
                                     fontWeight: FontWeight.bold,
-                                    color: Color(0xFFE07A5F)),
+                                    color: ThemeConfig.brandColor),
                               ),
                               const SizedBox(width: 8),
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 8, vertical: 2),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFE07A5F)
+                                  color: ThemeConfig.brandColor
                                       .withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(999),
                                 ),
                                 child: Text(
                                   '-$discountPct%',
                                   style: const TextStyle(
-                                      color: Color(0xFFE07A5F),
+                                      color: ThemeConfig.brandColor,
                                       fontSize: 12,
                                       fontWeight: FontWeight.w600),
                                 ),
@@ -248,7 +399,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             Text(
                               'Hemat Rp $savedAmount',
                               style: const TextStyle(
-                                  color: Color(0xFF81B29A),
+                                  color: ThemeConfig.colorSuccess,
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600),
                             ),
@@ -259,16 +410,19 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             style: const TextStyle(
                                 fontSize: 22,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFFE07A5F)),
+                                color: ThemeConfig.brandColor),
                           ),
                         const SizedBox(height: 8),
                         Consumer<ReviewsProvider>(
                           builder: (context, rev, _) {
-                            final avg = rev.getAverage(widget.product['id']);
+                            final avg =
+                                (widget.product['averageRating'] as num?)
+                                        ?.toDouble() ??
+                                    rev.getAverage(widget.product['id']);
                             return Row(
                               children: [
-                                Icon(Icons.star,
-                                    color: Color(0xFFF2CC8F), size: 18),
+                                const Icon(Icons.star,
+                                    color: ThemeConfig.colorRating, size: 18),
                                 Text(avg.toStringAsFixed(1)),
                               ],
                             );
@@ -300,7 +454,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                 ),
                                 child: const Icon(
                                   Icons.store,
-                                  color: Color(0xFFE07A5F),
+                                  color: ThemeConfig.brandColor,
                                 ),
                               ),
                               const SizedBox(width: 16),
@@ -318,7 +472,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                     const SizedBox(height: 4),
                                     Text(
                                       (widget.storeAddress ??
-                                              widget.product['storeAddress'])
+                                                  widget
+                                                      .product['storeAddress'])
                                               ?.toString() ??
                                           'Alamat tidak tersedia',
                                       maxLines: 2,
@@ -360,7 +515,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                   minimumSize: const Size(0, 0),
                                   tapTargetSize:
                                       MaterialTapTargetSize.shrinkWrap,
-                                  foregroundColor: const Color(0xFFE07A5F),
+                                  foregroundColor: ThemeConfig.brandColor,
                                 ),
                                 child: const Text(
                                   'Kunjungi Toko',
@@ -401,8 +556,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                         vertical: 4.0),
                                     child: Row(
                                       children: [
-                                        Icon(Icons.star,
-                                            size: 16, color: Color(0xFFF2CC8F)),
+                                        const Icon(Icons.star,
+                                            size: 16,
+                                            color: ThemeConfig.colorRating),
                                         const SizedBox(width: 4),
                                         Text('$star'),
                                         const SizedBox(width: 8),
@@ -414,7 +570,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                             minHeight: 8,
                                             backgroundColor:
                                                 Colors.grey.shade200,
-                                            color: Color(0xFFF2CC8F),
+                                            color: ThemeConfig.colorRating,
                                           ),
                                         ),
                                         const SizedBox(width: 8),
@@ -476,15 +632,110 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         Consumer<ReviewsProvider>(
                           builder: (context, rev, _) {
                             final list = rev.getReviews(widget.product['id']);
+                            if (list.isEmpty) {
+                              return Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 16),
+                                child: Text(
+                                  'Belum ada ulasan tertulis.',
+                                  style: TextStyle(color: Colors.grey.shade500),
+                                ),
+                              );
+                            }
                             return Column(
                               children: [
-                                for (final r in list)
-                                  ListTile(
-                                    leading: Icon(Icons.star,
-                                        color: Color(0xFFF2CC8F)),
-                                    title: Text(
-                                        '${r['userName']} • ${(r['rating'] as int).toString()}'),
-                                    subtitle: Text(r['comment'] ?? ''),
+                                for (final r in list.take(3))
+                                  Container(
+                                    margin: const EdgeInsets.only(bottom: 12),
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey.shade50,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            CircleAvatar(
+                                              radius: 12,
+                                              backgroundColor:
+                                                  Colors.grey.shade300,
+                                              backgroundImage: r['user']
+                                                          ?['imageUrl'] !=
+                                                      null
+                                                  ? NetworkImage(
+                                                      MarketApiService()
+                                                          .resolveFileUrl(
+                                                              r['user']
+                                                                  ['imageUrl']))
+                                                  : null,
+                                              child:
+                                                  r['user']?['imageUrl'] == null
+                                                      ? const Icon(Icons.person,
+                                                          size: 14,
+                                                          color: Colors.white)
+                                                      : null,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: Text(
+                                                r['userName'] ??
+                                                    r['user']?['name'] ??
+                                                    'Pengguna',
+                                                style: const TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 12),
+                                              ),
+                                            ),
+                                            Row(
+                                              children: List.generate(
+                                                  5,
+                                                  (i) => Icon(
+                                                        Icons.star,
+                                                        size: 12,
+                                                        color: i <
+                                                                (r['rating'] ??
+                                                                    0)
+                                                            ? ThemeConfig
+                                                                .colorRating
+                                                            : Colors
+                                                                .grey.shade300,
+                                                      )),
+                                            ),
+                                          ],
+                                        ),
+                                        if (r['comment'] != null &&
+                                            r['comment'].toString().isNotEmpty)
+                                          Padding(
+                                            padding:
+                                                const EdgeInsets.only(top: 8),
+                                            child: Text(
+                                              r['comment'],
+                                              style: TextStyle(
+                                                  fontSize: 13,
+                                                  color: Colors.grey.shade800),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                if (list.length > 3)
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => MarketReviewsScreen(
+                                            productId:
+                                                widget.product['id'].toString(),
+                                            productName: widget.product['name'],
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    child: const Text('Lihat Semua Ulasan'),
                                   ),
                               ],
                             );
@@ -499,7 +750,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                               icon: Icon(
                                 Icons.star,
                                 color: _rating >= val
-                                    ? Color(0xFFF2CC8F)
+                                    ? const Color(0xFFF2CC8F)
                                     : Colors.grey.shade400,
                               ),
                             );
@@ -552,116 +803,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             ),
           ),
 
-          // Bottom Action Bar
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(color: Colors.white, boxShadow: [
-              BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, -5))
-            ]),
-            child: Row(
-              children: [
-                // Quantity
-                Container(
-                  decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade300),
-                      borderRadius: BorderRadius.circular(8)),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.remove),
-                        onPressed: () {
-                          if (_quantity > 1) setState(() => _quantity--);
-                        },
-                      ),
-                      Text('$_quantity',
-                          style: const TextStyle(fontWeight: FontWeight.bold)),
-                      IconButton(
-                        icon: const Icon(Icons.add),
-                        onPressed: () => setState(() => _quantity++),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 16),
-
-                // Add Button
-                Expanded(
-                  child: FilledButton(
-                    onPressed: () {
-                      try {
-                        final cart = Provider.of<MarketCartProvider>(context,
-                            listen: false);
-
-                        // Add quantity times
-                        for (var i = 0; i < _quantity; i++) {
-                          cart.addToCart(
-                            widget.storeId,
-                            widget.storeName,
-                            widget.product['id'],
-                            widget.product['name'],
-                            price,
-                            storeAddress: widget.storeAddress,
-                            storeLat: widget.storeLat,
-                            storeLong: widget.storeLong,
-                            originalPrice: originalPrice,
-                            imageUrl: imageUrl,
-                          );
-                        }
-
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                            content: Text(
-                                '${widget.product['name']} ditambahkan ke keranjang')));
-                        Navigator.pop(context);
-                      } catch (e) {
-                        if (e.toString().contains('DIFFERENT_STORE')) {
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                              content: Text(
-                                  'Hanya bisa pesan dari 1 Resto sekaligus!')));
-                        }
-                      }
-                    },
-                    style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16)),
-                    child: const Text('Tambah Keranjang'),
-                  ),
-                )
-              ],
-            ),
-          )
+          // Bottom Action Bar removed (duplicate)
         ],
-      ),
-      bottomNavigationBar: BuyerBottomNav(
-        selectedIndex: 0,
-        onSelected: (index) {
-          if (index == 0) {
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(
-                  builder: (_) => const MainScreen(initialIndex: 0)),
-              (route) => false,
-            );
-          } else if (index == 1) {
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(
-                  builder: (_) => const MainScreen(initialIndex: 1)),
-              (route) => false,
-            );
-          } else if (index == 2) {
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(
-                  builder: (_) => const MainScreen(initialIndex: 2)),
-              (route) => false,
-            );
-          } else if (index == 3) {
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(
-                  builder: (_) => const MainScreen(initialIndex: 3)),
-              (route) => false,
-            );
-          }
-        },
       ),
     );
   }

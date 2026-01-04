@@ -200,9 +200,9 @@ const Transactions = () => {
                     <div className="mt-4 pt-4 border-t border-slate-100 text-sm text-slate-500 flex justify-between">
                         <span>Filter active: {total} records found</span>
                         {(startDate || endDate || area || category || paymentStatus || paymentMethod) && (
-                            <button onClick={() => {
+                            <Button variant="link" onClick={() => {
                                 setStartDate(''); setEndDate(''); setArea(''); setCategory(''); setPaymentStatus(''); setPaymentMethod('');
-                            }} className="text-blue-600 hover:underline">Clear Filters</button>
+                            }} className="text-blue-600 h-auto p-0 hover:no-underline hover:text-blue-800">Clear Filters</Button>
                         )}
                     </div>
                 </Card>

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'package:rana_merchant/config/assets_config.dart';
+
 class NoConnectionScreen extends StatelessWidget {
   final VoidCallback onRetry;
 
@@ -19,7 +21,7 @@ class NoConnectionScreen extends StatelessWidget {
             children: [
               SizedBox(
                 height: 200,
-                child: Lottie.asset('assets/lottie/empty_store.json'),
+                child: Lottie.asset(AssetsConfig.lottieEmptyStore),
               ),
               const SizedBox(height: 24),
               Text(

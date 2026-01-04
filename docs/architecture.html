@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arsitektur Sistem - Dokumentasi Rana Market</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <nav class="sidebar">
+        <a href="index.html" class="brand">Rana Market 🐸</a>
+        <ul class="nav-links">
+            <li class="nav-item"><a href="index.html" class="nav-link">🏠 Pengantar</a></li>
+            <li class="nav-item"><a href="architecture.html" class="nav-link active">🏗️ Arsitektur Sistem</a></li>
+            <li class="nav-item"><a href="database-schema.html" class="nav-link">💾 Database Schema</a></li>
+            <li class="nav-item"><a href="security.html" class="nav-link">🔒 Keamanan</a></li>
+            <li class="nav-item"><a href="server-deployment.html" class="nav-link">🖥️ Server Deployment</a></li>
+            <li class="nav-item"><a href="mobile-deployment.html" class="nav-link">📱 Mobile Deployment</a></li>
+            <li class="nav-item"><a href="api-integration.html" class="nav-link">🔌 Integrasi API</a></li>
+            <li class="nav-item"><a href="cicd.html" class="nav-link">🚀 CI/CD Pipeline</a></li>
+            <li class="nav-item"><a href="tools.html" class="nav-link">🛠️ Tools & Utils</a></li>
+            <li class="nav-item"><a href="user-manual.html" class="nav-link">📖 Panduan Admin</a></li>
+            <li class="nav-item"><a href="maintenance.html" class="nav-link">🛠️ Maintenance & Ops</a></li>
+            <li class="nav-item"><a href="troubleshooting.html" class="nav-link">❓ Troubleshooting</a></li>
+        </ul>
+    </nav>
+
+    <main class="main-content">
+        <h1>Arsitektur Sistem</h1>
+        <p>Rana Market menggunakan arsitektur <em>Client-Server</em> modern dengan komunikasi REST API.</p>
+
+        <h2>Diagram Teknologi (Tech Stack)</h2>
+        
+        <table border="1">
+            <thead>
+                <tr>
+                    <th>Komponen</th>
+                    <th>Teknologi</th>
+                    <th>Fungsi Utama</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Backend API</strong></td>
+                    <td>Node.js (Express.js)</td>
+                    <td>Logika bisnis, autentikasi, manajemen data.</td>
+                </tr>
+                <tr>
+                    <td><strong>Database</strong></td>
+                    <td>PostgreSQL + Prisma ORM</td>
+                    <td>Penyimpanan data relasional yang kuat.</td>
+                </tr>
+                <tr>
+                    <td><strong>Mobile App</strong></td>
+                    <td>Flutter (Dart)</td>
+                    <td>Antarmuka pengguna untuk Pembeli (Buyer) dan Penjual (Merchant).</td>
+                </tr>
+                <tr>
+                    <td><strong>Web Server</strong></td>
+                    <td>Nginx</td>
+                    <td>Reverse Proxy, SSL termination, Load balancing.</td>
+                </tr>
+                <tr>
+                    <td><strong>Process Manager</strong></td>
+                    <td>PM2</td>
+                    <td>Menjaga server tetap hidup (auto-restart) dan monitoring.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>Alur Data (Data Flow)</h2>
+        <ol>
+            <li><strong>User Request:</strong> Pengguna membuka aplikasi Mobile.</li>
+            <li><strong>API Call:</strong> Aplikasi mengirim request HTTP (GET/POST) ke <code>api.ranamarket.com</code>.</li>
+            <li><strong>Nginx:</strong> Menerima request dari internet (port 80/443) dan meneruskannya ke Node.js (port 4000).</li>
+            <li><strong>Node.js Controller:</strong> Memproses logika bisnis (validasi, hitung harga, dll).</li>
+            <li><strong>Prisma & DB:</strong> Mengambil atau menyimpan data ke PostgreSQL.</li>
+            <li><strong>Response:</strong> Data dikirim kembali ke aplikasi Mobile dalam format JSON.</li>
+        </ol>
+
+        <h2>Struktur Folder</h2>
+        <div class="code-block">
+            <pre>
+d:\rana
+├── mobile_buyer/       # Source code aplikasi Flutter
+│   ├── lib/            # Kode logika Dart
+│   ├── android/        # Konfigurasi native Android
+│   └── assets/         # Gambar dan icon
+├── server/             # Source code Backend Node.js
+│   ├── src/            # Kode sumber API
+│   │   ├── controllers/
+│   │   ├── routes/
+│   │   ├── services/   # Logika bisnis kompleks (PPOB, WA)
+│   │   └── index.js    # Entry point
+│   ├── prisma/         # Schema database & Seeders
+│   └── deploy/         # Konfigurasi Nginx & PM2
+└── docs/               # Dokumentasi ini
+            </pre>
+        </div>
+        
+        <footer>
+            &copy; 2026 Rana Market Team. All rights reserved.
+        </footer>
+    </main>
+    <script src="js/main.js"></script>
+</body>
+</html>

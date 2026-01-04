@@ -4,6 +4,7 @@ import AdminLayout from '../components/AdminLayout';
 import { Table, Thead, Tbody, Th, Td, Tr } from '../components/ui/Table';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
+import Button from '../components/ui/Button';
 import { Package, Calendar, Clock } from 'lucide-react';
 
 const Merchants = () => {
@@ -101,23 +102,37 @@ const Merchants = () => {
 
     return (
         <AdminLayout>
-            <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-semibold text-slate-900">Merchants</h1>
-                    <p className="text-slate-500 mt-1">View list of all registered stores and their balances.</p>
-                </div>
-                <div className="w-full md:w-72">
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-2xl font-bold text-slate-900">Merchants Management</h1>
+                <Button className="shadow-sm">
+                    + Add Merchant
+                </Button>
+            </div>
+
+            <Card className="mb-6">
+                <div className="p-4 flex flex-col md:flex-row gap-4 items-center">
                     <input
                         type="text"
-                        placeholder="Search stores, owners..."
-                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none text-sm transition shadow-sm"
+                        placeholder="Search merchant, tenant, email..."
+                        className="flex-1 px-4 py-2 border border-slate-300 rounded-lg outline-none focus:border-indigo-500 w-full"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                     />
+                    <select 
+                        className="px-4 py-2 border border-slate-300 rounded-lg outline-none text-sm bg-white min-w-[150px]"
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                    >
+                        <option value="">All Status</option>
+                        <option value="ACTIVE">Active</option>
+                        <option value="TRIAL">Trial</option>
+                        <option value="EXPIRED">Expired</option>
+                        <option value="CANCELLED">Cancelled</option>
+                    </select>
                 </div>
-            </div>
+            </Card>
 
-            <Card className="overflow-hidden border border-slate-200 shadow-sm">
+            <Card className="overflow-hidden">
                 <Table>
                     <Thead>
                         <Tr>
@@ -178,8 +193,8 @@ const Merchants = () => {
                                     )}
                                 </Td>
                                 <Td className="text-right flex gap-2 justify-end">
-                                    <button onClick={() => window.location.href = `/merchants/${m.id}`} className="text-slate-600 hover:text-slate-900 text-sm font-medium border border-slate-300 px-3 py-1 rounded">View</button>
-                                    <button onClick={() => handleEditSubscription(m)} className="text-indigo-600 hover:text-indigo-800 text-sm font-medium border border-indigo-200 bg-indigo-50 px-3 py-1 rounded">Manage Plan</button>
+                                    <Button variant="outline" size="sm" onClick={() => window.location.href = `/merchants/${m.id}`}>View</Button>
+                                    <Button variant="secondary" size="sm" onClick={() => handleEditSubscription(m)}>Manage Plan</Button>
                                 </Td>
                             </Tr>
                         ))}
@@ -249,8 +264,8 @@ const Merchants = () => {
                         )}
 
                         <div className="flex justify-end gap-3 mt-8">
-                            <button onClick={() => { setSelectedMerchant(null); setSelectedPackage(null); }} className="px-4 py-2 text-slate-600 hover:bg-slate-50 rounded-lg">Cancel</button>
-                            <button onClick={handleSaveSubscription} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Save Changes</button>
+                            <Button variant="ghost" onClick={() => { setSelectedMerchant(null); setSelectedPackage(null); }}>Cancel</Button>
+                            <Button onClick={handleSaveSubscription}>Save Changes</Button>
                         </div>
                     </div>
                 </div>
