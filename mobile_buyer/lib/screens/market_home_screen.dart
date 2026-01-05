@@ -249,6 +249,8 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
       {'icon': Icons.local_offer, 'label': 'Promo'},
     ];
 
+    final scale = ThemeConfig.tabletScale(context, mobile: 1.0);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
@@ -268,7 +270,7 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
             child: Column(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: EdgeInsets.all(12 * scale),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
@@ -280,14 +282,17 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                       ),
                     ],
                   ),
-                  child: Icon(cat['icon'] as IconData,
-                      color: ThemeConfig.brandColor, size: 28),
+                  child: Icon(
+                    cat['icon'] as IconData,
+                    color: ThemeConfig.brandColor,
+                    size: 28 * scale,
+                  ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8 * scale),
                 Text(
                   cat['label'] as String,
-                  style: const TextStyle(
-                    fontSize: 12,
+                  style: TextStyle(
+                    fontSize: 12 * scale,
                     fontWeight: FontWeight.w500,
                     color: ThemeConfig.textSecondary,
                   ),
@@ -301,6 +306,8 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
   }
 
   Widget _buildFlashSale() {
+    final scale = ThemeConfig.tabletScale(context, mobile: 1.0);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -310,10 +317,10 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
             children: [
               const Icon(Icons.flash_on, color: ThemeConfig.colorWarning),
               const SizedBox(width: 8),
-              const Text(
+              Text(
                 'Flash Sale',
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: 18 * scale,
                   fontWeight: FontWeight.bold,
                   color: ThemeConfig.textPrimary,
                 ),
@@ -333,10 +340,11 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                       const SizedBox(width: 4),
                       Text(
                         '${_flashSaleDuration.inHours.toString().padLeft(2, '0')}:${(_flashSaleDuration.inMinutes % 60).toString().padLeft(2, '0')}:${(_flashSaleDuration.inSeconds % 60).toString().padLeft(2, '0')}',
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12 * scale,
+                        ),
                       )
                     ],
                   ),
@@ -407,8 +415,8 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                               product['name'],
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 14,
+                              style: TextStyle(
+                                fontSize: 14 * scale,
                                 fontWeight: FontWeight.w600,
                                 color: ThemeConfig.textPrimary,
                               ),
@@ -416,8 +424,8 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                             const SizedBox(height: 4),
                             Text(
                               'Rp ${product['sellingPrice']}',
-                              style: const TextStyle(
-                                fontSize: 14,
+                              style: TextStyle(
+                                fontSize: 14 * scale,
                                 fontWeight: FontWeight.bold,
                                 color: ThemeConfig.brandColor,
                               ),
@@ -427,7 +435,7 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                               Text(
                                 'Rp ${product['originalPrice']}',
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 12 * scale,
                                   decoration: TextDecoration.lineThrough,
                                   color: Colors.grey.shade400,
                                 ),
@@ -447,6 +455,8 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
   }
 
   Widget _buildPopularProducts() {
+    final scale = ThemeConfig.tabletScale(context, mobile: 1.0);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -455,9 +465,12 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Paling Populer',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: 18 * scale,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               TextButton(
                 onPressed: () {
@@ -553,18 +566,20 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                                 top: 8,
                                 left: 8,
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 6, vertical: 2),
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 6 * scale,
+                                      vertical: 2 * scale),
                                   decoration: BoxDecoration(
                                     color: Colors.red,
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: Text(
                                     '$discountPct%',
-                                    style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold),
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10 * scale,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -580,24 +595,28 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                               item['name'] ?? '',
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold, fontSize: 13),
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13 * scale,
+                              ),
                             ),
                             const SizedBox(height: 4),
                             Text(
                               'Rp ${price.toInt()}',
-                              style: const TextStyle(
-                                  color: ThemeConfig.brandColor,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14),
+                              style: TextStyle(
+                                color: ThemeConfig.brandColor,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14 * scale,
+                              ),
                             ),
                             if (hasPromo)
                               Text(
                                 'Rp ${original.toInt()}',
-                                style: const TextStyle(
-                                    decoration: TextDecoration.lineThrough,
-                                    color: Colors.grey,
-                                    fontSize: 10),
+                                style: TextStyle(
+                                  decoration: TextDecoration.lineThrough,
+                                  color: Colors.grey,
+                                  fontSize: 10 * scale,
+                                ),
                               ),
                             const SizedBox(height: 4),
                             Row(
@@ -608,8 +627,10 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                                 Text(
                                   (item['averageRating'] ?? 0)
                                       .toStringAsFixed(1),
-                                  style: const TextStyle(
-                                      fontSize: 11, color: Colors.grey),
+                                  style: TextStyle(
+                                    fontSize: 11 * scale,
+                                    color: Colors.grey,
+                                  ),
                                 ),
                               ],
                             ),
@@ -628,16 +649,22 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
   }
 
   Widget _buildNearbyStoresHeader() {
-    return const SliverToBoxAdapter(
+    final scale = ThemeConfig.tabletScale(context, mobile: 1.0);
+    return SliverToBoxAdapter(
       child: Padding(
-        padding: EdgeInsets.fromLTRB(16, 24, 16, 12),
-        child: Text(
-          'Toko di Sekitarmu',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: ThemeConfig.textPrimary,
-          ),
+        padding: EdgeInsets.fromLTRB(16, 24 * scale, 16, 12 * scale),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Toko di Sekitarmu',
+              style: TextStyle(
+                fontSize: 18 * scale,
+                fontWeight: FontWeight.bold,
+                color: ThemeConfig.textPrimary,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -650,12 +677,16 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              const Icon(Icons.store_mall_directory_outlined,
-                  size: 48, color: Colors.grey),
-              const SizedBox(height: 8),
+              Icon(Icons.store_mall_directory_outlined,
+                  size: 48 * ThemeConfig.tabletScale(context, mobile: 1.0),
+                  color: Colors.grey),
+              SizedBox(height: 8 * ThemeConfig.tabletScale(context, mobile: 1.0)),
               Text(
                 'Belum ada toko yang sesuai',
-                style: TextStyle(color: Colors.grey.shade600),
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontSize: 14 * ThemeConfig.tabletScale(context, mobile: 1.0),
+                ),
               ),
             ],
           ),
@@ -665,32 +696,35 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
 
     if (ThemeConfig.isTablet(context)) {
       final cols = ThemeConfig.gridColumns(context, mobile: 2);
-      return SliverGrid(
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: cols,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-          childAspectRatio: 2.8,
-        ),
-        delegate: SliverChildBuilderDelegate(
-          (context, index) {
-            final store = _filteredStores[index];
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: _StoreCard(store: store),
-            );
-          },
-          childCount: _filteredStores.length,
+      return SliverPadding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        sliver: SliverGrid(
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: cols,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+            childAspectRatio: 2.8,
+          ),
+          delegate: SliverChildBuilderDelegate(
+            (context, index) {
+              final store = _filteredStores[index];
+              return _StoreCard(store: store);
+            },
+            childCount: _filteredStores.length,
+          ),
         ),
       );
     }
-    return SliverList(
-      delegate: SliverChildBuilderDelegate(
-        (context, index) {
-          final store = _filteredStores[index];
-          return _StoreCard(store: store);
-        },
-        childCount: _filteredStores.length,
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      sliver: SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (context, index) {
+            final store = _filteredStores[index];
+            return _StoreCard(store: store);
+          },
+          childCount: _filteredStores.length,
+        ),
       ),
     );
   }
@@ -703,6 +737,8 @@ class _StoreCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scale = ThemeConfig.tabletScale(context, mobile: 1.0);
+
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -713,8 +749,8 @@ class _StoreCard extends StatelessWidget {
         );
       },
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        padding: const EdgeInsets.all(12),
+        margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8 * scale),
+        padding: EdgeInsets.all(12 * scale),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(ThemeConfig.radiusLarge),
@@ -732,12 +768,12 @@ class _StoreCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(ThemeConfig.radiusMedium),
               child: CachedNetworkImage(
                 imageUrl: MarketApiService().resolveFileUrl(store['imageUrl']),
-                width: 80,
-                height: 80,
+                width: 80 * scale,
+                height: 80 * scale,
                 fit: BoxFit.cover,
                 errorWidget: (_, __, ___) => Container(
-                  width: 80,
-                  height: 80,
+                  width: 80 * scale,
+                  height: 80 * scale,
                   color: Colors.grey[200],
                   child: const Icon(Icons.store),
                 ),
@@ -750,8 +786,8 @@ class _StoreCard extends StatelessWidget {
                 children: [
                   Text(
                     store['name'] ?? 'Toko Tanpa Nama',
-                    style: const TextStyle(
-                      fontSize: 16,
+                    style: TextStyle(
+                      fontSize: 16 * scale,
                       fontWeight: FontWeight.bold,
                       color: ThemeConfig.textPrimary,
                     ),
@@ -764,24 +800,24 @@ class _StoreCard extends StatelessWidget {
                       const SizedBox(width: 4),
                       Text(
                         '${store['rating'] ?? 0.0}',
-                        style: const TextStyle(
-                          fontSize: 12,
+                        style: TextStyle(
+                          fontSize: 12 * scale,
                           fontWeight: FontWeight.bold,
                           color: ThemeConfig.textPrimary,
                         ),
                       ),
                       const SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 6 * scale, vertical: 2 * scale),
                         decoration: BoxDecoration(
                           color: ThemeConfig.beigeBackground,
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
                           store['category'] ?? 'Umum',
-                          style: const TextStyle(
-                            fontSize: 10,
+                          style: TextStyle(
+                            fontSize: 10 * scale,
                             color: ThemeConfig.brandColor,
                             fontWeight: FontWeight.w600,
                           ),
@@ -793,7 +829,7 @@ class _StoreCard extends StatelessWidget {
                   Row(
                     children: [
                       Icon(Icons.location_on_outlined,
-                          size: 14, color: Colors.grey.shade500),
+                          size: 14 * scale, color: Colors.grey.shade500),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
@@ -801,7 +837,7 @@ class _StoreCard extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 12 * scale,
                             color: Colors.grey.shade600,
                           ),
                         ),
@@ -839,6 +875,7 @@ class _HomeAppBarDelegate extends SliverPersistentHeaderDelegate {
   @override
   Widget build(
       BuildContext context, double shrinkOffset, bool overlapsContent) {
+    final scale = ThemeConfig.tabletScale(context, mobile: 1.0);
     // 0.0 -> Expanded, 1.0 -> Collapsed
     final progress = shrinkOffset / (maxExtent - minExtent);
     final clampedProgress = progress.clamp(0.0, 1.0);
@@ -864,22 +901,23 @@ class _HomeAppBarDelegate extends SliverPersistentHeaderDelegate {
             top: topPadding,
             left: 0,
             right: 0,
-            height: 50,
+            height: 50 * scale,
             child: Opacity(
               opacity: locOpacity,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding:
+                    EdgeInsets.symmetric(horizontal: 16 * scale),
                 child: Row(
                   children: [
-                    const Icon(Icons.location_on,
-                        color: Colors.white, size: 16),
-                    const SizedBox(width: 4),
+                    Icon(Icons.location_on,
+                        color: Colors.white, size: 16 * scale),
+                    SizedBox(width: 4 * scale),
                     Expanded(
                       child: Text(
                         address,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
-                          fontSize: 14,
+                          fontSize: 14 * scale,
                           fontWeight: FontWeight.w500,
                         ),
                         maxLines: 1,
@@ -894,17 +932,17 @@ class _HomeAppBarDelegate extends SliverPersistentHeaderDelegate {
 
           // 2. Search Bar & Icons (Pinned to bottom)
           Positioned(
-            left: 16,
-            right: 16,
-            bottom: 10,
-            height: 48,
+            left: 16 * scale,
+            right: 16 * scale,
+            bottom: 10 * scale,
+            height: 48 * scale,
             child: Row(
               children: [
                 Expanded(
                   child: GestureDetector(
                     onTap: onSearchTap,
                     child: Container(
-                      height: 48,
+                      height: 48 * scale,
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(24),
@@ -916,15 +954,18 @@ class _HomeAppBarDelegate extends SliverPersistentHeaderDelegate {
                           ),
                         ],
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      padding: EdgeInsets.symmetric(
+                          horizontal: 16 * scale),
                       child: Row(
                         children: [
-                          const Icon(Icons.search, color: Colors.grey),
-                          const SizedBox(width: 12),
+                          Icon(Icons.search, color: Colors.grey, size: 20 * scale),
+                          SizedBox(width: 12 * scale),
                           Expanded(
                             child: Text(
                               'Cari makan, jajan, atau toko...',
-                              style: TextStyle(color: Colors.grey.shade400),
+                              style: TextStyle(
+                                  color: Colors.grey.shade400,
+                                  fontSize: 14 * scale),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -934,9 +975,10 @@ class _HomeAppBarDelegate extends SliverPersistentHeaderDelegate {
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8 * scale),
                 IconButton(
-                  icon: const Icon(Icons.notifications, color: Colors.white),
+                  icon:
+                      const Icon(Icons.notifications, color: Colors.white),
                   onPressed: onNotifTap,
                 ),
                 Consumer<MarketCartProvider>(
@@ -952,23 +994,23 @@ class _HomeAppBarDelegate extends SliverPersistentHeaderDelegate {
                         ),
                         if (itemCount > 0)
                           Positioned(
-                            right: 8,
-                            top: 8,
+                            right: 8 * scale,
+                            top: 8 * scale,
                             child: Container(
-                              padding: const EdgeInsets.all(2),
+                              padding: EdgeInsets.all(2 * scale),
                               decoration: const BoxDecoration(
                                 color: Colors.red,
                                 shape: BoxShape.circle,
                               ),
-                              constraints: const BoxConstraints(
-                                minWidth: 16,
-                                minHeight: 16,
+                              constraints: BoxConstraints(
+                                minWidth: 16 * scale,
+                                minHeight: 16 * scale,
                               ),
                               child: Text(
                                 '$itemCount',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 10,
+                                  fontSize: 10 * scale,
                                   fontWeight: FontWeight.bold,
                                 ),
                                 textAlign: TextAlign.center,
@@ -988,10 +1030,10 @@ class _HomeAppBarDelegate extends SliverPersistentHeaderDelegate {
   }
 
   @override
-  double get maxExtent => topPadding + 50 + 60 + 10; // Top + Loc + SearchSpace
+  double get maxExtent => topPadding + 50 + 60 + 10;
 
   @override
-  double get minExtent => topPadding + 60 + 10; // Top + SearchSpace
+  double get minExtent => topPadding + 60 + 10;
 
   @override
   bool shouldRebuild(covariant _HomeAppBarDelegate oldDelegate) {

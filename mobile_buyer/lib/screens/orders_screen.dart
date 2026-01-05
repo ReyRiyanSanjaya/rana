@@ -185,10 +185,14 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final scale = ThemeConfig.tabletScale(context, mobile: 1.0);
+
     return Scaffold(
       backgroundColor: ThemeConfig.beigeBackground,
       appBar: AppBar(
-        title: const Text('Pesanan Saya'),
+        title: Text('Pesanan Saya',
+            style: TextStyle(
+                fontSize: 18 * scale, fontWeight: FontWeight.bold)),
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
@@ -223,7 +227,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         SizedBox(
-                          height: 160,
+                          height: 160 * scale,
                           child: Lottie.network(
                             AppConfig.emptyOrderLottieUrl,
                             fit: BoxFit.contain,
@@ -234,8 +238,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
                           ),
                         ),
                         const SizedBox(height: 16),
-                        const Text('Belum ada pesanan aktif',
-                            style: TextStyle(color: Colors.grey, fontSize: 16)),
+                        Text('Belum ada pesanan aktif',
+                            style: TextStyle(
+                                color: Colors.grey, fontSize: 16 * scale)),
                       ],
                     ),
                   ),

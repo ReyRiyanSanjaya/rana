@@ -111,6 +111,27 @@ class _PpobScreenState extends State<PpobScreen>
   }
 
   Widget _buildServicesTab() {
+    final isTablet = MediaQuery.of(context).size.shortestSide >= 600;
+    final width = MediaQuery.of(context).size.width;
+    int crossAxisCount = 4;
+    double aspectRatio = 0.8;
+
+    if (isTablet) {
+      if (width >= 1200) {
+        crossAxisCount = 6;
+        aspectRatio = 0.9;
+      } else if (width >= 900) {
+        crossAxisCount = 5;
+        aspectRatio = 0.9;
+      } else {
+        crossAxisCount = 4;
+        aspectRatio = 0.85;
+      }
+    } else if (width <= 360) {
+      crossAxisCount = 3;
+      aspectRatio = 0.8;
+    }
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -181,11 +202,12 @@ class _PpobScreenState extends State<PpobScreen>
           GridView.builder(
             physics: const NeverScrollableScrollPhysics(),
             shrinkWrap: true,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 4,
-                childAspectRatio: 0.8,
-                mainAxisSpacing: 16,
-                crossAxisSpacing: 16),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              childAspectRatio: aspectRatio,
+              mainAxisSpacing: 16,
+              crossAxisSpacing: 16,
+            ),
             itemCount: _services.length,
             itemBuilder: (context, index) {
               final s = _services[index];

@@ -87,6 +87,7 @@ class _MarketSearchScreenState extends State<MarketSearchScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final scale = ThemeConfig.tabletScale(context, mobile: 1.0);
     return Scaffold(
       backgroundColor: ThemeConfig.beigeBackground,
       appBar: AppBar(
@@ -114,26 +115,26 @@ class _MarketSearchScreenState extends State<MarketSearchScreen> {
       ),
       body: Column(
         children: [
-          _buildFilters(),
+          _buildFilters(scale),
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _results.isEmpty
-                    ? _buildEmptyState()
-                    : _buildGrid(),
-          ),
+                    ? _buildEmptyState(scale)
+                    : _buildGrid(scale),
+      ),
         ],
       ),
     );
   }
 
-  Widget _buildFilters() {
+  Widget _buildFilters(double scale) {
     return Container(
       color: Colors.white,
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: EdgeInsets.symmetric(vertical: 8 * scale),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: EdgeInsets.symmetric(horizontal: 16 * scale),
         child: Row(
           children: [
             // Sort Button
@@ -153,29 +154,35 @@ class _MarketSearchScreenState extends State<MarketSearchScreen> {
                 const PopupMenuItem(value: 'distance', child: Text('Terdekat')),
               ],
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: EdgeInsets.symmetric(
+                    horizontal: 12 * scale, vertical: 6 * scale),
                 decoration: BoxDecoration(
                   border: Border.all(color: Colors.grey.shade300),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
-                    Icon(Icons.sort, size: 16),
-                    SizedBox(width: 4),
-                    Text('Urutkan'),
+                    Icon(Icons.sort, size: 16 * scale),
+                    SizedBox(width: 4 * scale),
+                    Text(
+                      'Urutkan',
+                      style: TextStyle(fontSize: 13 * scale),
+                    ),
                   ],
                 ),
               ),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: 8 * scale),
             // Category Chips
             ..._categories.map((cat) {
               final isActive = _activeCategory == cat['id'];
               return Padding(
-                padding: const EdgeInsets.only(right: 8),
+                padding: EdgeInsets.only(right: 8 * scale),
                 child: FilterChip(
-                  label: Text(cat['label']!),
+                  label: Text(
+                    cat['label']!,
+                    style: TextStyle(fontSize: 12 * scale),
+                  ),
                   selected: isActive,
                   onSelected: (val) {
                     setState(
@@ -205,7 +212,7 @@ class _MarketSearchScreenState extends State<MarketSearchScreen> {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(double scale) {
     // Show history if query is empty
     if (_searchCtrl.text.isEmpty) {
       return Consumer<SearchHistoryProvider>(
@@ -215,11 +222,13 @@ class _MarketSearchScreenState extends State<MarketSearchScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.search, size: 64, color: Colors.grey.shade300),
-                  const SizedBox(height: 16),
+                  Icon(Icons.search,
+                      size: 64 * scale, color: Colors.grey.shade300),
+                  SizedBox(height: 16 * scale),
                   Text(
                     'Mulai pencarian...',
-                    style: TextStyle(color: Colors.grey.shade600),
+                    style: TextStyle(
+                        color: Colors.grey.shade600, fontSize: 14 * scale),
                   ),
                 ],
               ),
@@ -229,20 +238,22 @@ class _MarketSearchScreenState extends State<MarketSearchScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(16 * scale),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
+                    Text(
                       'Pencarian Terakhir',
-                      style:
-                          TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16 * scale),
                     ),
                     TextButton(
                       onPressed: () =>
                           context.read<SearchHistoryProvider>().clear(),
-                      child: const Text('Hapus',
-                          style: TextStyle(color: Colors.red)),
+                      child: Text('Hapus',
+                          style: TextStyle(
+                              color: Colors.red, fontSize: 13 * scale)),
                     )
                   ],
                 ),
@@ -253,8 +264,12 @@ class _MarketSearchScreenState extends State<MarketSearchScreen> {
                   itemBuilder: (context, index) {
                     final q = history.history[index];
                     return ListTile(
-                      leading: const Icon(Icons.history, color: Colors.grey),
-                      title: Text(q),
+                      leading:
+                          const Icon(Icons.history, color: Colors.grey),
+                      title: Text(
+                        q,
+                        style: TextStyle(fontSize: 13 * scale),
+                      ),
                       onTap: () {
                         _searchCtrl.text = q;
                         _doSearch();
@@ -273,28 +288,30 @@ class _MarketSearchScreenState extends State<MarketSearchScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.search_off, size: 64, color: Colors.grey.shade300),
-          const SizedBox(height: 16),
+          Icon(Icons.search_off,
+              size: 64 * scale, color: Colors.grey.shade300),
+          SizedBox(height: 16 * scale),
           Text(
             'Tidak ada hasil ditemukan',
-            style: TextStyle(color: Colors.grey.shade600),
+            style: TextStyle(
+                color: Colors.grey.shade600, fontSize: 14 * scale),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildGrid() {
+  Widget _buildGrid(double scale) {
     final isTab = ThemeConfig.isTablet(context);
     final cols = ThemeConfig.gridColumns(context, mobile: 2);
     final ratio = isTab ? 0.75 : 0.7;
     return GridView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16 * scale),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: cols,
         childAspectRatio: ratio,
         crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
+        mainAxisSpacing: 16 * scale,
       ),
       itemCount: _results.length,
       itemBuilder: (context, index) {
@@ -365,19 +382,20 @@ class _MarketSearchScreenState extends State<MarketSearchScreen> {
                               ),
                         if (item['distance'] != null)
                           Positioned(
-                            bottom: 8,
-                            right: 8,
+                            bottom: 8 * scale,
+                            right: 8 * scale,
                             child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 2),
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 6 * scale, vertical: 2 * scale),
                               decoration: BoxDecoration(
                                 color: Colors.black.withValues(alpha: 0.6),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
                                 '${(item['distance'] as num).toStringAsFixed(1)} km',
-                                style: const TextStyle(
-                                    color: Colors.white, fontSize: 10),
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10 * scale),
                               ),
                             ),
                           ),
@@ -386,7 +404,7 @@ class _MarketSearchScreenState extends State<MarketSearchScreen> {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.all(8.0),
+                  padding: EdgeInsets.all(8.0 * scale),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -394,29 +412,31 @@ class _MarketSearchScreenState extends State<MarketSearchScreen> {
                         item['name'] ?? '',
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 13),
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13 * scale),
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4 * scale),
                       Text(
                         'Rp ${item['sellingPrice']}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: ThemeConfig.brandColor,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4 * scale),
                       Row(
                         children: [
-                          const Icon(Icons.store, size: 12, color: Colors.grey),
-                          const SizedBox(width: 4),
+                          Icon(Icons.store,
+                              size: 12 * scale, color: Colors.grey),
+                          SizedBox(width: 4 * scale),
                           Expanded(
                             child: Text(
                               item['store']?['name'] ?? '',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                  color: Colors.grey, fontSize: 11),
+                              style: TextStyle(
+                                  color: Colors.grey, fontSize: 11 * scale),
                             ),
                           ),
                         ],

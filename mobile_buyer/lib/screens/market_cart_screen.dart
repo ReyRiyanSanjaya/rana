@@ -150,6 +150,7 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
   Widget build(BuildContext context) {
     final cart = Provider.of<MarketCartProvider>(context);
     final auth = Provider.of<AuthProvider>(context);
+    final scale = ThemeConfig.tabletScale(context, mobile: 1.0);
 
     // Debug print for user data
     if (auth.isAuthenticated && auth.user != null) {
@@ -159,8 +160,11 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
     return Scaffold(
       backgroundColor: ThemeConfig.beigeBackground,
       appBar: AppBar(
-        title: const Text('Keranjang Belanja',
-            style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        title: Text('Keranjang Belanja',
+            style: TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+                fontSize: 18 * scale)),
         backgroundColor: Colors.white,
         elevation: 0,
         leading: const BackButton(color: Colors.black),
@@ -172,17 +176,19 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
                 children: [
                   Lottie.network(
                     AppConfig.emptyOrderLottieUrl, // Empty Cart Animation
-                    width: 200,
-                    height: 200,
+                    width: 200 * scale,
+                    height: 200 * scale,
                     errorBuilder: (_, __, ___) => Icon(
                         Icons.shopping_cart_outlined,
                         size: 80,
                         color: Colors.grey.shade300),
                   ),
                   const SizedBox(height: 16),
-                  Text('Keranjang masih kosong',
-                      style:
-                          TextStyle(color: Colors.grey.shade600, fontSize: 16)),
+                  Text(
+                    'Keranjang masih kosong',
+                    style: TextStyle(
+                        color: Colors.grey.shade600, fontSize: 16 * scale),
+                  ),
                 ],
               ),
             )
@@ -232,8 +238,8 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
                                               .clearDeliveryFee();
                                         },
                                         child: Container(
-                                          padding: const EdgeInsets.symmetric(
-                                              vertical: 12),
+                                          padding: EdgeInsets.symmetric(
+                                              vertical: 12 * scale),
                                           decoration: BoxDecoration(
                                             color: _fulfillmentType == 'PICKUP'
                                                 ? ThemeConfig.brandColor
@@ -250,11 +256,13 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
                                             child: Text(
                                               'Ambil Sendiri',
                                               style: TextStyle(
-                                                  color: _fulfillmentType ==
-                                                          'PICKUP'
-                                                      ? Colors.white
-                                                      : Colors.black,
-                                                  fontWeight: FontWeight.bold),
+                                                color: _fulfillmentType ==
+                                                        'PICKUP'
+                                                    ? Colors.white
+                                                    : Colors.black,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 14 * scale,
+                                              ),
                                             ),
                                           ),
                                         ),
@@ -269,8 +277,8 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
                                           _updateDeliveryFee();
                                         },
                                         child: Container(
-                                          padding: const EdgeInsets.symmetric(
-                                              vertical: 12),
+                                          padding: EdgeInsets.symmetric(
+                                              vertical: 12 * scale),
                                           decoration: BoxDecoration(
                                             color:
                                                 _fulfillmentType == 'DELIVERY'
@@ -288,11 +296,13 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
                                             child: Text(
                                               'Diantar',
                                               style: TextStyle(
-                                                  color: _fulfillmentType ==
-                                                          'DELIVERY'
-                                                      ? Colors.white
-                                                      : Colors.black,
-                                                  fontWeight: FontWeight.bold),
+                                                color: _fulfillmentType ==
+                                                        'DELIVERY'
+                                                    ? Colors.white
+                                                    : Colors.black,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 14 * scale,
+                                              ),
                                             ),
                                           ),
                                         ),
@@ -316,9 +326,9 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
                                                   BorderRadius.circular(8),
                                               borderSide: BorderSide.none),
                                           contentPadding:
-                                              const EdgeInsets.symmetric(
-                                                  horizontal: 16,
-                                                  vertical: 12))),
+                                              EdgeInsets.symmetric(
+                                                  horizontal: 16 * scale,
+                                                  vertical: 12 * scale))),
                                   const SizedBox(height: 12),
                                 ],
                                 TextField(
@@ -333,9 +343,9 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
                                             borderRadius:
                                                 BorderRadius.circular(8),
                                             borderSide: BorderSide.none),
-                                        contentPadding:
-                                            const EdgeInsets.symmetric(
-                                                horizontal: 16, vertical: 12))),
+                                        contentPadding: EdgeInsets.symmetric(
+                                            horizontal: 16 * scale,
+                                            vertical: 12 * scale))),
                                 const SizedBox(height: 12),
                                 TextField(
                                     controller: _phoneCtrl,
@@ -350,9 +360,9 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
                                             borderRadius:
                                                 BorderRadius.circular(8),
                                             borderSide: BorderSide.none),
-                                        contentPadding:
-                                            const EdgeInsets.symmetric(
-                                                horizontal: 16, vertical: 12))),
+                                        contentPadding: EdgeInsets.symmetric(
+                                            horizontal: 16 * scale,
+                                            vertical: 12 * scale))),
                                 const SizedBox(height: 12),
                                 Container(
                                   padding: const EdgeInsets.all(12),
@@ -360,10 +370,10 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
                                       color: ThemeConfig.colorInfo
                                           .withValues(alpha: 0.1),
                                       borderRadius: BorderRadius.circular(8)),
-                                  child: const Row(
+                                  child: Row(
                                     children: [
                                       Icon(Icons.info_outline,
-                                          size: 20,
+                                          size: 20 * scale,
                                           color: ThemeConfig.colorInfo),
                                       SizedBox(width: 8),
                                       Expanded(
@@ -371,7 +381,7 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
                                             'Pastikan nomor HP benar untuk konfirmasi pesanan.',
                                             style: TextStyle(
                                                 color: ThemeConfig.colorInfo,
-                                                fontSize: 12)),
+                                                fontSize: 12 * scale)),
                                       ),
                                     ],
                                   ),
@@ -383,7 +393,7 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
                       ),
                     ),
                     SizedBox(
-                      width: 340,
+                      width: ThemeConfig.isTablet(context) ? 380 : 340,
                       child: ListView(
                         padding: const EdgeInsets.all(16),
                         children: [
@@ -403,10 +413,10 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text('Rincian Pembayaran',
+                                Text('Rincian Pembayaran',
                                     style: TextStyle(
                                         fontWeight: FontWeight.bold,
-                                        fontSize: 16)),
+                                        fontSize: 16 * scale)),
                                 const SizedBox(height: 16),
                                 _buildSummaryRow(
                                     'Total Harga', cart.totalOriginalAmount),
@@ -424,14 +434,14 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
                                   children: [
-                                    const Text('Total Bayar',
+                                    Text('Total Bayar',
                                         style: TextStyle(
                                             fontWeight: FontWeight.bold,
-                                            fontSize: 16)),
+                                            fontSize: 16 * scale)),
                                     Text('Rp ${cart.grandTotal.toInt()}',
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                             fontWeight: FontWeight.bold,
-                                            fontSize: 18,
+                                            fontSize: 18 * scale,
                                             color: ThemeConfig.brandColor)),
                                   ],
                                 ),
@@ -453,14 +463,15 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
                                     borderRadius: BorderRadius.circular(12)),
                               ),
                               child: _isLoading
-                                  ? const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
+                                  ? SizedBox(
+                                      width: 20 * scale,
+                                      height: 20 * scale,
+                                      child: const CircularProgressIndicator(
                                           color: Colors.white, strokeWidth: 2))
-                                  : const Text('Pesan Sekarang',
+                                  : Text('Pesan Sekarang',
                                       style: TextStyle(
-                                          fontWeight: FontWeight.bold)),
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14 * scale)),
                             ),
                           ),
                         ],
@@ -734,19 +745,20 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
                                 mainAxisSize: MainAxisSize.min,
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text('Total Pembayaran',
+                                  Text('Total Pembayaran',
                                       style: TextStyle(
-                                          color: Colors.grey, fontSize: 12)),
+                                          color: Colors.grey,
+                                          fontSize: 12 * scale)),
                                   Text('Rp ${cart.grandTotal.toInt()}',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                           color: ThemeConfig.brandColor,
                                           fontWeight: FontWeight.bold,
-                                          fontSize: 20)),
+                                          fontSize: 20 * scale)),
                                 ],
                               ),
                             ),
                             SizedBox(
-                              width: 150,
+                              width: 150 * scale,
                               child: FilledButton(
                                 onPressed: _isLoading
                                     ? null
@@ -760,15 +772,16 @@ class _MarketCartScreenState extends State<MarketCartScreen> {
                                       borderRadius: BorderRadius.circular(12)),
                                 ),
                                 child: _isLoading
-                                    ? const SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(
+                                    ? SizedBox(
+                                        width: 20 * scale,
+                                        height: 20 * scale,
+                                        child: const CircularProgressIndicator(
                                             color: Colors.white,
                                             strokeWidth: 2))
-                                    : const Text('Pesan Sekarang',
+                                    : Text('Pesan Sekarang',
                                         style: TextStyle(
-                                            fontWeight: FontWeight.bold)),
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14 * scale)),
                               ),
                             ),
                           ],

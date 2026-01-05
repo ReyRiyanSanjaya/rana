@@ -114,6 +114,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final scale = ThemeConfig.tabletScale(context, mobile: 1.0);
+
     final price = (widget.product['sellingPrice'] as num?)?.toDouble() ?? 0;
     final originalPrice = (widget.product['originalPrice'] as num?)?.toDouble();
     final hasPromo =
@@ -127,7 +129,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.storeName),
+        title: Text(
+          widget.storeName,
+          style: TextStyle(fontSize: 16 * scale, fontWeight: FontWeight.w600),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.share),
@@ -151,16 +156,16 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   builder: (context, cart, _) {
                     if (cart.itemCount == 0) return const SizedBox.shrink();
                     return Container(
-                      padding: const EdgeInsets.all(4),
+                      padding: EdgeInsets.all(4 * scale),
                       decoration: const BoxDecoration(
                         color: Colors.red,
                         shape: BoxShape.circle,
                       ),
                       child: Text(
                         '${cart.itemCount}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
-                          fontSize: 10,
+                          fontSize: 10 * scale,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -173,7 +178,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         ],
       ),
       bottomNavigationBar: Container(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16 * scale),
         decoration: BoxDecoration(
           color: Colors.white,
           boxShadow: [
@@ -195,7 +200,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 child: Row(
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.remove, size: 20),
+                      icon: Icon(Icons.remove, size: 20 * scale),
                       onPressed: () {
                         if (_quantity > 1) {
                           setState(() => _quantity--);
@@ -204,11 +209,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     ),
                     Text(
                       '$_quantity',
-                      style: const TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                          fontSize: 16 * scale, fontWeight: FontWeight.bold),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.add, size: 20),
+                      icon: Icon(Icons.add, size: 20 * scale),
                       onPressed: () {
                         setState(() => _quantity++);
                       },
@@ -223,14 +228,16 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: ThemeConfig.brandColor,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    padding:
+                        EdgeInsets.symmetric(vertical: 16 * scale),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Text(
+                  child: Text(
                     '+ Keranjang',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                        fontSize: 16 * scale, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
@@ -247,7 +254,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   SizedBox(
-                    height: ThemeConfig.isTablet(context) ? 320 : 250,
+                    height: ThemeConfig.isTablet(context) ? 360 : 250,
                     width: double.infinity,
                     child: Stack(
                       children: [
@@ -294,8 +301,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             left: 16,
                             top: 16,
                             child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 8 * scale,
+                                  vertical: 4 * scale),
                               decoration: BoxDecoration(
                                 color: ThemeConfig.brandColor
                                     .withValues(alpha: 0.9),
@@ -303,9 +311,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                               ),
                               child: Text(
                                 '-$discountPct%',
-                                style: const TextStyle(
+                                style: TextStyle(
                                     color: Colors.white,
-                                    fontSize: 12,
+                                    fontSize: 12 * scale,
                                     fontWeight: FontWeight.bold),
                               ),
                             ),
@@ -353,32 +361,34 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       children: [
                         Text(
                           widget.product['name'],
-                          style: const TextStyle(
-                              fontSize: 24, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                              fontSize: 24 * scale,
+                              fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 8),
                         if (hasPromo) ...[
                           Text(
                             'Rp ${originalPrice.toInt()}',
-                            style: const TextStyle(
+                            style: TextStyle(
                                 decoration: TextDecoration.lineThrough,
                                 color: Colors.grey,
-                                fontSize: 14),
+                                fontSize: 14 * scale),
                           ),
                           const SizedBox(height: 4),
                           Row(
                             children: [
                               Text(
                                 'Rp ${price.toInt()}',
-                                style: const TextStyle(
-                                    fontSize: 22,
+                                style: TextStyle(
+                                    fontSize: 22 * scale,
                                     fontWeight: FontWeight.bold,
                                     color: ThemeConfig.brandColor),
                               ),
                               const SizedBox(width: 8),
                               Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 2),
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 8 * scale,
+                                    vertical: 2 * scale),
                                 decoration: BoxDecoration(
                                   color: ThemeConfig.brandColor
                                       .withValues(alpha: 0.1),
@@ -386,9 +396,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                 ),
                                 child: Text(
                                   '-$discountPct%',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                       color: ThemeConfig.brandColor,
-                                      fontSize: 12,
+                                      fontSize: 12 * scale,
                                       fontWeight: FontWeight.w600),
                                 ),
                               ),
@@ -398,17 +408,17 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             const SizedBox(height: 4),
                             Text(
                               'Hemat Rp $savedAmount',
-                              style: const TextStyle(
+                              style: TextStyle(
                                   color: ThemeConfig.colorSuccess,
-                                  fontSize: 12,
+                                  fontSize: 12 * scale,
                                   fontWeight: FontWeight.w600),
                             ),
                           ],
                         ] else
                           Text(
                             'Rp ${price.toInt()}',
-                            style: const TextStyle(
-                                fontSize: 22,
+                            style: TextStyle(
+                                fontSize: 22 * scale,
                                 fontWeight: FontWeight.bold,
                                 color: ThemeConfig.brandColor),
                           ),
@@ -423,7 +433,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                               children: [
                                 const Icon(Icons.star,
                                     color: ThemeConfig.colorRating, size: 18),
-                                Text(avg.toStringAsFixed(1)),
+                                const SizedBox(width: 4),
+                                Text(
+                                  avg.toStringAsFixed(1),
+                                  style: TextStyle(fontSize: 14 * scale),
+                                ),
                               ],
                             );
                           },
@@ -431,14 +445,15 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         const SizedBox(height: 16),
                         const Divider(),
                         const SizedBox(height: 16),
-                        const Text(
+                        Text(
                           'Informasi Toko',
                           style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 16),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16 * scale),
                         ),
                         const SizedBox(height: 12),
                         Container(
-                          padding: const EdgeInsets.all(16),
+                          padding: EdgeInsets.all(16 * scale),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(16),
@@ -446,8 +461,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           child: Row(
                             children: [
                               Container(
-                                width: 50,
-                                height: 50,
+                                width: 50 * scale,
+                                height: 50 * scale,
                                 decoration: BoxDecoration(
                                   color: Colors.grey.shade100,
                                   shape: BoxShape.circle,
@@ -464,9 +479,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                   children: [
                                     Text(
                                       widget.storeName,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontWeight: FontWeight.bold,
-                                        fontSize: 16,
+                                        fontSize: 16 * scale,
                                       ),
                                     ),
                                     const SizedBox(height: 4),
@@ -480,7 +495,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
                                         color: Colors.grey.shade600,
-                                        fontSize: 13,
+                                        fontSize: 13 * scale,
                                       ),
                                     ),
                                   ],
@@ -510,8 +525,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                   );
                                 },
                                 style: TextButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 8),
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 12 * scale,
+                                      vertical: 8 * scale),
                                   minimumSize: const Size(0, 0),
                                   tapTargetSize:
                                       MaterialTapTargetSize.shrinkWrap,
@@ -526,16 +542,19 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           ),
                         ),
                         const SizedBox(height: 24),
-                        const Text(
+                        Text(
                           'Deskripsi',
                           style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 16),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16 * scale),
                         ),
                         const SizedBox(height: 8),
                         Text(
                           widget.product['description'] ??
                               'Tidak ada deskripsi.',
-                          style: TextStyle(color: Colors.grey.shade600),
+                          style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 14 * scale),
                         ),
                         const SizedBox(height: 24),
                         Consumer<ReviewsProvider>(
@@ -547,8 +566,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text('Total ulasan: $total',
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.bold)),
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14 * scale)),
                                 const SizedBox(height: 8),
                                 for (int star = 5; star >= 1; star--)
                                   Padding(
@@ -560,7 +580,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                             size: 16,
                                             color: ThemeConfig.colorRating),
                                         const SizedBox(width: 4),
-                                        Text('$star'),
+                                        Text(
+                                          '$star',
+                                          style: TextStyle(
+                                              fontSize: 12 * scale),
+                                        ),
                                         const SizedBox(width: 8),
                                         Expanded(
                                           child: LinearProgressIndicator(
@@ -583,9 +607,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           },
                         ),
                         const SizedBox(height: 16),
-                        const Text('Ulasan Pembeli',
+                        Text('Ulasan Pembeli',
                             style: TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 16)),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16 * scale)),
                         const SizedBox(height: 8),
                         Row(
                           children: [
@@ -595,13 +620,17 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                     rev.sortFor(widget.product['id']);
                                 return DropdownButton<String>(
                                   value: currentSort,
-                                  items: const [
+                                  items: [
                                     DropdownMenuItem(
                                         value: 'newest',
-                                        child: Text('Terbaru')),
+                                        child: Text('Terbaru',
+                                            style: TextStyle(
+                                                fontSize: 14 * scale))),
                                     DropdownMenuItem(
                                         value: 'rating_desc',
-                                        child: Text('Terbanyak Bintang')),
+                                        child: Text('Terbanyak Bintang',
+                                            style: TextStyle(
+                                                fontSize: 14 * scale))),
                                   ],
                                   onChanged: (val) {
                                     if (val == null) return;
@@ -638,7 +667,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                     const EdgeInsets.symmetric(vertical: 16),
                                 child: Text(
                                   'Belum ada ulasan tertulis.',
-                                  style: TextStyle(color: Colors.grey.shade500),
+                                  style: TextStyle(
+                                      color: Colors.grey.shade500,
+                                      fontSize: 14 * scale),
                                 ),
                               );
                             }
@@ -647,7 +678,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                 for (final r in list.take(3))
                                   Container(
                                     margin: const EdgeInsets.only(bottom: 12),
-                                    padding: const EdgeInsets.all(12),
+                                    padding: EdgeInsets.all(12 * scale),
                                     decoration: BoxDecoration(
                                       color: Colors.grey.shade50,
                                       borderRadius: BorderRadius.circular(12),
@@ -684,9 +715,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                                 r['userName'] ??
                                                     r['user']?['name'] ??
                                                     'Pengguna',
-                                                style: const TextStyle(
+                                                style: TextStyle(
                                                     fontWeight: FontWeight.bold,
-                                                    fontSize: 12),
+                                                    fontSize: 12 * scale),
                                               ),
                                             ),
                                             Row(
@@ -711,12 +742,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                           Padding(
                                             padding:
                                                 const EdgeInsets.only(top: 8),
-                                            child: Text(
-                                              r['comment'],
-                                              style: TextStyle(
-                                                  fontSize: 13,
-                                                  color: Colors.grey.shade800),
-                                            ),
+                                              child: Text(
+                                                r['comment'],
+                                                style: TextStyle(
+                                                    fontSize: 13 * scale,
+                                                    color: Colors.grey.shade800),
+                                              ),
                                           ),
                                       ],
                                     ),
@@ -735,7 +766,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                         ),
                                       );
                                     },
-                                    child: const Text('Lihat Semua Ulasan'),
+                                    child: Text('Lihat Semua Ulasan',
+                                        style: TextStyle(
+                                            fontSize: 14 * scale)),
                                   ),
                               ],
                             );
@@ -752,6 +785,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                 color: _rating >= val
                                     ? const Color(0xFFF2CC8F)
                                     : Colors.grey.shade400,
+                                size: 24 * scale,
                               ),
                             );
                           }),
@@ -792,7 +826,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                   const SnackBar(
                                       content: Text('Ulasan terkirim')));
                             },
-                            child: const Text('Kirim Ulasan'),
+                            child: Text('Kirim Ulasan',
+                                style: TextStyle(fontSize: 14 * scale)),
                           ),
                         ),
                       ],

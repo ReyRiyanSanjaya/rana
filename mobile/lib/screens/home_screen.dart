@@ -863,7 +863,7 @@ class _HomeScreenState extends State<HomeScreen> {
       drawer: _buildDrawer(context),
       body: LayoutBuilder(
         builder: (context, constraints) {
-          bool isDesktop = constraints.maxWidth >= 900;
+          bool isDesktop = constraints.maxWidth >= 800;
 
           if (isDesktop) {
             return _buildDesktopLayout(context, constraints, cart);
@@ -2820,33 +2820,31 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildDesktopLayout(
       BuildContext context, BoxConstraints constraints, CartProvider cart) {
+    final bool hideCartSidebar = _desktopSelectedIndex == 7;
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 1. Navigation Rail
         _buildDesktopNavigationRail(),
-
-        // 2. Main Content
         Expanded(
-          flex: 7,
+          flex: hideCartSidebar ? 10 : 7,
           child: _buildDesktopContent(context, cart),
         ),
-
-        // 3. Persistent Cart Sidebar
-        Container(
-          width: 380, // Fixed width for sidebar
-          decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border(left: BorderSide(color: Colors.grey[200]!)),
-            boxShadow: [
-              BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(-4, 0))
-            ],
+        if (!hideCartSidebar)
+          Container(
+            width: 380,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border(left: BorderSide(color: Colors.grey[200]!)),
+              boxShadow: [
+                BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(-4, 0))
+              ],
+            ),
+            child: _buildCartSidebar(context, cart),
           ),
-          child: _buildCartSidebar(context, cart),
-        ),
       ],
     );
   }
@@ -2862,15 +2860,14 @@ class _HomeScreenState extends State<HomeScreen> {
         onDestinationSelected: (int index) {
           setState(() {
             _desktopSelectedIndex = index;
-            // Map index to mobile bottom nav index for compatibility
-            if (index == 0) _bottomNavIndex = 0; // Home
-            if (index == 1) _bottomNavIndex = 1; // Activity
-            if (index == 2) _bottomNavIndex = 2; // Wallet
-            if (index == 3) _bottomNavIndex = 3; // Profile
-
-            // Handle specific routes for other items if needed
-            if (index == 4) Navigator.pushNamed(context, '/products');
-            if (index == 5) Navigator.pushNamed(context, '/report');
+            if (index == 0) _bottomNavIndex = 0;
+            if (index == 1) _bottomNavIndex = 1;
+            if (index == 2) _bottomNavIndex = 0;
+            if (index == 3) _bottomNavIndex = 4;
+            if (index == 4) _bottomNavIndex = 0;
+            if (index == 5) _bottomNavIndex = 3;
+            if (index == 6) _bottomNavIndex = 0;
+            if (index == 7) _bottomNavIndex = 0;
           });
         },
         labelType: NavigationRailLabelType.all,
@@ -2907,7 +2904,6 @@ class _HomeScreenState extends State<HomeScreen> {
             selectedIcon: Icon(Icons.person),
             label: Text('Profil'),
           ),
-          // Extra Tablet Items
           NavigationRailDestination(
             icon: Icon(Icons.inventory_2_outlined),
             selectedIcon: Icon(Icons.inventory_2),
@@ -2918,17 +2914,28 @@ class _HomeScreenState extends State<HomeScreen> {
             selectedIcon: Icon(Icons.bar_chart),
             label: Text('Laporan'),
           ),
+          NavigationRailDestination(
+            icon: Icon(Icons.payments_outlined),
+            selectedIcon: Icon(Icons.payments),
+            label: Text('PPOB'),
+          ),
+          NavigationRailDestination(
+            icon: Icon(Icons.storefront_outlined),
+            selectedIcon: Icon(Icons.storefront),
+            label: Text('Kulakan'),
+          ),
         ],
       ),
     );
   }
 
   Widget _buildDesktopContent(BuildContext context, CartProvider cart) {
-    // If we are on Home tab (0), show the POS grid
     if (_desktopSelectedIndex == 0) {
+      final width = MediaQuery.of(context).size.width;
+      final crossAxisCount = width < 1100 ? 3 : 4;
+
       return Column(
         children: [
-          // Tablet Header
           Container(
             padding: const EdgeInsets.all(24),
             decoration: const BoxDecoration(
@@ -2983,27 +2990,42 @@ class _HomeScreenState extends State<HomeScreen> {
           // Categories
           _buildCategoryTabs(),
 
-          // Product Grid
           Expanded(
             child: _buildProductGrid(context, cart,
-                crossAxisCount: 4, // 4 items per row on tablet
-                aspectRatio: 0.85),
+                crossAxisCount: crossAxisCount, aspectRatio: 0.85),
           ),
         ],
       );
     }
 
-    // Placeholder for other tabs
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.construction, size: 64, color: Colors.grey[300]),
-          const SizedBox(height: 16),
-          Text('Fitur ini sedang dikembangkan',
-              style: GoogleFonts.outfit(fontSize: 18, color: Colors.grey[500]))
-        ],
-      ),
-    );
+    if (_desktopSelectedIndex == 1) {
+      return const OrderListScreen();
+    }
+
+    if (_desktopSelectedIndex == 2) {
+      return const WalletScreen();
+    }
+
+    if (_desktopSelectedIndex == 3) {
+      return const SettingsScreen();
+    }
+
+    if (_desktopSelectedIndex == 4) {
+      return const AddProductScreen();
+    }
+
+    if (_desktopSelectedIndex == 5) {
+      return const ReportScreen();
+    }
+
+    if (_desktopSelectedIndex == 6) {
+      return const PpobScreen();
+    }
+
+    if (_desktopSelectedIndex == 7) {
+      return const WholesaleMainScreen();
+    }
+
+    return const SizedBox.shrink();
   }
 }

@@ -154,6 +154,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final scale = ThemeConfig.tabletScale(context, mobile: 1.0);
     final status = _order['orderStatus'] ?? 'PENDING';
     final type = _order['fulfillmentType'] ?? 'PICKUP';
     final pickupCode = _order['pickupCode'] ?? _order['id'];
@@ -238,15 +239,15 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         onRefresh: _refreshOrder,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(16 * scale),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // 1. Status Timeline (Simplified)
               if (status != 'CANCELLED' && status != 'REJECTED')
                 Container(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  padding: const EdgeInsets.all(16),
+                  margin: EdgeInsets.only(bottom: 16 * scale),
+                  padding: EdgeInsets.all(16 * scale),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
@@ -308,7 +309,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                                   style: TextStyle(
                                     color: statusColor,
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 18,
+                                    fontSize: 18 * scale,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
@@ -323,7 +324,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                                             'ID: ${_order['id'].toString().substring(0, 12)}...',
                                             style: TextStyle(
                                                 color: Colors.grey.shade600,
-                                                fontSize: 12),
+                                                fontSize: 12 * scale),
                                           ),
                                           const SizedBox(width: 4),
                                           const Icon(Icons.copy,
@@ -333,7 +334,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                                     ),
                                     if (_order['createdAt'] != null)
                                       Padding(
-                                        padding: const EdgeInsets.only(top: 2),
+                                        padding:
+                                            EdgeInsets.only(top: 2 * scale),
                                         child: Text(
                                           DateFormat('dd MMM yyyy, HH:mm')
                                               .format(DateTime.parse(
@@ -341,7 +343,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                                                       .toString())),
                                           style: TextStyle(
                                               color: Colors.grey.shade500,
-                                              fontSize: 11),
+                                              fontSize: 11 * scale),
                                         ),
                                       ),
                                   ],
@@ -359,19 +361,19 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                             status == 'READY' ||
                             status == 'COMPLETED')) ...[
                       Padding(
-                        padding: const EdgeInsets.all(24),
+                        padding: EdgeInsets.all(24 * scale),
                         child: Column(
                           children: [
-                            const Text(
+                            Text(
                               'Kode Pengambilan',
                               style: TextStyle(
-                                  fontSize: 14,
+                                  fontSize: 14 * scale,
                                   color: Colors.grey,
                                   fontWeight: FontWeight.bold),
                             ),
-                            const SizedBox(height: 12),
+                            SizedBox(height: 12 * scale),
                             Container(
-                              padding: const EdgeInsets.all(16),
+                              padding: EdgeInsets.all(16 * scale),
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(12),
@@ -381,23 +383,23 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                               child: QrImageView(
                                 data: pickupCode.toString(),
                                 version: QrVersions.auto,
-                                size: 180.0,
+                                size: 180.0 * scale,
                                 backgroundColor: Colors.white,
                               ),
                             ),
-                            const SizedBox(height: 12),
+                            SizedBox(height: 12 * scale),
                             Text(
                               pickupCode.toString(),
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 24,
+                                  fontSize: 24 * scale,
                                   letterSpacing: 4),
                             ),
-                            const SizedBox(height: 8),
-                            const Text(
+                            SizedBox(height: 8 * scale),
+                            Text(
                               'Tunjukkan QR ini ke kasir',
-                              style:
-                                  TextStyle(color: Colors.grey, fontSize: 12),
+                              style: TextStyle(
+                                  color: Colors.grey, fontSize: 12 * scale),
                             ),
                           ],
                         ),
@@ -405,14 +407,14 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     ] else if (status == 'CANCELLED' ||
                         status == 'REJECTED') ...[
                       Padding(
-                        padding: const EdgeInsets.all(24),
+                        padding: EdgeInsets.all(24 * scale),
                         child: Column(
                           children: [
                             Icon(Icons.cancel_outlined,
-                                size: 50,
+                                size: 50 * scale,
                                 color: ThemeConfig.colorError
                                     .withValues(alpha: 0.2)),
-                            const SizedBox(height: 8),
+                            SizedBox(height: 8 * scale),
                             const Text(
                               'Pesanan ini telah dibatalkan',
                               style: TextStyle(color: Colors.grey),
@@ -425,14 +427,15 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 ),
               ),
 
-              const SizedBox(height: 24),
+              SizedBox(height: 24 * scale),
 
               // 3. Store Info
-              const Text('Informasi Toko',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-              const SizedBox(height: 12),
+              Text('Informasi Toko',
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 16 * scale)),
+              SizedBox(height: 12 * scale),
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(16 * scale),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
@@ -440,8 +443,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 child: Row(
                   children: [
                     Container(
-                      width: 50,
-                      height: 50,
+                      width: 50 * scale,
+                      height: 50 * scale,
                       decoration: BoxDecoration(
                         color: Colors.grey.shade100,
                         shape: BoxShape.circle,
@@ -449,23 +452,25 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                       child: const Icon(Icons.store,
                           color: ThemeConfig.brandColor),
                     ),
-                    const SizedBox(width: 16),
+                    SizedBox(width: 16 * scale),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             storeName ?? 'Nama Toko',
-                            style: const TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 16),
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16 * scale),
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: 4 * scale),
                           Text(
                             storeAddress ?? 'Alamat tidak tersedia',
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                                color: Colors.grey.shade600, fontSize: 13),
+                                color: Colors.grey.shade600,
+                                fontSize: 13 * scale),
                           ),
                         ],
                       ),
@@ -494,13 +499,13 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               ),
 
               if (type == 'DELIVERY') ...[
-                const SizedBox(height: 24),
-                const Text('Informasi Pengiriman',
-                    style:
-                        TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                const SizedBox(height: 12),
+                SizedBox(height: 24 * scale),
+                Text('Informasi Pengiriman',
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 16 * scale)),
+                SizedBox(height: 12 * scale),
                 Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(16 * scale),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
@@ -517,23 +522,25 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                         child: Icon(Icons.location_on,
                             color: Colors.blue.shade700),
                       ),
-                      const SizedBox(width: 16),
+                      SizedBox(width: 16 * scale),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
+                            Text(
                               'Alamat Tujuan',
                               style: TextStyle(
-                                  fontWeight: FontWeight.bold, fontSize: 16),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16 * scale),
                             ),
-                            const SizedBox(height: 4),
+                            SizedBox(height: 4 * scale),
                             Text(
                               deliveryAddress,
                               maxLines: 3,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                  color: Colors.grey.shade600, fontSize: 13),
+                                  color: Colors.grey.shade600,
+                                  fontSize: 13 * scale),
                             ),
                           ],
                         ),
@@ -543,14 +550,15 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                 ),
               ],
 
-              const SizedBox(height: 24),
+              SizedBox(height: 24 * scale),
 
               // 4. Order Items
-              const Text('Rincian Pesanan',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-              const SizedBox(height: 12),
+              Text('Rincian Pesanan',
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 16 * scale)),
+              SizedBox(height: 12 * scale),
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(16 * scale),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
@@ -639,8 +647,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Container(
-                                    width: 60,
-                                    height: 60,
+                                    width: 60 * scale,
+                                    height: 60 * scale,
                                     decoration: BoxDecoration(
                                       color: Colors.grey.shade100,
                                       borderRadius: BorderRadius.circular(10),
@@ -662,7 +670,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                                         : const Icon(Icons.fastfood,
                                             color: Colors.grey),
                                   ),
-                                  const SizedBox(width: 12),
+                                  SizedBox(width: 12 * scale),
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment:
@@ -670,26 +678,27 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                                       children: [
                                         Text(
                                           prodName,
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                               fontWeight: FontWeight.bold,
-                                              fontSize: 14),
+                                              fontSize: 14 * scale),
                                         ),
-                                        const SizedBox(height: 4),
+                                        SizedBox(height: 4 * scale),
                                         Text(
                                           '$qty x ${_formatCurrency(price)}',
                                           style: TextStyle(
                                               color: Colors.grey.shade600,
-                                              fontSize: 12),
+                                              fontSize: 12 * scale),
                                         ),
                                         if (note != null && note.isNotEmpty)
                                           Padding(
-                                            padding:
-                                                const EdgeInsets.only(top: 4),
+                                            padding: EdgeInsets.only(
+                                                top: 4 * scale),
                                             child: Text(
                                               'Catatan: $note',
                                               style: TextStyle(
-                                                  color: Colors.orange.shade700,
-                                                  fontSize: 11,
+                                                  color: Colors
+                                                      .orange.shade700,
+                                                  fontSize: 11 * scale,
                                                   fontStyle: FontStyle.italic),
                                             ),
                                           ),
@@ -698,16 +707,17 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                                   ),
                                   Text(
                                     _formatCurrency(total),
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.bold),
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14 * scale),
                                   ),
                                 ],
                               ),
-                              if (isCompleted)
-                                Padding(
-                                  padding:
-                                      const EdgeInsets.only(top: 8, left: 72),
-                                  child: GestureDetector(
+                            if (isCompleted)
+                              Padding(
+                                padding: EdgeInsets.only(
+                                    top: 8 * scale, left: 72 * scale),
+                                child: GestureDetector(
                                     onTap: () {
                                       // Same navigation logic
                                       final productMap = item['product'] is Map
@@ -741,12 +751,12 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                                         ),
                                       );
                                     },
-                                    child: const Text(
+                                    child: Text(
                                       'Beri Ulasan',
                                       style: TextStyle(
                                         color: ThemeConfig.brandColor,
                                         fontWeight: FontWeight.bold,
-                                        fontSize: 12,
+                                        fontSize: 12 * scale,
                                       ),
                                     ),
                                   ),
@@ -756,9 +766,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                         );
                       },
                     ),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 16),
-                      child: Divider(thickness: 1),
+                    Padding(
+                      padding:
+                          EdgeInsets.symmetric(vertical: 16 * scale),
+                      child: const Divider(thickness: 1),
                     ),
                     // Payment Details
                     _buildPaymentRow(
@@ -783,14 +794,15 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Total Pembayaran',
+                        Text('Total Pembayaran',
                             style: TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 16)),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16 * scale)),
                         Text(
                           _formatCurrency(_order['totalAmount'] as num? ?? 0),
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              fontSize: 18,
+                              fontSize: 18 * scale,
                               color: ThemeConfig.brandColor),
                         ),
                       ],
@@ -798,7 +810,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 40),
+              SizedBox(height: 40 * scale),
             ],
           ),
         ),
@@ -816,17 +828,22 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   }
 
   Widget _buildPaymentRow(String label, num value) {
+    final scale = ThemeConfig.tabletScale(context, mobile: 1.0);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: TextStyle(color: Colors.grey.shade600)),
+        Text(label,
+            style: TextStyle(
+                color: Colors.grey.shade600, fontSize: 13 * scale)),
         Text(_formatCurrency(value),
-            style: const TextStyle(fontWeight: FontWeight.w500)),
+            style: TextStyle(
+                fontWeight: FontWeight.w500, fontSize: 13 * scale)),
       ],
     );
   }
 
   Widget _buildStep(int step, int currentStep, String label) {
+    final scale = ThemeConfig.tabletScale(context, mobile: 1.0);
     final isActive = step <= currentStep;
     final isCompleted = step < currentStep;
 
@@ -834,8 +851,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       child: Column(
         children: [
           Container(
-            width: 24,
-            height: 24,
+            width: 24 * scale,
+            height: 24 * scale,
             decoration: BoxDecoration(
               color: isActive ? ThemeConfig.brandColor : Colors.grey.shade300,
               shape: BoxShape.circle,
@@ -847,18 +864,18 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                       step.toString(),
                       style: TextStyle(
                         color: isActive ? Colors.white : Colors.grey.shade600,
-                        fontSize: 12,
+                        fontSize: 12 * scale,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: 4 * scale),
           Text(
             label,
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 10,
+              fontSize: 10 * scale,
               color: isActive ? Colors.black : Colors.grey,
               fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
             ),

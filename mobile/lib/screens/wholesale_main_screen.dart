@@ -70,48 +70,69 @@ class _WholesaleMainScreenState extends State<WholesaleMainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final mediaSize = MediaQuery.of(context).size;
+    final isTablet = mediaSize.shortestSide >= 600;
+    final isDesktopWidth = mediaSize.width >= 800;
     return Scaffold(
       backgroundColor: const Color(0xFFFFF8F0),
       body: IndexedStack(
         index: _selectedIndex,
         children: _pages,
       ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, -5),
+      bottomNavigationBar: isDesktopWidth
+          ? null
+          : Container(
+              decoration: BoxDecoration(
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, -5),
+                  ),
+                ],
+              ),
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    left: 8,
+                    right: 8,
+                    bottom: isTablet ? 8 : 4,
+                  ),
+                  child: NavigationBar(
+                    height: isTablet ? 72 : 64,
+                    elevation: 0,
+                    backgroundColor: Colors.white,
+                    indicatorColor:
+                        ThemeConfig.brandColor.withOpacity(0.2),
+                    selectedIndex: _selectedIndex > 1 ? 0 : _selectedIndex,
+                    onDestinationSelected: _onItemTapped,
+                    destinations: const [
+                      NavigationDestination(
+                        icon: Icon(Icons.store_outlined),
+                        selectedIcon: Icon(
+                          Icons.store,
+                          color: ThemeConfig.brandColor,
+                        ),
+                        label: 'Belanja',
+                      ),
+                      NavigationDestination(
+                        icon: Icon(Icons.receipt_long_outlined),
+                        selectedIcon: Icon(
+                          Icons.receipt_long,
+                          color: Color(0xFFE07A5F),
+                        ),
+                        label: 'Pesanan',
+                      ),
+                      NavigationDestination(
+                        icon: Icon(Icons.qr_code_scanner),
+                        label: 'Scan',
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
-          ],
-        ),
-        child: NavigationBar(
-          height: 70,
-          elevation: 0,
-          backgroundColor: Colors.white,
-          indicatorColor: ThemeConfig.brandColor.withOpacity(0.2),
-          selectedIndex:
-              _selectedIndex > 1 ? 0 : _selectedIndex, // Prevent selecting Scan
-          onDestinationSelected: _onItemTapped,
-          destinations: const [
-            NavigationDestination(
-              icon: Icon(Icons.store_outlined),
-              selectedIcon: Icon(Icons.store, color: ThemeConfig.brandColor),
-              label: 'Belanja',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.receipt_long_outlined),
-              selectedIcon: Icon(Icons.receipt_long, color: Color(0xFFE07A5F)),
-              label: 'Pesanan',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.qr_code_scanner),
-              label: 'Scan',
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -155,12 +176,19 @@ class _WholesaleShopViewState extends State<WholesaleShopView> {
 
   @override
   Widget build(BuildContext context) {
+    final isTablet = MediaQuery.of(context).size.shortestSide >= 600;
+    final isWide = MediaQuery.of(context).size.width >= 900;
+
     return Scaffold(
       backgroundColor: const Color(0xFFFFF8F0),
       appBar: AppBar(
-        title: Text('Rana Grosir',
-            style: GoogleFonts.poppins(
-                fontWeight: FontWeight.bold, color: const Color(0xFFE07A5F))),
+        title: Text(
+          'Rana Grosir',
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.bold,
+            color: const Color(0xFFE07A5F),
+          ),
+        ),
         backgroundColor: Colors.transparent,
         iconTheme: const IconThemeData(color: Color(0xFFE07A5F)),
         elevation: 0,
@@ -173,7 +201,8 @@ class _WholesaleShopViewState extends State<WholesaleShopView> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (context) => const WholesaleCartScreen()),
+                      builder: (context) => const WholesaleCartScreen(),
+                    ),
                   );
                 },
               ),
@@ -209,117 +238,153 @@ class _WholesaleShopViewState extends State<WholesaleShopView> {
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
               onRefresh: _loadProducts,
-              child: GridView.builder(
-                padding: const EdgeInsets.all(16),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  childAspectRatio: 0.75,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                ),
-                itemCount: _products.length,
-                itemBuilder: (context, index) {
-                  final product = _products[index];
-                  return Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .primary
-                            .withOpacity(0.2),
-                        width: 1.5,
-                      ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  int crossAxisCount = 2;
+                  double childAspectRatio = 0.7;
+
+                  if (isTablet) {
+                    if (constraints.maxWidth >= 1200) {
+                      crossAxisCount = 5;
+                    } else if (constraints.maxWidth >= 1000) {
+                      crossAxisCount = 4;
+                    } else if (constraints.maxWidth >= 800) {
+                      crossAxisCount = 3;
+                    } else if (constraints.maxWidth >= 600) {
+                      crossAxisCount = 3;
+                    }
+                  } else if (isWide) {
+                    crossAxisCount = 3;
+                  }
+
+                  return Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      16,
+                      16,
+                      16,
+                      isTablet ? 32 : 24,
                     ),
-                    child: InkWell(
-                      onTap: () {
-                        // Show product details
-                      },
-                      borderRadius: BorderRadius.circular(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: Colors.grey.shade50,
-                                borderRadius: const BorderRadius.vertical(
-                                  top: Radius.circular(18),
-                                ),
-                              ),
-                              child: Center(
-                                child: product.image != null &&
-                                        product.image!.isNotEmpty
-                                    ? Image.network(product.image!,
-                                        fit: BoxFit.cover)
-                                    : Icon(
-                                        Icons.inventory_2_outlined,
-                                        size: 48,
-                                        color: Colors.grey[400],
-                                      ),
-                              ),
+                    child: GridView.builder(
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: crossAxisCount,
+                        childAspectRatio: childAspectRatio,
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 16,
+                      ),
+                      itemCount: _products.length,
+                      itemBuilder: (context, index) {
+                        final product = _products[index];
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .primary
+                                  .withOpacity(0.2),
+                              width: 1.5,
                             ),
                           ),
-                          Padding(
-                            padding: const EdgeInsets.all(12),
+                          child: InkWell(
+                            onTap: () {},
+                            borderRadius: BorderRadius.circular(20),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  product.name,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: GoogleFonts.poppins(
-                                      fontWeight: FontWeight.w600),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  FormatUtils.formatCurrency(
-                                      product.wholesalePrice),
-                                  style: GoogleFonts.poppins(
-                                    color: const Color(0xFFE07A5F),
-                                    fontWeight: FontWeight.bold,
+                                Expanded(
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey.shade50,
+                                      borderRadius: const BorderRadius.vertical(
+                                        top: Radius.circular(18),
+                                      ),
+                                    ),
+                                    child: Center(
+                                      child: product.image.isNotEmpty
+                                          ? Image.network(
+                                              product.image,
+                                              fit: BoxFit.cover,
+                                            )
+                                          : Icon(
+                                              Icons.inventory_2_outlined,
+                                              size: isTablet ? 56 : 48,
+                                              color: Colors.grey[400],
+                                            ),
+                                    ),
                                   ),
                                 ),
-                                const SizedBox(height: 8),
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: OutlinedButton(
-                                    onPressed: () {
-                                      Provider.of<WholesaleCartProvider>(
+                                Padding(
+                                  padding: const EdgeInsets.all(12),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        product.name,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: GoogleFonts.poppins(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        FormatUtils.formatCurrency(
+                                          product.wholesalePrice,
+                                        ),
+                                        style: GoogleFonts.poppins(
+                                          color: const Color(0xFFE07A5F),
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      SizedBox(
+                                        width: double.infinity,
+                                        child: OutlinedButton(
+                                          onPressed: () {
+                                            Provider.of<WholesaleCartProvider>(
                                               context,
-                                              listen: false)
-                                          .addItem(
+                                              listen: false,
+                                            ).addItem(
                                               product.id,
                                               product.name,
                                               product.wholesalePrice,
                                               product.image,
-                                              product.supplier);
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                              '${product.name} ditambahkan ke keranjang'),
-                                          duration: const Duration(seconds: 1),
-                                          backgroundColor:
-                                              const Color(0xFFE07A5F),
+                                              product.supplier,
+                                            );
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(
+                                              SnackBar(
+                                                content: Text(
+                                                  '${product.name} ditambahkan ke keranjang',
+                                                ),
+                                                duration: const Duration(
+                                                    seconds: 1),
+                                                backgroundColor:
+                                                    const Color(0xFFE07A5F),
+                                              ),
+                                            );
+                                          },
+                                          style: OutlinedButton.styleFrom(
+                                            foregroundColor:
+                                                const Color(0xFFE07A5F),
+                                            side: const BorderSide(
+                                              color: Color(0xFFE07A5F),
+                                            ),
+                                          ),
+                                          child: const Text('Tambah'),
                                         ),
-                                      );
-                                    },
-                                    style: OutlinedButton.styleFrom(
-                                      foregroundColor: const Color(0xFFE07A5F),
-                                      side: const BorderSide(
-                                          color: Color(0xFFE07A5F)),
-                                    ),
-                                    child: const Text('Tambah'),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                        ],
-                      ),
+                        );
+                      },
                     ),
                   );
                 },

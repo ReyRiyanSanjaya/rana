@@ -102,34 +102,35 @@ class _StoreDetailScreenState extends State<StoreDetailScreen>
 
   @override
   Widget build(BuildContext context) {
+    final scale = ThemeConfig.tabletScale(context, mobile: 1.0);
     return Scaffold(
       backgroundColor: ThemeConfig.beigeBackground,
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) {
           return [
-            _buildSliverAppBar(),
+            _buildSliverAppBar(scale),
           ];
         },
         body: TabBarView(
           controller: _tabController,
           children: [
-            _buildMenuTab(),
-            _buildReviewsTab(),
-            _buildInfoTab(),
+            _buildMenuTab(scale),
+            _buildReviewsTab(scale),
+            _buildInfoTab(scale),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildSliverAppBar() {
+  Widget _buildSliverAppBar(double scale) {
     final bannerUrl =
         MarketApiService().resolveFileUrl(_storeDetail['bannerUrl']);
     final logoUrl = MarketApiService().resolveFileUrl(_storeDetail['imageUrl']);
     final hasBanner = bannerUrl.isNotEmpty;
 
     return SliverAppBar(
-      expandedHeight: 200,
+      expandedHeight: 200 * scale,
       pinned: true,
       backgroundColor: ThemeConfig.brandColor,
       actions: [
@@ -155,16 +156,16 @@ class _StoreDetailScreenState extends State<StoreDetailScreen>
                 builder: (context, cart, _) {
                   if (cart.itemCount == 0) return const SizedBox.shrink();
                   return Container(
-                    padding: const EdgeInsets.all(4),
+                    padding: EdgeInsets.all(4 * scale),
                     decoration: const BoxDecoration(
                       color: Colors.red,
                       shape: BoxShape.circle,
                     ),
                     child: Text(
                       '${cart.itemCount}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
-                        fontSize: 10,
+                        fontSize: 10 * scale,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -209,13 +210,13 @@ class _StoreDetailScreenState extends State<StoreDetailScreen>
             // Store Info Content
             Positioned(
               bottom: 16,
-              left: 16,
-              right: 16,
+              left: 16 * scale,
+              right: 16 * scale,
               child: Row(
                 children: [
                   Container(
-                    width: 60,
-                    height: 60,
+                    width: 60 * scale,
+                    height: 60 * scale,
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
@@ -231,7 +232,7 @@ class _StoreDetailScreenState extends State<StoreDetailScreen>
                         ? const Icon(Icons.store, color: Colors.grey)
                         : null,
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12 * scale),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -239,34 +240,36 @@ class _StoreDetailScreenState extends State<StoreDetailScreen>
                       children: [
                         Text(
                           _storeDetail['name'] ?? 'Toko',
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: Colors.white,
-                            fontSize: 20,
+                            fontSize: 20 * scale,
                             fontWeight: FontWeight.bold,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 4),
+                        SizedBox(height: 4 * scale),
                         Row(
                           children: [
-                            const Icon(Icons.star,
-                                color: Colors.amber, size: 16),
-                            const SizedBox(width: 4),
+                            Icon(Icons.star,
+                                color: Colors.amber, size: 16 * scale),
+                            SizedBox(width: 4 * scale),
                             Text(
                               '${(_reviewStats['averageRating'] ?? 0).toStringAsFixed(1)} (${_reviewStats['totalReviews'] ?? 0})',
-                              style: const TextStyle(color: Colors.white),
+                              style:
+                                  TextStyle(color: Colors.white, fontSize: 12 * scale),
                             ),
-                            const SizedBox(width: 12),
-                            const Icon(Icons.location_on,
-                                color: Colors.white70, size: 16),
-                            const SizedBox(width: 4),
+                            SizedBox(width: 12 * scale),
+                            Icon(Icons.location_on,
+                                color: Colors.white70, size: 16 * scale),
+                            SizedBox(width: 4 * scale),
                             Expanded(
                               child: Text(
                                 _storeDetail['location'] ??
                                     _storeDetail['address'] ??
                                     '-',
-                                style: const TextStyle(color: Colors.white),
+                                style: TextStyle(
+                                    color: Colors.white, fontSize: 12 * scale),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -283,7 +286,7 @@ class _StoreDetailScreenState extends State<StoreDetailScreen>
         ),
       ),
       bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(48),
+        preferredSize: Size.fromHeight(48 * scale),
         child: Container(
           color: Colors.white,
           child: TabBar(
@@ -291,10 +294,16 @@ class _StoreDetailScreenState extends State<StoreDetailScreen>
             labelColor: ThemeConfig.brandColor,
             unselectedLabelColor: Colors.grey,
             indicatorColor: ThemeConfig.brandColor,
-            tabs: const [
-              Tab(text: 'Menu'),
-              Tab(text: 'Ulasan'),
-              Tab(text: 'Info'),
+            tabs: [
+              Tab(
+                  child: Text('Menu',
+                      style: TextStyle(fontSize: 14 * scale))),
+              Tab(
+                  child: Text('Ulasan',
+                      style: TextStyle(fontSize: 14 * scale))),
+              Tab(
+                  child: Text('Info',
+                      style: TextStyle(fontSize: 14 * scale))),
             ],
           ),
         ),
@@ -302,7 +311,7 @@ class _StoreDetailScreenState extends State<StoreDetailScreen>
     );
   }
 
-  Widget _buildMenuTab() {
+  Widget _buildMenuTab(double scale) {
     final products = _filteredProducts;
 
     return CustomScrollView(
@@ -312,7 +321,7 @@ class _StoreDetailScreenState extends State<StoreDetailScreen>
             children: [
               // Search Bar
               Padding(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(16 * scale),
                 child: TextField(
                   controller: _searchCtrl,
                   onChanged: _onSearchChanged,
@@ -325,24 +334,27 @@ class _StoreDetailScreenState extends State<StoreDetailScreen>
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
                     ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 16 * scale),
                   ),
                 ),
               ),
               // Categories
               if (_categories.isNotEmpty)
                 SizedBox(
-                  height: 40,
+                  height: 40 * scale,
                   child: ListView.separated(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    padding: EdgeInsets.symmetric(horizontal: 16 * scale),
                     scrollDirection: Axis.horizontal,
                     itemCount: _categories.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 8),
+                    separatorBuilder: (_, __) =>
+                        SizedBox(width: 8 * scale),
                     itemBuilder: (context, index) {
                       final cat = _categories[index];
                       final isSelected = cat == _selectedCategory;
                       return ChoiceChip(
-                        label: Text(cat),
+                        label: Text(cat,
+                            style: TextStyle(fontSize: 12 * scale)),
                         selected: isSelected,
                         onSelected: (val) {
                           if (val) setState(() => _selectedCategory = cat);
@@ -356,7 +368,7 @@ class _StoreDetailScreenState extends State<StoreDetailScreen>
                     },
                   ),
                 ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16 * scale),
             ],
           ),
         ),
@@ -365,18 +377,24 @@ class _StoreDetailScreenState extends State<StoreDetailScreen>
             child: Center(child: CircularProgressIndicator()),
           )
         else if (products.isEmpty)
-          const SliverFillRemaining(
-            child: Center(child: Text('Produk tidak ditemukan')),
+          SliverFillRemaining(
+            child: Center(
+                child: Text('Produk tidak ditemukan',
+                    style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 14 * scale))),
           )
         else
           SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: EdgeInsets.symmetric(
+                horizontal: 16 * scale, vertical: 8 * scale),
             sliver: SliverGrid(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount:
+                    ThemeConfig.isTablet(context) ? 3 : 2,
                 childAspectRatio: 0.75,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
+                mainAxisSpacing: 12 * scale,
+                crossAxisSpacing: 12 * scale,
               ),
               delegate: SliverChildBuilderDelegate(
                 (context, index) {
@@ -386,7 +404,7 @@ class _StoreDetailScreenState extends State<StoreDetailScreen>
               ),
             ),
           ),
-        const SliverToBoxAdapter(child: SizedBox(height: 80)),
+        SliverToBoxAdapter(child: SizedBox(height: 80 * scale)),
       ],
     );
   }
@@ -404,6 +422,8 @@ class _StoreDetailScreenState extends State<StoreDetailScreen>
         final hasPromo = original != null && original > selling && original > 0;
         final discountPct =
             hasPromo ? ((1 - selling / original) * 100).round() : null;
+
+        final scale = ThemeConfig.tabletScale(context, mobile: 1.0);
 
         return GestureDetector(
           onTap: () {
@@ -471,17 +491,17 @@ class _StoreDetailScreenState extends State<StoreDetailScreen>
                           top: 8,
                           left: 8,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 2),
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 6 * scale, vertical: 2 * scale),
                             decoration: BoxDecoration(
                               color: Colors.red,
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
                               '-$discountPct%',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: Colors.white,
-                                fontSize: 10,
+                                fontSize: 10 * scale,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -498,7 +518,7 @@ class _StoreDetailScreenState extends State<StoreDetailScreen>
                                 phone: auth.user?['phone'] as String?);
                           },
                           child: Container(
-                            padding: const EdgeInsets.all(6),
+                            padding: EdgeInsets.all(6 * scale),
                             decoration: const BoxDecoration(
                               color: Colors.white,
                               shape: BoxShape.circle,
@@ -506,7 +526,7 @@ class _StoreDetailScreenState extends State<StoreDetailScreen>
                             child: Icon(
                               isFav ? Icons.favorite : Icons.favorite_border,
                               color: isFav ? Colors.red : Colors.grey,
-                              size: 18,
+                              size: 18 * scale,
                             ),
                           ),
                         ),
@@ -515,7 +535,7 @@ class _StoreDetailScreenState extends State<StoreDetailScreen>
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.all(10),
+                  padding: EdgeInsets.all(10 * scale),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -523,15 +543,16 @@ class _StoreDetailScreenState extends State<StoreDetailScreen>
                         p['name'] ?? '',
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            fontSize: 13, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                            fontSize: 13 * scale,
+                            fontWeight: FontWeight.bold),
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4 * scale),
                       if (hasPromo) ...[
                         Text(
                           'Rp ${original.toInt()}',
                           style: TextStyle(
-                            fontSize: 10,
+                            fontSize: 10 * scale,
                             decoration: TextDecoration.lineThrough,
                             color: Colors.grey.shade500,
                           ),
@@ -539,21 +560,23 @@ class _StoreDetailScreenState extends State<StoreDetailScreen>
                       ],
                       Text(
                         'Rp ${selling.toInt()}',
-                        style: const TextStyle(
-                          fontSize: 14,
+                        style: TextStyle(
+                          fontSize: 14 * scale,
                           fontWeight: FontWeight.bold,
                           color: ThemeConfig.brandColor,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: 4 * scale),
                       Row(
                         children: [
-                          const Icon(Icons.star, size: 12, color: Colors.amber),
-                          const SizedBox(width: 2),
+                          Icon(Icons.star,
+                              size: 12 * scale, color: Colors.amber),
+                          SizedBox(width: 2 * scale),
                           Text(
                             avg.toStringAsFixed(1),
-                            style: const TextStyle(
-                                fontSize: 11, color: Colors.grey),
+                            style: TextStyle(
+                                fontSize: 11 * scale,
+                                color: Colors.grey),
                           ),
                         ],
                       ),
@@ -568,14 +591,20 @@ class _StoreDetailScreenState extends State<StoreDetailScreen>
     );
   }
 
-  Widget _buildReviewsTab() {
+  Widget _buildReviewsTab(double scale) {
     if (_reviews.isEmpty) {
-      return const Center(
-        child: Text('Belum ada ulasan', style: TextStyle(color: Colors.grey)),
+      return Center(
+        child: Text(
+          'Belum ada ulasan',
+          style: TextStyle(
+            color: Colors.grey,
+            fontSize: 14 * scale,
+          ),
+        ),
       );
     }
     return ListView.separated(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16 * scale),
       itemCount: _reviews.length,
       separatorBuilder: (_, __) => const Divider(),
       itemBuilder: (context, index) {
@@ -588,20 +617,23 @@ class _StoreDetailScreenState extends State<StoreDetailScreen>
               children: [
                 CircleAvatar(
                   backgroundColor: Colors.grey.shade200,
-                  radius: 16,
+                  radius: 16 * scale,
                   child: Text(
                     (r['userName'] ?? 'U')[0].toUpperCase(),
-                    style: const TextStyle(color: Colors.grey),
+                    style:
+                        TextStyle(color: Colors.grey, fontSize: 14 * scale),
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12 * scale),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         r['userName'] ?? 'Pengguna',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14 * scale),
                       ),
                       Row(
                         children: List.generate(
@@ -610,7 +642,7 @@ class _StoreDetailScreenState extends State<StoreDetailScreen>
                             i < (r['rating'] ?? 0)
                                 ? Icons.star
                                 : Icons.star_border,
-                            size: 14,
+                            size: 14 * scale,
                             color: Colors.amber,
                           ),
                         ),
@@ -620,14 +652,16 @@ class _StoreDetailScreenState extends State<StoreDetailScreen>
                 ),
                 Text(
                   _formatDate(r['createdAt']),
-                  style: TextStyle(fontSize: 10, color: Colors.grey.shade500),
+                  style: TextStyle(
+                      fontSize: 10 * scale,
+                      color: Colors.grey.shade500),
                 ),
               ],
             ),
             if (product != null) ...[
-              const SizedBox(height: 8),
+              SizedBox(height: 8 * scale),
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: EdgeInsets.all(8 * scale),
                 decoration: BoxDecoration(
                   color: Colors.grey.shade100,
                   borderRadius: BorderRadius.circular(8),
@@ -640,19 +674,19 @@ class _StoreDetailScreenState extends State<StoreDetailScreen>
                         child: Image.network(
                           MarketApiService()
                               .resolveFileUrl(product['imageUrl']),
-                          width: 30,
-                          height: 30,
+                          width: 30 * scale,
+                          height: 30 * scale,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
-                              const SizedBox(width: 30, height: 30),
+                          errorBuilder: (_, __, ___) => SizedBox(
+                              width: 30 * scale, height: 30 * scale),
                         ),
                       ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8 * scale),
                     Expanded(
                       child: Text(
                         product['name'] ?? '',
-                        style:
-                            const TextStyle(fontSize: 11, color: Colors.grey),
+                        style: TextStyle(
+                            fontSize: 11 * scale, color: Colors.grey),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -662,8 +696,11 @@ class _StoreDetailScreenState extends State<StoreDetailScreen>
               ),
             ],
             if (r['comment'] != null && r['comment'].isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Text(r['comment']),
+              SizedBox(height: 8 * scale),
+              Text(
+                r['comment'],
+                style: TextStyle(fontSize: 13 * scale),
+              ),
             ],
           ],
         );
@@ -671,9 +708,9 @@ class _StoreDetailScreenState extends State<StoreDetailScreen>
     );
   }
 
-  Widget _buildInfoTab() {
+  Widget _buildInfoTab(double scale) {
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16 * scale),
       children: [
         _buildInfoItem(Icons.store, 'Deskripsi',
             _storeDetail['description'] ?? 'Tidak ada deskripsi'),
@@ -691,22 +728,28 @@ class _StoreDetailScreenState extends State<StoreDetailScreen>
   }
 
   Widget _buildInfoItem(IconData icon, String title, String value) {
+    final scale = ThemeConfig.tabletScale(context, mobile: 1.0);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: ThemeConfig.brandColor, size: 20),
-          const SizedBox(width: 12),
+          Icon(icon,
+              color: ThemeConfig.brandColor, size: 20 * scale),
+          SizedBox(width: 12 * scale),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(title,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 14)),
-                const SizedBox(height: 4),
-                Text(value, style: TextStyle(color: Colors.grey.shade700)),
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14 * scale)),
+                SizedBox(height: 4 * scale),
+                Text(value,
+                    style: TextStyle(
+                        color: Colors.grey.shade700,
+                        fontSize: 13 * scale)),
               ],
             ),
           ),
