@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart'; // [NEW] - Fixed missing import
+import 'dart:convert';
 import 'package:rana_merchant/data/remote/api_service.dart'; // [NEW] - Fixed missing import
 import 'package:shared_preferences/shared_preferences.dart'; 
 import 'package:rana_merchant/data/local/database_helper.dart';
@@ -31,7 +32,11 @@ class AuthProvider extends ChangeNotifier {
          // Persist Token
          final prefs = await SharedPreferences.getInstance();
          await prefs.setString('auth_token', _token!);
-         await prefs.setString('user_data', data['user'].toString()); // Simplified handling
+         try {
+           await prefs.setString('user_data', jsonEncode(data['user'])); // [FIX] Store as JSON
+         } catch (e) {
+           debugPrint('Failed to save user data: $e');
+         }
       } else {
          throw Exception(response['message'] ?? 'Login Failed');
       }

@@ -54,6 +54,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:rana_merchant/config/assets_config.dart';
 import 'package:rana_merchant/config/theme_config.dart';
+import 'package:rana_merchant/widgets/cart_widget.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -81,6 +82,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey =
       GlobalKey<ScaffoldState>(); // [FIX] Added Key
   Timer? _autoSyncTimer;
+  StreamSubscription? _syncSubscription; // [NEW]
   final RealtimeService _realtimeService = RealtimeService();
   final OrderService _orderService = OrderService();
   bool _showBeginnerTip = false;
@@ -88,6 +90,8 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _showHomeTour = false;
   int _homeTourStep = 0;
   int _desktopSelectedIndex = 0; // [NEW] Tablet/Desktop Navigation Index
+  bool _isOffline = false; // [NEW] Offline Status
+  Timer? _offlineCheckTimer; // [NEW]
 
   // [NEW] Icon Mapper
   IconData _getIcon(String name) {
@@ -168,7 +172,23 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+
+    // [NEW] 1. Load Local Data First (Instant UI)
     _loadProducts();
+
+    // [NEW] 2. Listen for Realtime/Sync Updates
+    _syncSubscription = SyncService().onDataChanged.listen((_) {
+      if (mounted) _loadProducts();
+    });
+
+    // [NEW] 3. Trigger Background Sync if Online
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (await ConnectivityService().hasInternetConnection()) {
+        SyncService().syncProducts();
+        SyncService().syncTransactions();
+      }
+    });
+
     _loadInsight();
     _loadStoreInfo();
     _loadBeginnerTipFlag();
@@ -310,6 +330,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    _syncSubscription?.cancel(); // [NEW]
     _autoSyncTimer?.cancel();
     _scrollController.dispose();
     _realtimeService.removeTransactionListener(_handleRealtimeOrderEvent);
@@ -736,17 +757,14 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadProducts() async {
-    setState(() => isLoading = true);
+    // [FIX] Optimized for Offline-First & Realtime
+    if (products.isEmpty) {
+      setState(() => isLoading = true);
+    }
+
     final localProds = await DatabaseHelper.instance.getAllProducts();
 
-    if (localProds.isEmpty) {
-      await ApiService().fetchAndSaveProducts();
-      final freshProds = await DatabaseHelper.instance.getAllProducts();
-      setState(() {
-        products = freshProds;
-        isLoading = false;
-      });
-    } else {
+    if (mounted) {
       setState(() {
         products = localProds;
         isLoading = false;
@@ -863,7 +881,7 @@ class _HomeScreenState extends State<HomeScreen> {
       drawer: _buildDrawer(context),
       body: LayoutBuilder(
         builder: (context, constraints) {
-          bool isDesktop = constraints.maxWidth >= 800;
+          bool isDesktop = constraints.maxWidth >= 600;
 
           if (isDesktop) {
             return _buildDesktopLayout(context, constraints, cart);
@@ -1038,6 +1056,24 @@ class _HomeScreenState extends State<HomeScreen> {
         SliverToBoxAdapter(
           child: Column(
             children: [
+              if (_isOffline)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  color: Colors.red[700],
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.wifi_off, color: Colors.white, size: 14),
+                      const SizedBox(width: 8),
+                      Text('Mode Offline - Data disimpan lokal',
+                          style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12)),
+                    ],
+                  ),
+                ),
               if (_showBeginnerTip) const SizedBox(height: 16),
               if (_showBeginnerTip)
                 Padding(
@@ -2377,7 +2413,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 side: BorderSide.none,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20)),
-                onPressed: () => setState(() => _selectedCategory = cat),
+                onPressed: () {
+                  SoundService.playBeep();
+                  setState(() => _selectedCategory = cat);
+                },
               ),
             );
           }).toList(),
@@ -2420,354 +2459,26 @@ class _HomeScreenState extends State<HomeScreen> {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Stok produk ini sudah habis')),
               );
+              SoundService.playError();
               return;
             }
             if (qty >= stock) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text('Maksimal stok tersedia hanya $stock')),
               );
+              SoundService.playError();
               return;
             }
             SoundService.playBeep();
             cart.addItem(
-                product['id'], product['name'], product['sellingPrice']);
+                product['id'], product['name'], product['sellingPrice'],
+                maxStock: stock);
           },
         );
       },
     ).animate().fadeIn(
         duration: 500
             .ms); // Fade in the whole grid, items have their own animations inside ProductCard
-  }
-
-  // --- Cart Sidebar Logic ---
-  Widget _buildCartSidebar(BuildContext context, CartProvider cart,
-      {ScrollController? scrollController, VoidCallback? onClose}) {
-    final currency =
-        NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
-
-    return Column(
-      children: [
-        // Cart Header
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: Color(0xFFF3F4F6)))),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.shopping_cart_outlined,
-                      color: Color(0xFFE07A5F)),
-                  const SizedBox(width: 8),
-                  const Text('Keranjang Belanja',
-                      style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFFE07A5F))),
-                ],
-              ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                decoration: BoxDecoration(
-                    color: const Color(0xFFFFF1F2),
-                    borderRadius: BorderRadius.circular(12)), // Light Red
-                child: Text('${cart.itemCount} Items',
-                    style: const TextStyle(
-                        color: Color(0xFFE07A5F),
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold)),
-              )
-            ],
-          ),
-        ),
-
-        // Customer Selection
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: InkWell(
-            onTap: () async {
-              final controller =
-                  TextEditingController(text: cart.customerName ?? '');
-              final result = await showDialog<String?>(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  title: const Text('Pelanggan'),
-                  content: TextField(
-                    controller: controller,
-                    decoration: const InputDecoration(
-                      labelText: 'Nama pelanggan (opsional)',
-                    ),
-                    textInputAction: TextInputAction.done,
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx, null),
-                      child: const Text('Umum'),
-                    ),
-                    FilledButton(
-                      onPressed: () =>
-                          Navigator.pop(ctx, controller.text.trim()),
-                      child: const Text('Simpan'),
-                    ),
-                  ],
-                ),
-              );
-              if (!mounted) return;
-              cart.setCustomerName(result);
-            },
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey[200]!),
-                  borderRadius: BorderRadius.circular(12)),
-              child: Row(
-                children: [
-                  const Icon(Icons.person_outline,
-                      color: Colors.grey, size: 20),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      cart.customerName == null
-                          ? 'Pelanggan: Umum'
-                          : 'Pelanggan: ${cart.customerName}',
-                      style: const TextStyle(color: Colors.grey),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const Icon(Icons.add, color: Colors.grey, size: 20),
-                ],
-              ),
-            ),
-          ),
-        ),
-
-        // Items List
-        Expanded(
-          child: cart.itemCount == 0
-              ? Center(
-                  child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.shopping_cart_outlined,
-                        size: 64, color: Colors.grey[200]),
-                    const SizedBox(height: 16),
-                    Text('Belum ada item dipilih',
-                        style: TextStyle(color: Colors.grey[400])),
-                  ],
-                ))
-              : ListView.separated(
-                  controller: scrollController,
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  itemCount: cart.items.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
-                  itemBuilder: (context, index) {
-                    final item = cart.items.values.toList()[index];
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      child: Row(
-                        children: [
-                          // Qty Controls
-                          Container(
-                            decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.grey[200]!)),
-                            child: Column(
-                              children: [
-                                InkWell(
-                                    onTap: () {
-                                      final product = products.firstWhere(
-                                          (p) => p['id'] == item.productId,
-                                          orElse: () => {});
-                                      final stock =
-                                          (product['stock'] ?? 0) as int;
-                                      if (stock <= 0) {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          const SnackBar(
-                                              content: Text(
-                                                  'Stok produk ini sudah habis')),
-                                        );
-                                        return;
-                                      }
-                                      if (item.quantity >= stock) {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          SnackBar(
-                                              content: Text(
-                                                  'Maksimal stok tersedia hanya $stock')),
-                                        );
-                                        return;
-                                      }
-                                      cart.addItem(item.productId, item.name,
-                                          item.price);
-                                    },
-                                    child: const Padding(
-                                        padding: EdgeInsets.all(4),
-                                        child: Icon(Icons.keyboard_arrow_up,
-                                            size: 16))),
-                                InkWell(
-                                  onTap: () async {
-                                    final ctrl = TextEditingController(
-                                        text: item.quantity.toString());
-                                    final result = await showDialog<int>(
-                                      context: context,
-                                      builder: (_) => AlertDialog(
-                                        title: const Text('Set Jumlah'),
-                                        content: TextField(
-                                          controller: ctrl,
-                                          keyboardType: TextInputType.number,
-                                          inputFormatters: [
-                                            FilteringTextInputFormatter
-                                                .digitsOnly
-                                          ],
-                                          decoration: const InputDecoration(
-                                              hintText: 'Masukkan qty'),
-                                        ),
-                                        actions: [
-                                          TextButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(context),
-                                              child: const Text('Batal')),
-                                          FilledButton(
-                                            onPressed: () {
-                                              final val =
-                                                  int.tryParse(ctrl.text);
-                                              Navigator.pop(context, val);
-                                            },
-                                            child: const Text('Simpan'),
-                                          )
-                                        ],
-                                      ),
-                                    );
-                                    if (result != null) {
-                                      final product = products.firstWhere(
-                                          (p) => p['id'] == item.productId,
-                                          orElse: () => {});
-                                      final stock =
-                                          (product['stock'] ?? 0) as int;
-                                      if (stock > 0 && result > stock) {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          SnackBar(
-                                              content: Text(
-                                                  'Jumlah melebihi stok ($stock).')),
-                                        );
-                                        return;
-                                      }
-                                      cart.setItemQuantity(
-                                          item.productId, result);
-                                    }
-                                  },
-                                  child: Text('${item.quantity}',
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 12)),
-                                ),
-                                InkWell(
-                                    onTap: () =>
-                                        cart.removeSingleItem(item.productId),
-                                    child: const Padding(
-                                        padding: EdgeInsets.all(4),
-                                        child: Icon(Icons.keyboard_arrow_down,
-                                            size: 16))),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(item.name,
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 14)),
-                                const SizedBox(height: 4),
-                                Text(currency.format(item.price),
-                                    style: TextStyle(
-                                        color: Colors.grey[500], fontSize: 12)),
-                              ],
-                            ),
-                          ),
-                          Text(currency.format(item.price * item.quantity),
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold, fontSize: 14)),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-        ),
-
-        // Footer (Totals)
-        Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-              color: Colors.grey[50],
-              border: Border(top: BorderSide(color: Colors.grey[200]!))),
-          child: Column(
-            children: [
-              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                Text('Subtotal', style: TextStyle(color: Colors.grey[600])),
-                Text(currency.format(cart.totalAmount),
-                    style: const TextStyle(fontWeight: FontWeight.bold))
-              ]),
-              const SizedBox(height: 8),
-              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                Text('Pajak', style: TextStyle(color: Colors.grey[600])),
-                const Text('-', style: TextStyle(fontWeight: FontWeight.bold))
-              ]),
-              const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  child: Divider()),
-              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                const Text('Total',
-                    style:
-                        TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                Text(currency.format(cart.totalAmount),
-                    style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF4F46E5)))
-              ]),
-              const SizedBox(height: 24),
-              SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                      onPressed: cart.itemCount == 0
-                          ? null
-                          : () async {
-                              final success =
-                                  await _processPayment(context, cart);
-                              if (success == true && onClose != null) onClose();
-                            },
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        backgroundColor:
-                            const Color(0xFFE07A5F), // [FIX] Red Brand
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('Bayar Sekarang',
-                              style: TextStyle(
-                                  fontWeight: FontWeight.bold, fontSize: 16)),
-                          Text(currency.format(cart.totalAmount),
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w600, fontSize: 16)),
-                        ],
-                      ))),
-            ],
-          ),
-        )
-      ],
-    );
   }
 
   void _showCartModal(BuildContext context, CartProvider cart) {
@@ -2782,32 +2493,14 @@ class _HomeScreenState extends State<HomeScreen> {
                       color: Colors.white,
                       borderRadius:
                           BorderRadius.vertical(top: Radius.circular(24))),
-                  child: _buildCartSidebar(context, cart,
-                      scrollController: ctrl,
-                      onClose: () => Navigator.pop(context)),
+                  child: CartWidget(
+                    scrollController: ctrl,
+                    onClose: () => Navigator.pop(context),
+                    onCheckoutSuccess: () async {
+                      await _loadProducts();
+                    },
+                  ),
                 )));
-  }
-
-  Future<bool> _processPayment(BuildContext context, CartProvider cart) async {
-    final success = await showDialog<bool>(
-        context: context,
-        builder: (_) => Dialog(
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            child: SizedBox(
-              width: 400,
-              child: PaymentScreen(cart: cart),
-            )));
-
-    if (success == true && context.mounted) {
-      await _loadProducts();
-      SoundService.playSuccess();
-      showDialog(
-          context: context, builder: (_) => const TransactionSuccessDialog());
-      cart.clear();
-      return true;
-    }
-    return false;
   }
 
   void _filterProducts(String query) {
@@ -2843,7 +2536,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     offset: const Offset(-4, 0))
               ],
             ),
-            child: _buildCartSidebar(context, cart),
+            child: CartWidget(
+              isEmbedded: true,
+              onCheckoutSuccess: () async {
+                await _loadProducts();
+              },
+            ),
           ),
       ],
     );

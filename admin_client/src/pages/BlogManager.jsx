@@ -187,17 +187,18 @@ const BlogManager = () => {
                                     <Td className="text-right">
                                         <div className="flex justify-end gap-2">
                                             <Button
+                                                variant="outline"
                                                 size="sm"
-                                                variant="secondary"
+                                                className="h-8 gap-1 px-2"
                                                 icon={Edit}
                                                 onClick={() => handleOpen(post)}
                                             >
                                                 Edit
                                             </Button>
                                             <Button
-                                                size="sm"
                                                 variant="outline"
-                                                className="text-red-500 border-red-200 hover:bg-red-50"
+                                                size="sm"
+                                                className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 h-8 gap-1 px-2"
                                                 icon={Trash2}
                                                 onClick={() => handleDelete(post.id)}
                                             >
@@ -319,7 +320,7 @@ const BlogManager = () => {
                             </div>
 
                             <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-4">
-                                <Button type="button" variant="ghost" onClick={handleClose}>Cancel</Button>
+                                <Button type="button" variant="outline" onClick={handleClose}>Cancel</Button>
                                 <Button type="submit">Save Post</Button>
                             </div>
                         </form>

@@ -1,3 +1,4 @@
+import 'dart:async'; // [NEW]
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -6,6 +7,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:rana_merchant/data/local/database_helper.dart';
 import 'package:rana_merchant/data/remote/api_service.dart'; // [FIX] Added import
 import 'package:rana_merchant/screens/expense_screen.dart';
+import 'package:rana_merchant/services/sync_service.dart'; // [NEW]
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ReportScreen extends StatefulWidget {
@@ -54,8 +56,8 @@ class _ReportScreenState extends State<ReportScreen> {
 
       final localSummary =
           await DatabaseHelper.instance.getSalesReport(start: start, end: end);
-      final top = await DatabaseHelper.instance.getTopSellingProductsDetailed(
-          limit: 5, start: start, end: end);
+      final top = await DatabaseHelper.instance
+          .getTopSellingProductsDetailed(limit: 5, start: start, end: end);
       final categories = await DatabaseHelper.instance
           .getSalesByCategory(start: start, end: end);
       final payments = await DatabaseHelper.instance
@@ -66,10 +68,8 @@ class _ReportScreenState extends State<ReportScreen> {
           await DatabaseHelper.instance.getExpenses(start: start, end: end);
 
       final today = DateTime.now();
-      final todayStart =
-          DateTime(today.year, today.month, today.day, 0, 0, 0);
-      final todayEnd =
-          DateTime(today.year, today.month, today.day, 23, 59, 59);
+      final todayStart = DateTime(today.year, today.month, today.day, 0, 0, 0);
+      final todayEnd = DateTime(today.year, today.month, today.day, 23, 59, 59);
       final todaySummary = await DatabaseHelper.instance
           .getSalesReport(start: todayStart, end: todayEnd);
 
@@ -103,8 +103,7 @@ class _ReportScreenState extends State<ReportScreen> {
           _lowStock = List<Map<String, dynamic>>.from(lowStock);
           _expenses = List<Map<String, dynamic>>.from(expenses);
           _expenseCategories = processedExpenseCats;
-          _todaySales =
-              (todaySummary['grossSales'] as num?)?.toDouble() ?? 0.0;
+          _todaySales = (todaySummary['grossSales'] as num?)?.toDouble() ?? 0.0;
           _isLoading = false;
         });
       }
@@ -124,8 +123,8 @@ class _ReportScreenState extends State<ReportScreen> {
 
     final summary =
         await DatabaseHelper.instance.getSalesReport(start: start, end: end);
-    final top = await DatabaseHelper.instance.getTopSellingProductsDetailed(
-        limit: 5, start: start, end: end);
+    final top = await DatabaseHelper.instance
+        .getTopSellingProductsDetailed(limit: 5, start: start, end: end);
     final categories = await DatabaseHelper.instance
         .getSalesByCategory(start: start, end: end);
     final payments = await DatabaseHelper.instance
@@ -264,8 +263,7 @@ class _ReportScreenState extends State<ReportScreen> {
 
   Widget _buildDailyTargetCard() {
     final target = _dailyTarget ?? 0;
-    final progress =
-        target > 0 ? (_todaySales / target).clamp(0.0, 2.0) : 0.0;
+    final progress = target > 0 ? (_todaySales / target).clamp(0.0, 2.0) : 0.0;
     final progressPct =
         target > 0 ? (_todaySales / target * 100).clamp(0.0, 999.0) : 0.0;
     final todayLabel = DateFormat('EEEE, dd MMM', 'id_ID').format(
@@ -304,8 +302,7 @@ class _ReportScreenState extends State<ReportScreen> {
                   const SizedBox(height: 4),
                   Text(
                     todayLabel,
-                    style: const TextStyle(
-                        fontSize: 12, color: Colors.grey),
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                 ],
               ),
@@ -396,10 +393,8 @@ class _ReportScreenState extends State<ReportScreen> {
 
   Widget _buildInsightsCard() {
     final items = <String>[];
-    final grossSales =
-        (_summary['grossSales'] as num?)?.toDouble() ?? 0.0;
-    final netProfit =
-        (_summary['netProfit'] as num?)?.toDouble() ?? 0.0;
+    final grossSales = (_summary['grossSales'] as num?)?.toDouble() ?? 0.0;
+    final netProfit = (_summary['netProfit'] as num?)?.toDouble() ?? 0.0;
 
     if (grossSales > 0) {
       final marginPct = (netProfit / grossSales * 100);
@@ -434,8 +429,7 @@ class _ReportScreenState extends State<ReportScreen> {
       double totalAmount = 0;
       double nonCash = 0;
       for (final pm in _paymentMethods) {
-        final amount =
-            (pm['totalAmount'] as num?)?.toDouble() ?? 0.0;
+        final amount = (pm['totalAmount'] as num?)?.toDouble() ?? 0.0;
         totalAmount += amount;
         if (pm['paymentMethod'] != 'CASH') {
           nonCash += amount;
@@ -482,8 +476,7 @@ class _ReportScreenState extends State<ReportScreen> {
         children: [
           Row(
             children: const [
-              Icon(Icons.lightbulb_outline,
-                  color: Color(0xFFE07A5F)),
+              Icon(Icons.lightbulb_outline, color: Color(0xFFE07A5F)),
               SizedBox(width: 8),
               Text(
                 'Insight dari data periode ini',
@@ -508,8 +501,8 @@ class _ReportScreenState extends State<ReportScreen> {
                   Expanded(
                     child: Text(
                       text,
-                      style: const TextStyle(
-                          fontSize: 13, color: Colors.black87),
+                      style:
+                          const TextStyle(fontSize: 13, color: Colors.black87),
                     ),
                   ),
                 ],
@@ -1258,7 +1251,10 @@ class _ReportScreenState extends State<ReportScreen> {
                                             ),
                                           )
                                         ]
-                                      : _topProducts.asMap().entries.map((entry) {
+                                      : _topProducts
+                                          .asMap()
+                                          .entries
+                                          .map((entry) {
                                           final index = entry.key;
                                           final item = entry.value;
                                           return ListTile(
@@ -1465,10 +1461,10 @@ class _ReportScreenState extends State<ReportScreen> {
           ),
         ),
         titlesData: FlTitlesData(
-          topTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false)),
-         rightTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false)),
+          topTitles:
+              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles:
+              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
           leftTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
@@ -1477,9 +1473,7 @@ class _ReportScreenState extends State<ReportScreen> {
                 return Padding(
                   padding: const EdgeInsets.only(right: 4),
                   child: Text(
-                    value == 0
-                        ? '0'
-                        : '${(value / 1000).round()}k',
+                    value == 0 ? '0' : '${(value / 1000).round()}k',
                     style: const TextStyle(
                       fontSize: 10,
                       color: Colors.grey,

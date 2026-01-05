@@ -146,18 +146,21 @@ const ManageMenu = () => {
                                 <Td>{p.stock}</Td>
                                 <Td>
                                     <div className="flex gap-2">
-                                        <button
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
                                             onClick={() => handleOpenModal(p)}
-                                            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
                                         >
                                             Edit
-                                        </button>
-                                        <button
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
                                             onClick={() => handleDelete(p.id)}
-                                            className="text-red-600 hover:text-red-800 text-sm font-medium"
+                                            className="text-red-600 border-red-200 hover:bg-red-50"
                                         >
                                             Delete
-                                        </button>
+                                        </Button>
                                     </div>
                                 </Td>
                             </Tr>
@@ -235,7 +238,7 @@ const ManageMenu = () => {
                             </div>
 
                             <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-100">
-                                <Button type="button" variant="ghost" onClick={handleCloseModal}>Cancel</Button>
+                                <Button type="button" variant="outline" onClick={handleCloseModal}>Cancel</Button>
                                 <Button type="submit">{currentProduct ? 'Save Changes' : 'Create Product'}</Button>
                             </div>
                         </form>

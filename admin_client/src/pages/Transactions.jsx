@@ -200,9 +200,9 @@ const Transactions = () => {
                     <div className="mt-4 pt-4 border-t border-slate-100 text-sm text-slate-500 flex justify-between">
                         <span>Filter active: {total} records found</span>
                         {(startDate || endDate || area || category || paymentStatus || paymentMethod) && (
-                            <Button variant="link" onClick={() => {
+                            <Button variant="outline" size="sm" onClick={() => {
                                 setStartDate(''); setEndDate(''); setArea(''); setCategory(''); setPaymentStatus(''); setPaymentMethod('');
-                            }} className="text-blue-600 h-auto p-0 hover:no-underline hover:text-blue-800">Clear Filters</Button>
+                            }} className="text-blue-600 border-blue-200 hover:bg-blue-50">Clear Filters</Button>
                         )}
                     </div>
                 </Card>
@@ -269,7 +269,7 @@ const Transactions = () => {
                     </div>
                     <div className="flex gap-2">
                         <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
                             disabled={page === 1}
                             onClick={() => setPage(p => Math.max(1, p - 1))}
@@ -277,7 +277,7 @@ const Transactions = () => {
                             <ChevronLeft size={16} /> Previous
                         </Button>
                         <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
                             disabled={page >= totalPages}
                             onClick={() => setPage(p => p + 1)}

@@ -190,7 +190,7 @@ const Support = () => {
                                         </Button>
                                     )}
                                     {selectedTicket.status !== 'CLOSED' && (
-                                        <Button size="sm" variant="ghost" onClick={() => handleStatus('CLOSED')}>
+                                        <Button size="sm" variant="outline" onClick={() => handleStatus('CLOSED')} className="text-slate-600 border-slate-200 hover:bg-slate-50">
                                             <X size={16} className="mr-1" /> Close
                                         </Button>
                                     )}

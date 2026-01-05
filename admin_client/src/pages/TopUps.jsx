@@ -5,12 +5,14 @@ import { Table, Thead, Tbody, Th, Td, Tr } from '../components/ui/Table';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
-import { Check, X, Eye } from 'lucide-react';
+import { Check, X, Eye, Search, AlertCircle, CheckCircle2, XCircle } from 'lucide-react';
+import { cn } from '../lib/utils';
 
 const TopUps = () => {
     const [topups, setTopups] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('PENDING'); // PENDING, APPROVED, REJECTED
+    const [search, setSearch] = useState('');
     const [selectedProof, setSelectedProof] = useState(null);
     const [error, setError] = useState(null);
 
@@ -56,36 +58,73 @@ const TopUps = () => {
 
     const formatCurrency = (val) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(val || 0);
 
+    const filteredTopups = topups.filter(t => 
+        (t.store?.name?.toLowerCase() || '').includes(search.toLowerCase()) ||
+        (t.store?.tenant?.name?.toLowerCase() || '').includes(search.toLowerCase())
+    );
+
+    const tabs = [
+        { id: 'PENDING', label: 'Pending Request', icon: AlertCircle, color: 'text-yellow-600', activeColor: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
+        { id: 'APPROVED', label: 'Approved', icon: CheckCircle2, color: 'text-green-600', activeColor: 'bg-green-50 text-green-700 border-green-200' },
+        { id: 'REJECTED', label: 'Rejected', icon: XCircle, color: 'text-red-600', activeColor: 'bg-red-50 text-red-700 border-red-200' },
+    ];
+
     return (
         <AdminLayout>
-            <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-semibold text-slate-900">Wallet Top Ups</h1>
-                    <p className="text-slate-500 mt-1">Review and approve merchant balance top-up requests.</p>
+            <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <h1 className="text-2xl font-semibold text-slate-900">Wallet Top Ups</h1>
+                        <p className="text-slate-500 mt-1">Review and approve merchant balance top-up requests.</p>
+                    </div>
                 </div>
-                <div className="flex bg-slate-100 p-1 rounded-lg">
-                    {['PENDING', 'APPROVED', 'REJECTED'].map(status => (
+
+                {/* New Tabs UI */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {tabs.map((tab) => (
                         <button
-                            key={status}
-                            onClick={() => setFilter(status)}
-                            className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${filter === status
-                                ? 'bg-white text-slate-900 shadow-sm'
-                                : 'text-slate-500 hover:text-slate-700'
-                                }`}
+                            key={tab.id}
+                            onClick={() => setFilter(tab.id)}
+                            className={cn(
+                                "flex items-center justify-center p-4 rounded-xl border transition-all duration-200",
+                                filter === tab.id 
+                                    ? `border-2 ${tab.activeColor} shadow-sm ring-1 ring-offset-0` 
+                                    : "bg-white border-slate-200 text-slate-500 hover:border-slate-300 hover:bg-slate-50"
+                            )}
                         >
-                            {status.charAt(0) + status.slice(1).toLowerCase()}
+                            <tab.icon className={cn("mr-3 h-5 w-5", filter === tab.id ? "opacity-100" : "opacity-70")} />
+                            <span className={cn("font-semibold", filter === tab.id ? "" : "text-slate-600")}>
+                                {tab.label}
+                            </span>
                         </button>
                     ))}
                 </div>
-            </div>
 
-            {error && (
-                <div className="p-4 mb-4 bg-red-50 text-red-600 rounded-lg border border-red-200">
-                    {error} <button onClick={fetchTopUps} className="underline ml-2 font-semibold">Retry</button>
+                <div className="flex flex-col sm:flex-row gap-4 justify-between items-center bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
+                    <div className="relative w-full sm:w-96">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <Search className="h-4 w-4 text-slate-400" />
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="Search by Store or Merchant Name..."
+                            className="pl-10 pr-4 py-2 w-full border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none text-sm transition shadow-sm"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                        />
+                    </div>
+                    <div className="text-sm text-slate-500">
+                        {loading ? 'Loading...' : `Showing ${filteredTopups.length} ${filter.toLowerCase()} requests`}
+                    </div>
                 </div>
-            )}
 
-            <Card className="overflow-hidden border border-slate-200 shadow-sm">
+                {error && (
+                    <div className="p-4 mb-4 bg-red-50 text-red-600 rounded-lg border border-red-200">
+                        {error} <button onClick={fetchTopUps} className="underline ml-2 font-semibold">Retry</button>
+                    </div>
+                )}
+
+                <Card className="overflow-hidden border border-slate-200 shadow-sm">
                 <Table>
                     <Thead>
                         <Tr>
@@ -102,11 +141,11 @@ const TopUps = () => {
                             <Tr>
                                 <Td colSpan="6" className="text-center py-12 text-slate-400">Loading data...</Td>
                             </Tr>
-                        ) : topups.length === 0 ? (
+                        ) : filteredTopups.length === 0 ? (
                             <Tr>
-                                <Td colSpan="6" className="text-center py-12 text-slate-400">No requests found.</Td>
+                                <Td colSpan="6" className="text-center py-12 text-slate-400">No requests found matching your search.</Td>
                             </Tr>
-                        ) : topups.map((t) => (
+                        ) : filteredTopups.map((t) => (
                             <Tr key={t.id}>
                                 <Td>
                                     <div className="flex flex-col">
@@ -171,6 +210,7 @@ const TopUps = () => {
                     </Tbody>
                 </Table>
             </Card>
+            </div>
 
             {/* Proof Modal */}
             {selectedProof && (

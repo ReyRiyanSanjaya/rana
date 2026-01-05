@@ -51,7 +51,7 @@ const Billing = () => {
 
                 <div className="pt-6 border-t border-slate-100 flex justify-between items-center text-sm">
                     <span className="text-slate-500">Next billing date: <span className="font-medium text-slate-900">{billing.nextBillingDate}</span></span>
-                    <button className="text-indigo-600 font-medium hover:underline">Manage Payment Method</button>
+                    <Button variant="link" className="text-indigo-600">Manage Payment Method</Button>
                 </div>
             </Card>
         </AdminLayout>

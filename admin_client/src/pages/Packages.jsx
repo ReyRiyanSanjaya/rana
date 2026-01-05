@@ -120,13 +120,13 @@ const Packages = () => {
                                 <Td>{p.durationDays} Days</Td>
                                 <Td><span className="text-slate-500 text-sm truncate max-w-xs block">{p.description}</span></Td>
                                 <Td>
-                                    <div className="flex items-center">
-                                        <button onClick={() => handleEdit(p)} className="text-blue-500 hover:text-blue-700 p-2">
+                                    <div className="flex items-center gap-2">
+                                        <Button variant="outline" size="icon" onClick={() => handleEdit(p)}>
                                             <Edit size={18} />
-                                        </button>
-                                        <button onClick={() => handleDelete(p.id)} className="text-red-500 hover:text-red-700 p-2">
+                                        </Button>
+                                        <Button variant="outline" size="icon" onClick={() => handleDelete(p.id)} className="text-red-600 border-red-200 hover:bg-red-50">
                                             <Trash size={18} />
-                                        </button>
+                                        </Button>
                                     </div>
                                 </Td>
                             </Tr>
@@ -166,7 +166,7 @@ const Packages = () => {
                                 ></textarea>
                             </div>
                             <div className="flex justify-end space-x-3 pt-4">
-                                <Button type="button" variant="ghost" onClick={() => setShowModal(false)}>Cancel</Button>
+                                <Button type="button" variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>
                                 <Button type="submit">{isEditing ? 'Update Package' : 'Create Package'}</Button>
                             </div>
                         </form>

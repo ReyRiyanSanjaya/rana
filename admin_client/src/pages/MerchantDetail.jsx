@@ -32,6 +32,14 @@ const MerchantDetail = () => {
     const [resetPassword, setResetPassword] = useState('');
     const [selectedUser, setSelectedUser] = useState(null);
 
+    // [NEW] Edit Details State
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [editForm, setEditForm] = useState({
+        name: '',
+        phone: '',
+        address: ''
+    });
+
     useEffect(() => {
         fetchDetail();
     }, [id]);
@@ -50,6 +58,12 @@ const MerchantDetail = () => {
             
             setMerchant(data);
             setLoading(false);
+            // Pre-fill edit form
+            setEditForm({
+                name: data.name || '',
+                phone: data.phone || '',
+                address: data.address || ''
+            });
         } catch (error) {
             console.error(error);
             alert("Failed to fetch merchant details");
@@ -137,6 +151,19 @@ const MerchantDetail = () => {
         }
     };
 
+    // [NEW] Update Merchant Details
+    const handleUpdateDetails = async () => {
+        try {
+            await api.put(`/admin/merchants/${id}`, editForm);
+            alert('Merchant details updated');
+            setShowEditModal(false);
+            fetchDetail();
+        } catch (error) {
+            console.error(error);
+            alert('Failed to update details');
+        }
+    };
+
     const formatCurrency = (val) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(val);
 
     const getStatusBadge = (status) => {
@@ -156,27 +183,37 @@ const MerchantDetail = () => {
         <AdminLayout>
             {/* Header */}
             <div className="mb-8">
-                <Button variant="ghost" onClick={() => navigate('/merchants')} className="mb-2 pl-0 hover:bg-transparent hover:text-slate-800 text-slate-500 justify-start">
+                <Button variant="outline" onClick={() => navigate('/merchants')} className="mb-4">
                     &larr; Back to Merchants
                 </Button>
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
                         <h1 className="text-3xl font-bold text-slate-900">{merchant.name}</h1>
                         <p className="text-slate-500">{merchant.tenant?.subscriptionStatus} Plan: {merchant.tenant?.plan}</p>
+                        <div className="text-sm text-slate-400 mt-1">{merchant.address} | {merchant.phone}</div>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                         <Badge variant={merchant.tenant?.subscriptionStatus === 'ACTIVE' ? 'success' : 'warning'}>{merchant.tenant?.subscriptionStatus}</Badge>
+                        <Button variant="outline" onClick={() => setShowEditModal(true)}>Edit Details</Button>
                         <Button variant="outline" onClick={() => navigate(`/merchants/${id}/menu`)}>Manage Menu</Button>
                         <Button variant="secondary" onClick={() => setShowNotifyModal(true)}>Send Notification</Button>
+                        
+                        {merchant.tenant?.subscriptionStatus === 'ACTIVE' ? (
+                            <Button variant="destructive" onClick={handleSuspend}>Suspend</Button>
+                        ) : (
+                            <Button className="bg-green-600 hover:bg-green-700 text-white" onClick={handleActivate}>Activate</Button>
+                        )}
                     </div>
                 </div>
             </div>
 
             {/* Tabs */}
-            <div className="flex gap-6 border-b border-slate-200 mb-6">
-                <button onClick={() => setActiveTab('overview')} className={`pb-3 px-1 font-medium ${activeTab === 'overview' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-slate-500'}`}>Overview</button>
-                <button onClick={() => setActiveTab('wallet')} className={`pb-3 px-1 font-medium ${activeTab === 'wallet' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-slate-500'}`}>Wallet & Finance</button>
-                <button onClick={() => setActiveTab('users')} className={`pb-3 px-1 font-medium ${activeTab === 'users' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-slate-500'}`}>Users & Stores</button>
+            <div className="flex gap-6 border-b border-slate-200 mb-6 overflow-x-auto">
+                <button onClick={() => setActiveTab('overview')} className={`pb-3 px-1 font-medium whitespace-nowrap ${activeTab === 'overview' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-slate-500'}`}>Overview</button>
+                <button onClick={() => setActiveTab('products')} className={`pb-3 px-1 font-medium whitespace-nowrap ${activeTab === 'products' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-slate-500'}`}>Products</button>
+                <button onClick={() => setActiveTab('transactions')} className={`pb-3 px-1 font-medium whitespace-nowrap ${activeTab === 'transactions' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-slate-500'}`}>Transactions</button>
+                <button onClick={() => setActiveTab('wallet')} className={`pb-3 px-1 font-medium whitespace-nowrap ${activeTab === 'wallet' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-slate-500'}`}>Wallet & Finance</button>
+                <button onClick={() => setActiveTab('users')} className={`pb-3 px-1 font-medium whitespace-nowrap ${activeTab === 'users' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-slate-500'}`}>Users & Stores</button>
             </div>
 
             {/* Content */}
@@ -376,7 +413,7 @@ const MerchantDetail = () => {
                             </div>
                         </div>
                         <div className="flex justify-end gap-3 mt-8">
-                            <Button variant="ghost" onClick={() => setShowWalletModal(false)}>Cancel</Button>
+                            <Button variant="outline" onClick={() => setShowWalletModal(false)}>Cancel</Button>
                             <Button className="bg-slate-900 text-white hover:bg-slate-800" onClick={handleAdjustWallet}>Confirm</Button>
                         </div>
                     </div>
@@ -409,7 +446,7 @@ const MerchantDetail = () => {
                             </div>
                         </div>
                         <div className="flex justify-end gap-3 mt-8">
-                            <Button variant="ghost" onClick={() => setShowNotifyModal(false)}>Cancel</Button>
+                            <Button variant="outline" onClick={() => setShowNotifyModal(false)}>Cancel</Button>
                             <Button onClick={handleSendNotification}>Send</Button>
                         </div>
                     </div>
@@ -434,8 +471,47 @@ const MerchantDetail = () => {
                             </div>
                         </div>
                         <div className="flex justify-end gap-3 mt-8">
-                            <Button variant="ghost" onClick={() => setShowResetModal(false)}>Cancel</Button>
+                            <Button variant="outline" onClick={() => setShowResetModal(false)}>Cancel</Button>
                             <Button variant="destructive" onClick={handleResetPassword}>Reset Password</Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Details Modal */}
+            {showEditModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+                        <h2 className="text-xl font-bold mb-4">Edit Merchant Details</h2>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Store Name</label>
+                                <Input
+                                    value={editForm.name}
+                                    onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                                    placeholder="Store Name"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Phone</label>
+                                <Input
+                                    value={editForm.phone}
+                                    onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
+                                    placeholder="Phone Number"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Address</label>
+                                <Input
+                                    value={editForm.address}
+                                    onChange={e => setEditForm({ ...editForm, address: e.target.value })}
+                                    placeholder="Address"
+                                />
+                            </div>
+                        </div>
+                        <div className="flex justify-end gap-3 mt-8">
+                            <Button variant="outline" onClick={() => setShowEditModal(false)}>Cancel</Button>
+                            <Button onClick={handleUpdateDetails}>Save Changes</Button>
                         </div>
                     </div>
                 </div>

@@ -174,6 +174,60 @@ const syncTransaction = async (req, res) => {
     }
 };
 
+const getTransactionHistory = async (req, res) => {
+    try {
+        const { tenantId } = req.user;
+        const { limit = 100, startDate, endDate } = req.query;
+
+        const where = { tenantId };
+        if (startDate && endDate) {
+            where.occurredAt = {
+                gte: new Date(startDate),
+                lte: new Date(endDate)
+            };
+        }
+
+        const transactions = await prisma.transaction.findMany({
+            where,
+            include: {
+                transactionItems: {
+                    include: {
+                        product: { select: { basePrice: true, costPrice: true, name: true } }
+                    }
+                }
+            },
+            orderBy: { occurredAt: 'desc' },
+            take: Number(limit)
+        });
+
+        const data = transactions.map(t => ({
+            id: t.id,
+            offlineId: t.offlineId,
+            tenantId: t.tenantId,
+            storeId: t.storeId,
+            cashierId: t.cashierId,
+            totalAmount: t.totalAmount,
+            paymentMethod: t.paymentMethod,
+            status: t.orderStatus, // Map orderStatus to status
+            occurredAt: t.occurredAt,
+            createdAt: t.createdAt,
+            items: t.transactionItems.map(ti => ({
+                productId: ti.productId,
+                quantity: ti.quantity,
+                price: ti.price,
+                costPrice: ti.product?.basePrice ?? ti.product?.costPrice ?? 0,
+                name: ti.product?.name
+            }))
+        }));
+
+        successResponse(res, data);
+    } catch (error) {
+        console.error("History Error:", error);
+        errorResponse(res, "Failed to fetch history", 500, error);
+    }
+};
+
 module.exports = {
-    syncTransaction
+    syncTransaction,
+    getTransactionHistory
 };

@@ -8,5 +8,6 @@ router.use(verifyToken);
 router.use(require('../middleware/subscription')); // Block Sync if expired
 
 router.post('/sync', transactionController.syncTransaction);
+router.get('/history', transactionController.getTransactionHistory);
 
 module.exports = router;

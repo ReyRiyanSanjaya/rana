@@ -243,30 +243,15 @@ class ApiService {
     try {
       // 1. Fetch from Server
       final response = await _dio.get(ApiConfig.products,
+          queryParameters: {'limit': 1000}, // [FIX] Ensure we get all products
           options: Options(headers: {'Authorization': 'Bearer ${_token}'}));
       final List<dynamic> serverProducts = response.data['data'];
 
       final db = DatabaseHelper.instance;
 
-      // 2. Save to SQLite
-      for (var p in serverProducts) {
-        await db.insertProduct({
-          'id': p['id'],
-          'tenantId': p['tenantId'],
-          'sku': p['sku'],
-          'name': p['name'],
-          'costPrice': p['basePrice'] ?? p['costPrice'] ?? 0,
-          'sellingPrice': p['sellingPrice'],
-          'trackStock': (p['trackStock'] == true)
-              ? 1
-              : 1, // Default to 1 (True) as we are enabling stock feature
-          'stock': p['stock'] ?? 0,
-          'category': (p['category'] is Map)
-              ? (p['category']['name'] ?? 'All')
-              : (p['category']?.toString() ?? 'All'),
-          'imageUrl': p['imageUrl']
-        });
-      }
+      // 2. Save to SQLite (using reconcile logic)
+      await db.syncProducts(serverProducts);
+
       print('Products Synced (Downlink): ${serverProducts.length}');
     } catch (e) {
       print('Product Sync Failed: $e');
@@ -553,6 +538,41 @@ class ApiService {
     }
   }
 
+  // --- Transaction Sync ---
+  Future<void> uploadTransaction(Map<String, dynamic> payload) async {
+    try {
+      final response = await _dio.post(
+        ApiConfig.transactionsSync,
+        data: payload,
+        options: Options(headers: {'Authorization': 'Bearer ${_token}'}),
+      );
+
+      if (!_isSuccess(response.data)) {
+        throw Exception(
+            response.data['message'] ?? 'Failed to upload transaction');
+      }
+    } catch (e) {
+      throw Exception('Upload Transaction Failed: $e');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> fetchTransactionHistory() async {
+    try {
+      final response = await _dio.get(
+        ApiConfig.transactionHistory,
+        options: Options(headers: {'Authorization': 'Bearer ${_token}'}),
+      );
+
+      if (_isSuccess(response.data)) {
+        return List<Map<String, dynamic>>.from(response.data['data'] ?? []);
+      }
+      return [];
+    } catch (e) {
+      if (kDebugMode) print('Fetch History Error: $e');
+      return [];
+    }
+  }
+
   // --- Inventory ---
   Future<void> adjustStock(
       {required String productId,
@@ -638,18 +658,6 @@ class ApiService {
       return {};
     } catch (e) {
       throw Exception('Scan Order Failed: $e');
-    }
-  }
-
-  Future<void> uploadTransaction(Map<String, dynamic> payload) async {
-    try {
-      final response = await _dio.post(ApiConfig.transactionsSync,
-          data: payload,
-          options: Options(headers: {'Authorization': 'Bearer ${_token}'}));
-      if (response.data['status'] != 'success')
-        throw Exception(response.data['message']);
-    } catch (e) {
-      throw Exception('Upload failed: $e');
     }
   }
 

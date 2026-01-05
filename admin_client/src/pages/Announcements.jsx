@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
-import AdminLayout from '../components/AdminLayout'; // Assuming usage inside AdminLayout or just Page content
+import AdminLayout from '../components/AdminLayout';
+import Button from '../components/ui/Button';
+import { Edit, Trash2, Plus, X } from 'lucide-react';
 
 const Announcements = () => {
     const [announcements, setAnnouncements] = useState([]);
@@ -70,12 +72,13 @@ const Announcements = () => {
             <div className="p-6">
                 <div className="flex justify-between items-center mb-6">
                     <h1 className="text-2xl font-bold text-slate-800">Info Terkini (Announcements)</h1>
-                    <button
+                    <Button
                         onClick={() => { setEditingItem(null); setFormData({ title: '', content: '', isActive: true }); setIsModalOpen(true); }}
-                        className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
+                        className="bg-red-600 hover:bg-red-700 text-white"
                     >
-                        + Buat Info Baru
-                    </button>
+                        <Plus size={18} className="mr-2" />
+                        Buat Info Baru
+                    </Button>
                 </div>
 
                 {loading ? (
@@ -104,8 +107,12 @@ const Announcements = () => {
                                         </td>
                                         <td className="p-4 text-slate-500 text-sm">{new Date(item.createdAt).toLocaleDateString('id-ID')}</td>
                                         <td className="p-4 text-right space-x-2">
-                                            <button onClick={() => openEdit(item)} className="text-blue-600 hover:text-blue-800 font-medium text-sm">Edit</button>
-                                            <button onClick={() => handleDelete(item.id)} className="text-red-600 hover:text-red-800 font-medium text-sm">Hapus</button>
+                                            <Button variant="outline" size="sm" onClick={() => openEdit(item)} className="text-blue-600 border-blue-200 hover:bg-blue-50">
+                                                <Edit size={14} className="mr-1" /> Edit
+                                            </Button>
+                                            <Button variant="outline" size="sm" onClick={() => handleDelete(item.id)} className="text-red-600 border-red-200 hover:bg-red-50">
+                                                <Trash2 size={14} className="mr-1" /> Hapus
+                                            </Button>
                                         </td>
                                     </tr>
                                 ))}
@@ -156,8 +163,8 @@ const Announcements = () => {
                                     <label htmlFor="isActive" className="text-sm font-medium text-slate-700">Tampilkan ke Aplikasi (Aktif)</label>
                                 </div>
                                 <div className="flex justify-end space-x-3 pt-4 border-t border-slate-100 mt-4">
-                                    <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-600 font-medium hover:bg-slate-100 rounded-lg">Batal</button>
-                                    <button type="submit" className="px-4 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 shadow-sm shadow-red-200">Simpan</button>
+                                    <Button type="button" variant="ghost" onClick={() => setIsModalOpen(false)}>Batal</Button>
+                                    <Button type="submit" className="bg-red-600 hover:bg-red-700 text-white">Simpan</Button>
                                 </div>
                             </form>
                         </div>

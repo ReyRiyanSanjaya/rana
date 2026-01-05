@@ -432,7 +432,7 @@ const Kulakan = () => {
                                 {selectedOrder.status === 'PROCESSED' && (
                                     <Button className="bg-orange-500 text-white" onClick={() => updateOrderStatus(selectedOrder.id, 'SHIPPED')}>Ship Order</Button>
                                 )}
-                                <Button variant="secondary" onClick={() => setSelectedOrder(null)}>Close</Button>
+                                <Button variant="outline" onClick={() => setSelectedOrder(null)}>Close</Button>
                             </div>
                         </div>
                     </div>
@@ -486,9 +486,9 @@ const Kulakan = () => {
                                         <td className="px-6 py-4"><Badge variant={p.isActive ? "success" : "secondary"}>{p.isActive ? "Active" : "Inactive"}</Badge></td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex justify-end gap-2">
-                                                <Button variant="ghost" size="sm" onClick={() => openModal('product', p)}><Edit size={16} /></Button>
-                                                <Button variant="ghost" size="sm" className="text-red-500" onClick={() => deleteProduct(p.id)}><Trash2 size={16} /></Button>
-                                            </div>
+                                <Button variant="ghost" size="sm" onClick={() => openModal('product', p)}><Edit size={16} /></Button>
+                                <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => deleteProduct(p.id)}><Trash2 size={16} /></Button>
+                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -502,14 +502,14 @@ const Kulakan = () => {
     const renderCategories = () => (
          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
              <div className="col-span-1 md:col-span-3 flex justify-end">
-                <Button onClick={() => openModal('category')} className="bg-indigo-600 text-white"><Plus size={18} className="mr-2" /> Add Category</Button>
+                <Button onClick={() => openModal('category')}><Plus size={18} className="mr-2" /> Add Category</Button>
              </div>
              {categories.map(c => (
                  <div key={c.id} className="bg-white p-4 rounded border flex justify-between items-center">
                      <span className="font-medium">{c.name}</span>
                      <div className="flex gap-2">
-                         <Button variant="ghost" size="sm" onClick={() => openModal('category', c)}><Edit size={16}/></Button>
-                         <Button variant="ghost" size="sm" className="text-red-500" onClick={() => deleteCategory(c.id)}><Trash2 size={16}/></Button>
+                         <Button variant="outline" size="sm" onClick={() => openModal('category', c)}><Edit size={16}/></Button>
+                         <Button variant="outline" size="sm" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => deleteCategory(c.id)}><Trash2 size={16}/></Button>
                      </div>
                  </div>
              ))}
@@ -519,7 +519,7 @@ const Kulakan = () => {
     const renderCoupons = () => (
         <div className="space-y-4">
              <div className="flex justify-end">
-                <Button onClick={() => openModal('coupon')} className="bg-indigo-600 text-white"><Plus size={18} className="mr-2" /> Add Coupon</Button>
+                <Button onClick={() => openModal('coupon')}><Plus size={18} className="mr-2" /> Add Coupon</Button>
              </div>
              {coupons.map(c => (
                  <div key={c.id} className="bg-white p-4 rounded border flex justify-between items-center">
@@ -529,8 +529,8 @@ const Kulakan = () => {
                      </div>
                      <div className="flex gap-2 items-center">
                         <Badge variant={c.isActive ? 'success' : 'secondary'}>{c.isActive ? 'Active' : 'Inactive'}</Badge>
-                         <Button variant="ghost" size="sm" onClick={() => openModal('coupon', c)}><Edit size={16}/></Button>
-                         <Button variant="ghost" size="sm" className="text-red-500" onClick={(e) => deleteCoupon(c.id, e)}><Trash2 size={16}/></Button>
+                         <Button variant="outline" size="sm" onClick={() => openModal('coupon', c)}><Edit size={16}/></Button>
+                         <Button variant="outline" size="sm" className="text-red-600 border-red-200 hover:bg-red-50" onClick={(e) => deleteCoupon(c.id, e)}><Trash2 size={16}/></Button>
                      </div>
                  </div>
              ))}
@@ -540,7 +540,7 @@ const Kulakan = () => {
      const renderBanners = () => (
         <div className="space-y-4">
              <div className="flex justify-end">
-                <Button onClick={() => openModal('banner')} className="bg-indigo-600 text-white"><Plus size={18} className="mr-2" /> Add Banner</Button>
+                <Button onClick={() => openModal('banner')}><Plus size={18} className="mr-2" /> Add Banner</Button>
              </div>
              {banners.map(b => (
                  <div key={b.id} className="bg-white p-4 rounded border flex justify-between items-center">
@@ -549,8 +549,8 @@ const Kulakan = () => {
                          <div className="font-medium">{b.title}</div>
                      </div>
                      <div className="flex gap-2 items-center">
-                         <Button variant="ghost" size="sm" onClick={() => openModal('banner', b)}><Edit size={16}/></Button>
-                         <Button variant="ghost" size="sm" className="text-red-500" onClick={(e) => deleteBanner(b.id, e)}><Trash2 size={16}/></Button>
+                         <Button variant="outline" size="sm" onClick={() => openModal('banner', b)}><Edit size={16}/></Button>
+                         <Button variant="outline" size="sm" className="text-red-600 border-red-200 hover:bg-red-50" onClick={(e) => deleteBanner(b.id, e)}><Trash2 size={16}/></Button>
                      </div>
                  </div>
              ))}
@@ -632,8 +632,8 @@ const Kulakan = () => {
                             )}
                         </div>
 
-                        <div className="flex justify-end gap-2 mt-6">
-                            <Button variant="secondary" onClick={closeModal}>Cancel</Button>
+                         <div className="flex justify-end gap-2 mt-6">
+                            <Button variant="outline" onClick={closeModal}>Cancel</Button>
                             <Button 
                                 onClick={
                                     modalType === 'product' ? handleProductSubmit : 

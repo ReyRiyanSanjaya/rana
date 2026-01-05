@@ -8,9 +8,16 @@ class CartItem {
   final String name;
   final double price;
   int quantity;
+  final int maxStock; // [NEW]
 
-  CartItem({required this.productId, required this.name, required this.price, this.quantity = 1});
-  
+  CartItem({
+    required this.productId,
+    required this.name,
+    required this.price,
+    this.quantity = 1,
+    this.maxStock = 999999, // Default to high if not tracked
+  });
+
   double get total => price * quantity;
 }
 
@@ -39,7 +46,7 @@ class CartProvider extends ChangeNotifier {
 
   double get discountAmount => _discount;
   double get taxRate => _taxRate;
-  
+
   // Tax applied after discount
   double get taxAmount => (subtotal - _discount) * _taxRate;
 
@@ -57,7 +64,8 @@ class CartProvider extends ChangeNotifier {
 
   void setCustomerName(String? name) {
     final normalized = name?.trim();
-    _customerName = (normalized == null || normalized.isEmpty) ? null : normalized;
+    _customerName =
+        (normalized == null || normalized.isEmpty) ? null : normalized;
     notifyListeners();
   }
 
@@ -67,7 +75,8 @@ class CartProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void addItem(String productId, String name, double price) {
+  void addItem(String productId, String name, double price,
+      {int maxStock = 999999}) {
     if (_items.containsKey(productId)) {
       _items.update(
         productId,
@@ -76,12 +85,18 @@ class CartProvider extends ChangeNotifier {
           name: existing.name,
           price: existing.price,
           quantity: existing.quantity + 1,
+          maxStock: existing.maxStock,
         ),
       );
     } else {
       _items.putIfAbsent(
         productId,
-        () => CartItem(productId: productId, name: name, price: price),
+        () => CartItem(
+          productId: productId,
+          name: name,
+          price: price,
+          maxStock: maxStock,
+        ),
       );
     }
     notifyListeners();
@@ -103,7 +118,7 @@ class CartProvider extends ChangeNotifier {
 
   void removeSingleItem(String productId) {
     if (!_items.containsKey(productId)) return;
-    
+
     if (_items[productId]!.quantity > 1) {
       _items.update(
         productId,
@@ -127,32 +142,31 @@ class CartProvider extends ChangeNotifier {
     }
     if (_items.containsKey(productId)) {
       final existing = _items[productId]!;
+      // [NEW] Enforce maxStock
+      final validQuantity =
+          quantity > existing.maxStock ? existing.maxStock : quantity;
+
       _items.update(
         productId,
         (_) => CartItem(
           productId: existing.productId,
           name: existing.name,
           price: existing.price,
-          quantity: quantity,
+          quantity: validQuantity,
+          maxStock: existing.maxStock,
         ),
       );
       notifyListeners();
     }
   }
 
-  Future<void> checkout(
-      String tenantId, 
-      String storeId, 
-      String cashierId, 
-      {
-        String paymentMethod = 'CASH', 
-        String? customerName, 
-        String? notes
-      }
-  ) async {
+  Future<void> checkout(String tenantId, String storeId, String cashierId,
+      {String paymentMethod = 'CASH',
+      String? customerName,
+      String? notes}) async {
     final offlineId = const Uuid().v4();
     final now = DateTime.now().toIso8601String();
-    
+
     // 1. Prepare Transaction Header
     final txn = {
       'offlineId': offlineId,
@@ -172,17 +186,22 @@ class CartProvider extends ChangeNotifier {
     };
 
     // 2. Prepare Items
-    final txnItems = _items.values.map((item) => {
-      // 'id': const Uuid().v4(), // [FIX] Removed, let DB autoincrement
-      'transactionOfflineId': offlineId,
-      'productId': item.productId,
-      'name': item.name, // [FIX] Added missing name
-      'quantity': item.quantity,
-      'price': item.price
-    }).toList();
+    final txnItems = _items.values
+        .map((item) => {
+              // 'id': const Uuid().v4(), // [FIX] Removed, let DB autoincrement
+              'transactionOfflineId': offlineId,
+              'productId': item.productId,
+              'name': item.name, // [FIX] Added missing name
+              'quantity': item.quantity,
+              'price': item.price
+            })
+        .toList();
 
     // 3. Save to Local DB
     await DatabaseHelper.instance.queueTransaction(txn, txnItems);
+
+    // 4. Trigger Sync (Fire and Forget)
+    SyncService().syncTransactions();
 
     clear();
   }

@@ -192,10 +192,10 @@ const Broadcasts = () => {
                                         </Td>
                                         <Td>
                                             <Button
-                                                variant="ghost"
+                                                variant="outline"
                                                 size="sm"
                                                 onClick={() => handleDelete(item.id)}
-                                                className="text-rose-600 hover:bg-rose-50 hover:text-rose-700 h-8 w-8 p-0"
+                                                className="text-rose-600 border-rose-200 hover:bg-rose-50 hover:text-rose-700 h-8 w-8 p-0"
                                             >
                                                 <Trash2 size={16} />
                                             </Button>

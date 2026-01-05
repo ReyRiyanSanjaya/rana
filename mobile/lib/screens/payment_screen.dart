@@ -6,6 +6,8 @@ import 'package:provider/provider.dart';
 import 'package:rana_merchant/providers/auth_provider.dart';
 import 'package:rana_merchant/services/printer_service.dart';
 import 'package:rana_merchant/data/local/database_helper.dart';
+import 'package:rana_merchant/services/sound_service.dart';
+import 'package:rana_merchant/services/sync_service.dart'; // [NEW]
 
 class PaymentScreen extends StatefulWidget {
   final CartProvider cart;
@@ -72,234 +74,249 @@ class _PaymentScreenState extends State<PaymentScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Pembayaran',
-                    style: GoogleFonts.poppins(
-                        fontWeight: FontWeight.bold, fontSize: 20)),
-                IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close))
-              ],
-            ),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                _buildMethodCard('CASH', Icons.payments, true),
-                const SizedBox(width: 12),
-                _buildMethodCard('QRIS', Icons.qr_code_2, false),
-              ],
-            ),
-            if (method == 'CASH') ...[
-              const SizedBox(height: 24),
-              TextField(
-                keyboardType: TextInputType.number,
-                style: GoogleFonts.poppins(
-                    fontSize: 24, fontWeight: FontWeight.bold),
-                decoration: InputDecoration(
-                    prefixText: 'Rp ',
-                    labelText: 'Nominal Diterima',
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    filled: true,
-                    fillColor: Colors.grey[50]),
-                controller: _amountController,
-                onChanged: (v) {
-                  setState(() => payAmount = double.tryParse(v) ?? 0);
-                },
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                children: suggestions.map((amt) {
-                  if (amt < total && amt != total)
-                    return const SizedBox.shrink();
-                  return ActionChip(
-                    label: Text(
-                        'Rp ${NumberFormat.decimalPattern('id').format(amt)}'),
-                    onPressed: () => setAmount(amt),
-                    backgroundColor:
-                        payAmount == amt ? Colors.green[100] : Colors.white,
-                    side: BorderSide(
-                        color: payAmount == amt
-                            ? Colors.green
-                            : Colors.grey[300]!),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 24),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                    color: change >= 0 ? Colors.green[50] : Colors.red[50],
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                        color: change >= 0
-                            ? Colors.green[200]!
-                            : Colors.red[200]!)),
-                child: Row(
+                Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Kembalian', style: GoogleFonts.poppins(fontSize: 16)),
-                    Text(
-                        'Rp ${change < 0 ? 0 : NumberFormat.decimalPattern('id').format(change)}',
+                    Text('Pembayaran',
                         style: GoogleFonts.poppins(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: change >= 0
-                                ? Colors.green[800]
-                                : Colors.red[800])),
+                            fontWeight: FontWeight.bold, fontSize: 20)),
+                    IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close))
                   ],
                 ),
-              )
-            ],
-            const SizedBox(height: 24),
-            FilledButton(
-              onPressed: _isProcessing ||
-                      (method == 'CASH' && payAmount < total)
-                  ? null
-                  : () async {
-                      setState(() => _isProcessing = true);
-                      try {
-                        final auth =
-                            Provider.of<AuthProvider>(context, listen: false);
-                        final user = auth.currentUser;
-
-                        String? storeId = user?['storeId'];
-                        String? tenantId = user?['tenantId'];
-
-                        if (tenantId == null) {
-                          final tenant =
-                              await DatabaseHelper.instance.getTenantInfo();
-                          tenantId = tenant?['id'];
-                        }
-
-                        if (tenantId == null) {
-                          throw Exception(
-                              'Data sesi tidak valid. Silakan login ulang.');
-                        }
-
-                        final cashierId = user?['id'] ?? 'OFFLINE_CASHIER';
-
-                        final items = List<Map<String, dynamic>>.from(
-                            widget.cart.items.values.map((e) => {
-                                  'name': e.name,
-                                  'quantity': e.quantity,
-                                  'price': e.price,
-                                }));
-                        final totalAmt = widget.cart.totalAmount;
-                        final discAmt = widget.cart.discountAmount;
-
-                        await widget.cart.checkout(
-                          tenantId,
-                          storeId ?? tenantId,
-                          cashierId,
-                          paymentMethod: method,
-                          customerName: widget.cart.customerName,
-                          notes: widget.cart.notes,
-                        );
-
-                        if (!mounted) return;
-
-                        final txnData = {
-                          'offlineId':
-                              'TXN-${DateTime.now().millisecondsSinceEpoch}',
-                          'totalAmount': totalAmt,
-                          'payAmount': payAmount,
-                          'changeAmount': change,
-                          'cashierName': user?['name'] ?? 'Kasir',
-                          'customerName': widget.cart.customerName,
-                          'discount': discAmt,
-                          'storeId': storeId
-                        };
-
-                        Navigator.pop(context, true);
-
-                        showDialog(
-                            context: context,
-                            barrierDismissible: false,
-                            builder: (ctx) => AlertDialog(
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(20)),
-                                  title: Column(
-                                    children: [
-                                      const Icon(Icons.check_circle,
-                                          color: Colors.green, size: 64),
-                                      const SizedBox(height: 16),
-                                      Text('Transaksi Berhasil',
-                                          style: GoogleFonts.poppins(
-                                              fontWeight: FontWeight.bold)),
-                                    ],
-                                  ),
-                                  content: Text(
-                                      'Pembayaran telah berhasil disimpan.',
-                                      textAlign: TextAlign.center,
-                                      style: GoogleFonts.poppins()),
-                                  actions: [
-                                    OutlinedButton.icon(
-                                      onPressed: () async {
-                                        await PrinterService().printReceipt(
-                                            txnData, items,
-                                            storeName: 'RANA STORE');
-                                      },
-                                      icon: const Icon(Icons.print),
-                                      label: const Text('Cetak Struk'),
-                                      style: OutlinedButton.styleFrom(
-                                        foregroundColor:
-                                            const Color(0xFFE07A5F),
-                                        side: const BorderSide(
-                                            color: Color(0xFFE07A5F)),
-                                        padding: const EdgeInsets.all(16),
-                                        minimumSize: const Size.fromHeight(50),
-                                        shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(12)),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    FilledButton(
-                                      onPressed: () {
-                                        Navigator.pop(ctx);
-                                      },
-                                      style: FilledButton.styleFrom(
-                                          backgroundColor:
-                                              const Color(0xFFE07A5F),
-                                          minimumSize:
-                                              const Size.fromHeight(50),
-                                          shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(12))),
-                                      child: const Text('Tutup'),
-                                    )
-                                  ],
-                                  actionsAlignment: MainAxisAlignment.center,
-                                ));
-                      } catch (e) {
-                        setState(() => _isProcessing = false);
-                        ScaffoldMessenger.of(context)
-                            .showSnackBar(SnackBar(content: Text('Error: $e')));
-                      }
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    _buildMethodCard('CASH', Icons.payments, true),
+                    const SizedBox(width: 12),
+                    _buildMethodCard('QRIS', Icons.qr_code_2, false),
+                  ],
+                ),
+                if (method == 'CASH') ...[
+                  const SizedBox(height: 24),
+                  TextField(
+                    keyboardType: TextInputType.number,
+                    style: GoogleFonts.poppins(
+                        fontSize: 24, fontWeight: FontWeight.bold),
+                    decoration: InputDecoration(
+                        prefixText: 'Rp ',
+                        labelText: 'Nominal Diterima',
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        filled: true,
+                        fillColor: Colors.grey[50]),
+                    controller: _amountController,
+                    onChanged: (v) {
+                      setState(() => payAmount = double.tryParse(v) ?? 0);
                     },
-              style: FilledButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.primary,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12))),
-              child: _isProcessing
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(color: Colors.white))
-                  : Text('SELESAIKAN',
-                      style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
-            )
-          ],
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    children: suggestions.map((amt) {
+                      if (amt < total && amt != total)
+                        return const SizedBox.shrink();
+                      return ActionChip(
+                        label: Text(
+                            'Rp ${NumberFormat.decimalPattern('id').format(amt)}'),
+                        onPressed: () => setAmount(amt),
+                        backgroundColor:
+                            payAmount == amt ? Colors.green[100] : Colors.white,
+                        side: BorderSide(
+                            color: payAmount == amt
+                                ? Colors.green
+                                : Colors.grey[300]!),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 24),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                        color: change >= 0 ? Colors.green[50] : Colors.red[50],
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                            color: change >= 0
+                                ? Colors.green[200]!
+                                : Colors.red[200]!)),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Kembalian',
+                            style: GoogleFonts.poppins(fontSize: 16)),
+                        Text(
+                            'Rp ${change < 0 ? 0 : NumberFormat.decimalPattern('id').format(change)}',
+                            style: GoogleFonts.poppins(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: change >= 0
+                                    ? Colors.green[800]
+                                    : Colors.red[800])),
+                      ],
+                    ),
+                  )
+                ],
+                const SizedBox(height: 24),
+                FilledButton(
+                  onPressed: _isProcessing ||
+                          (method == 'CASH' && payAmount < total)
+                      ? null
+                      : () async {
+                          setState(() => _isProcessing = true);
+                          try {
+                            final auth = Provider.of<AuthProvider>(context,
+                                listen: false);
+                            final user = auth.currentUser;
+
+                            String? storeId = user?['storeId'];
+                            String? tenantId = user?['tenantId'];
+
+                            if (tenantId == null) {
+                              final tenant =
+                                  await DatabaseHelper.instance.getTenantInfo();
+                              tenantId = tenant?['id'];
+                            }
+
+                            if (tenantId == null) {
+                              throw Exception(
+                                  'Data sesi tidak valid. Silakan login ulang.');
+                            }
+
+                            final cashierId = user?['id'] ?? 'OFFLINE_CASHIER';
+
+                            final items = List<Map<String, dynamic>>.from(
+                                widget.cart.items.values.map((e) => {
+                                      'name': e.name,
+                                      'quantity': e.quantity,
+                                      'price': e.price,
+                                    }));
+                            final totalAmt = widget.cart.totalAmount;
+                            final discAmt = widget.cart.discountAmount;
+
+                            await widget.cart.checkout(
+                              tenantId,
+                              storeId ?? tenantId,
+                              cashierId,
+                              paymentMethod: method,
+                              customerName: widget.cart.customerName,
+                              notes: widget.cart.notes,
+                            );
+
+                            if (!mounted) return;
+
+                            SoundService.playSuccess();
+
+                            // [NEW] Trigger Sync in background
+                            SyncService().syncTransactions();
+
+                            final txnData = {
+                              'offlineId':
+                                  'TXN-${DateTime.now().millisecondsSinceEpoch}',
+                              'totalAmount': totalAmt,
+                              'payAmount': payAmount,
+                              'changeAmount': change,
+                              'cashierName': user?['name'] ?? 'Kasir',
+                              'customerName': widget.cart.customerName,
+                              'discount': discAmt,
+                              'storeId': storeId
+                            };
+
+                            Navigator.pop(context, true);
+
+                            showDialog(
+                                context: context,
+                                barrierDismissible: false,
+                                builder: (ctx) => AlertDialog(
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(20)),
+                                      title: Column(
+                                        children: [
+                                          const Icon(Icons.check_circle,
+                                              color: Colors.green, size: 64),
+                                          const SizedBox(height: 16),
+                                          Text('Transaksi Berhasil',
+                                              style: GoogleFonts.poppins(
+                                                  fontWeight: FontWeight.bold)),
+                                        ],
+                                      ),
+                                      content: Text(
+                                          'Pembayaran telah berhasil disimpan.',
+                                          textAlign: TextAlign.center,
+                                          style: GoogleFonts.poppins()),
+                                      actions: [
+                                        OutlinedButton.icon(
+                                          onPressed: () async {
+                                            await PrinterService().printReceipt(
+                                                txnData, items,
+                                                storeName: 'RANA STORE');
+                                          },
+                                          icon: const Icon(Icons.print),
+                                          label: const Text('Cetak Struk'),
+                                          style: OutlinedButton.styleFrom(
+                                            foregroundColor: Theme.of(context)
+                                                .colorScheme
+                                                .primary,
+                                            side: BorderSide(
+                                                color: Theme.of(context)
+                                                    .colorScheme
+                                                    .primary),
+                                            padding: const EdgeInsets.all(16),
+                                            minimumSize:
+                                                const Size.fromHeight(50),
+                                            shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(12)),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 12),
+                                        FilledButton(
+                                          onPressed: () {
+                                            Navigator.pop(ctx);
+                                          },
+                                          style: FilledButton.styleFrom(
+                                              backgroundColor: Theme.of(context)
+                                                  .colorScheme
+                                                  .primary,
+                                              minimumSize:
+                                                  const Size.fromHeight(50),
+                                              shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                          12))),
+                                          child: const Text('Tutup'),
+                                        )
+                                      ],
+                                      actionsAlignment:
+                                          MainAxisAlignment.center,
+                                    ));
+                          } catch (e) {
+                            setState(() => _isProcessing = false);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Error: $e')));
+                          }
+                        },
+                  style: FilledButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12))),
+                  child: _isProcessing
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(color: Colors.white))
+                      : Text('SELESAIKAN',
+                          style:
+                              GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+                )
+              ],
+            ),
+          ),
         ),
       ),
-    ),
-  ),
-  );
+    );
   }
 
   Widget _buildMethodCard(String id, IconData icon, bool selected) {

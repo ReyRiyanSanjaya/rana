@@ -6,6 +6,7 @@ import 'package:rana_merchant/config/api_config.dart';
 import 'package:rana_merchant/data/local/database_helper.dart';
 import 'package:rana_merchant/data/remote/api_service.dart';
 import 'package:rana_merchant/services/notification_service.dart';
+import 'package:rana_merchant/services/sync_service.dart'; // [NEW]
 
 typedef TransactionEventHandler = void Function(Map<String, dynamic> data);
 
@@ -37,6 +38,12 @@ class RealtimeService {
     if (_initialized) return;
     final s = _ensureConnected();
 
+    // [NEW] On Connect: Sync everything
+    s.onConnect((_) {
+      SyncService().syncProducts();
+      SyncService().syncTransactions();
+    });
+
     s.on('inventory:changed', (payload) async {
       if (payload is! Map) return;
       final dynamic changesRaw = payload['changes'];
@@ -53,6 +60,9 @@ class RealtimeService {
         final newStock = storeStockRaw.toInt();
         await db.updateProductStock(productId, newStock);
       }
+
+      // [NEW] Notify UI to refresh
+      SyncService().notifyDataChanged();
     });
 
     s.on('transactions:created', (payload) {

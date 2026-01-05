@@ -85,7 +85,7 @@ const AdminUsers = () => {
                                 <Td><Badge variant="brand">{a.role}</Badge></Td>
                                 <Td>{new Date(a.createdAt).toLocaleDateString()}</Td>
                                 <Td>
-                                    <Button variant="ghost" size="icon" onClick={() => handleDelete(a.id)} className="text-red-500 hover:text-red-700 hover:bg-red-50">
+                                    <Button variant="outline" size="icon" onClick={() => handleDelete(a.id)} className="text-red-500 border-red-200 hover:text-red-700 hover:bg-red-50">
                                         <Trash size={18} />
                                     </Button>
                                 </Td>
@@ -120,7 +120,7 @@ const AdminUsers = () => {
                             </div>
 
                             <div className="flex justify-end space-x-3 pt-4">
-                                <Button type="button" variant="ghost" onClick={() => setShowModal(false)}>Cancel</Button>
+                                <Button type="button" variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>
                                 <Button type="submit">Create Admin</Button>
                             </div>
                         </form>

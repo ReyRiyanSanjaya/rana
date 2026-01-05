@@ -50,7 +50,7 @@ class ProductCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              flex: 4,
+              flex: 5,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
@@ -102,45 +102,45 @@ class ProductCard extends StatelessWidget {
                       ).animate().scale(duration: 200.ms),
                     ),
                 ],
+              ),
             ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    productName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.poppins(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                        color: Colors.grey.shade800),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    currency.format(product['sellingPrice'] ?? 0),
-                    style: GoogleFonts.poppins(
-                        color: const Color(0xFFE07A5F),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14),
+            Expanded(
+              flex: 4,
+              child: Padding(
+                padding: const EdgeInsets.all(10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    Text(
+                      productName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          color: Colors.grey.shade800),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      currency.format(product['sellingPrice'] ?? 0),
+                      style: GoogleFonts.poppins(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       'Stok: ${product['stock'] ?? 0}',
                       style: GoogleFonts.poppins(
-                        fontSize: 11,
+                        fontSize: 10,
                         color: Colors.grey.shade600,
                       ),
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
           ],
         ),
       ),

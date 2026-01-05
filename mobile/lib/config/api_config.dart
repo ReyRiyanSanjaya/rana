@@ -54,6 +54,7 @@ class ApiConfig {
 
   static const String purchases = '/purchases';
   static const String transactionsSync = '/transactions/sync';
+  static const String transactionHistory = '/transactions/history'; // [NEW]
   static const String wholesaleOrdersScan = '/wholesale/orders/scan';
 
   static const String products = '/products';

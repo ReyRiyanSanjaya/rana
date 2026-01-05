@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:rana_merchant/data/local/database_helper.dart';
 import 'package:rana_merchant/services/digital_receipt_service.dart';
+import 'package:rana_merchant/services/sync_service.dart'; // [FIX] Added SyncService
 import 'package:intl/intl.dart';
 
 class HistoryScreen extends StatefulWidget {
@@ -21,10 +22,18 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Future<void> _loadHistory() async {
+    // [FIX] Sync from server first
+    try {
+      await SyncService().syncTransactionHistory();
+    } catch (e) {
+      // Continue even if sync fails (offline mode)
+    }
+
     final db = DatabaseHelper.instance;
-    final allTxns = await db.getAllTransactions(); // Need to implement this in DB Helper
+    final allTxns = await db.getAllTransactions();
+    if (!mounted) return;
     setState(() {
-      _transactions = allTxns.reversed.toList(); // Newest first
+      _transactions = allTxns; // [FIX] Removed reversed to show Newest First
       _isLoading = false;
     });
   }
@@ -71,8 +80,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(20),
                                 border: Border.all(
-                                  color: const Color(0xFFE07A5F)
-                                      .withOpacity(0.12),
+                                  color:
+                                      const Color(0xFFE07A5F).withOpacity(0.12),
                                   width: 1.5,
                                 ),
                               ),
@@ -84,12 +93,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                       ? Colors.green.shade50
                                       : Colors.orange.shade50,
                                   child: Icon(
-                                    isSynced
-                                        ? Icons.check_circle
-                                        : Icons.sync,
-                                    color: isSynced
-                                        ? Colors.green
-                                        : Colors.orange,
+                                    isSynced ? Icons.check_circle : Icons.sync,
+                                    color:
+                                        isSynced ? Colors.green : Colors.orange,
                                     size: 20,
                                   ),
                                 ),
@@ -105,8 +111,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                   Icons.chevron_right,
                                   color: Colors.grey,
                                 ),
-                                onTap: () {
-                                  _showPhoneDialog(context, txn, []);
+                                onTap: () async {
+                                  // Fetch items from DB
+                                  final db = DatabaseHelper.instance;
+                                  final items = await db
+                                      .getItemsForTransaction(txn['offlineId']);
+                                  if (context.mounted) {
+                                    _showPhoneDialog(context, txn, items);
+                                  }
                                 },
                               ),
                             );
@@ -140,33 +152,39 @@ class _HistoryScreenState extends State<HistoryScreen> {
       pinned: true,
       backgroundColor: const Color(0xFFFFF8F0),
       iconTheme: const IconThemeData(color: Color(0xFFE07A5F)),
-      title: const Text('Riwayat Transaksi', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFE07A5F))),
+      title: const Text('Riwayat Transaksi',
+          style:
+              TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFE07A5F))),
       centerTitle: true,
     );
   }
 
-  void _showPhoneDialog(BuildContext context, Map<String, dynamic> txn, List<Map<String, dynamic>> items) {
+  void _showPhoneDialog(BuildContext context, Map<String, dynamic> txn,
+      List<Map<String, dynamic>> items) {
     final phoneCtrl = TextEditingController();
     showDialog(
-      context: context, 
-      builder: (ctx) => AlertDialog(
-        title: const Text('Kirim Struk via WA'),
-        content: TextField(
-          controller: phoneCtrl,
-          keyboardType: TextInputType.phone,
-          decoration: const InputDecoration(labelText: 'Nomor WhatsApp (62...)', hintText: '628123456789'),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
-          FilledButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              DigitalReceiptService.sendViaWhatsApp(phoneCtrl.text, txn, items);
-            }, 
-            child: const Text('Kirim')
-          )
-        ],
-      )
-    );
+        context: context,
+        builder: (ctx) => AlertDialog(
+              title: const Text('Kirim Struk via WA'),
+              content: TextField(
+                controller: phoneCtrl,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(
+                    labelText: 'Nomor WhatsApp (62...)',
+                    hintText: '628123456789'),
+              ),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('Batal')),
+                FilledButton(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      DigitalReceiptService.sendViaWhatsApp(
+                          phoneCtrl.text, txn, items);
+                    },
+                    child: const Text('Kirim'))
+              ],
+            ));
   }
 }

@@ -119,7 +119,7 @@ const AppMenus = () => {
                     <h1 className="text-2xl font-semibold text-slate-900">Mobile App Menus</h1>
                     <p className="text-slate-500 mt-1">Configure layout and visibility of mobile app features.</p>
                 </div>
-                <Button onClick={() => handleOpenModal()} className="bg-indigo-600 text-white"><Plus size={18} className="mr-2" /> Add Menu</Button>
+                <Button onClick={() => handleOpenModal()}><Plus size={18} className="mr-2" /> Add Menu</Button>
             </div>
 
             <Card className="overflow-hidden border border-slate-200 shadow-sm">
@@ -167,8 +167,8 @@ const AppMenus = () => {
                                 </Td>
                                 <Td className="text-right">
                                     <div className="flex justify-end gap-2">
-                                        <Button variant="ghost" size="sm" onClick={() => handleOpenModal(m)}><Edit size={16} /></Button>
-                                        <Button variant="ghost" size="sm" className="text-red-500" onClick={() => handleDelete(m.id)}><Trash2 size={16} /></Button>
+                                        <Button variant="outline" size="sm" onClick={() => handleOpenModal(m)}><Edit size={16} /></Button>
+                                        <Button variant="outline" size="sm" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => handleDelete(m.id)}><Trash2 size={16} /></Button>
                                     </div>
                                 </Td>
                             </Tr>
@@ -230,7 +230,7 @@ const AppMenus = () => {
                             </div>
 
                             <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-100">
-                                <Button type="button" variant="ghost" onClick={handleCloseModal}>Cancel</Button>
+                                <Button type="button" variant="outline" onClick={handleCloseModal}>Cancel</Button>
                                 <Button type="submit" className="bg-indigo-600 text-white">{currentMenu ? 'Save Changes' : 'Create Menu'}</Button>
                             </div>
                         </form>

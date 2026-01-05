@@ -1,21 +1,40 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import AdminLayout from '../components/AdminLayout';
 import { Table, Thead, Tbody, Th, Td, Tr } from '../components/ui/Table';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
-import { Package, Calendar, Clock } from 'lucide-react';
+import Input from '../components/ui/Input';
+import { Package, Calendar, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const Merchants = () => {
+    const navigate = useNavigate();
     const [merchants, setMerchants] = useState([]);
     const [packages, setPackages] = useState([]); // [NEW] Real packages from DB
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
+    const [statusFilter, setStatusFilter] = useState('');
+
+    // Pagination
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage] = useState(10);
 
     const [selectedMerchant, setSelectedMerchant] = useState(null);
     const [selectedPackage, setSelectedPackage] = useState(null);
     const [subForm, setSubForm] = useState({ status: 'TRIAL' }); // Removed plan field
+
+    // Add Merchant State
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [addForm, setAddForm] = useState({
+        name: '',
+        email: '',
+        password: '',
+        phone: '',
+        businessName: '',
+        address: ''
+    });
 
     useEffect(() => {
         fetchMerchants();
@@ -46,11 +65,38 @@ const Merchants = () => {
 
     const formatCurrency = (val) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val);
 
-    const filteredMerchants = merchants.filter(m =>
-        m.name?.toLowerCase().includes(search.toLowerCase()) ||
-        m.tenant?.name?.toLowerCase().includes(search.toLowerCase()) ||
-        m.tenant?.email?.toLowerCase().includes(search.toLowerCase())
-    );
+    const filteredMerchants = merchants.filter(m => {
+        const matchesSearch = m.name?.toLowerCase().includes(search.toLowerCase()) ||
+            m.tenant?.name?.toLowerCase().includes(search.toLowerCase()) ||
+            m.tenant?.email?.toLowerCase().includes(search.toLowerCase());
+        
+        const matchesStatus = statusFilter ? m.tenant?.subscriptionStatus === statusFilter : true;
+
+        return matchesSearch && matchesStatus;
+    });
+
+    // Pagination Logic
+    const indexOfLastItem = currentPage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    const currentMerchants = filteredMerchants.slice(indexOfFirstItem, indexOfLastItem);
+    const totalPages = Math.ceil(filteredMerchants.length / itemsPerPage);
+
+    const handleAddMerchant = async () => {
+        try {
+            if (!addForm.email || !addForm.password || !addForm.businessName) {
+                alert("Please fill in all required fields");
+                return;
+            }
+            await api.post('/auth/register-merchant', addForm); // Assuming this is the endpoint based on standard practice, otherwise /admin/merchants
+            alert("Merchant created successfully!");
+            setShowAddModal(false);
+            setAddForm({ name: '', email: '', password: '', phone: '', businessName: '', address: '' });
+            fetchMerchants();
+        } catch (error) {
+            console.error(error);
+            alert(error.response?.data?.message || "Failed to create merchant");
+        }
+    };
 
     const handleEditSubscription = (merchant) => {
         setSelectedMerchant(merchant);
@@ -104,7 +150,7 @@ const Merchants = () => {
         <AdminLayout>
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold text-slate-900">Merchants Management</h1>
-                <Button className="shadow-sm">
+                <Button className="shadow-sm" onClick={() => setShowAddModal(true)}>
                     + Add Merchant
                 </Button>
             </div>
@@ -149,11 +195,11 @@ const Merchants = () => {
                             <Tr>
                                 <Td colSpan="6" className="text-center py-12 text-slate-400">Loading merchants...</Td>
                             </Tr>
-                        ) : filteredMerchants.length === 0 ? (
+                        ) : currentMerchants.length === 0 ? (
                             <Tr>
                                 <Td colSpan="6" className="text-center py-12 text-slate-400">No merchants found.</Td>
                             </Tr>
-                        ) : filteredMerchants.map((m) => (
+                        ) : currentMerchants.map((m) => (
                             <Tr key={m.id}>
                                 <Td>
                                     <div className="flex flex-col">
@@ -193,14 +239,109 @@ const Merchants = () => {
                                     )}
                                 </Td>
                                 <Td className="text-right flex gap-2 justify-end">
-                                    <Button variant="outline" size="sm" onClick={() => window.location.href = `/merchants/${m.id}`}>View</Button>
+                                    <Button variant="outline" size="sm" onClick={() => navigate(`/merchants/${m.id}`)}>View</Button>
                                     <Button variant="secondary" size="sm" onClick={() => handleEditSubscription(m)}>Manage Plan</Button>
                                 </Td>
                             </Tr>
                         ))}
                     </Tbody>
                 </Table>
+                
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                    <div className="flex justify-between items-center p-4 border-t border-slate-200">
+                        <span className="text-sm text-slate-500">
+                            Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredMerchants.length)} of {filteredMerchants.length} entries
+                        </span>
+                        <div className="flex gap-2">
+                            <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                disabled={currentPage === 1}
+                            >
+                                <ChevronLeft size={16} />
+                            </Button>
+                            <span className="px-3 py-1 flex items-center text-sm font-medium">
+                                {currentPage} / {totalPages}
+                            </span>
+                            <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                disabled={currentPage === totalPages}
+                            >
+                                <ChevronRight size={16} />
+                            </Button>
+                        </div>
+                    </div>
+                )}
             </Card>
+
+            {/* Add Merchant Modal */}
+            {showAddModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
+                        <h2 className="text-xl font-bold mb-4">Register New Merchant</h2>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Business Name (Store Name)</label>
+                                <Input 
+                                    value={addForm.businessName} 
+                                    onChange={e => setAddForm({...addForm, businessName: e.target.value})} 
+                                    placeholder="e.g. Toko Berkah"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Owner Name</label>
+                                <Input 
+                                    value={addForm.name} 
+                                    onChange={e => setAddForm({...addForm, name: e.target.value})} 
+                                    placeholder="Full Name"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                                <Input 
+                                    type="email"
+                                    value={addForm.email} 
+                                    onChange={e => setAddForm({...addForm, email: e.target.value})} 
+                                    placeholder="email@example.com"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
+                                <Input 
+                                    type="password"
+                                    value={addForm.password} 
+                                    onChange={e => setAddForm({...addForm, password: e.target.value})} 
+                                    placeholder="********"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Phone Number</label>
+                                <Input 
+                                    value={addForm.phone} 
+                                    onChange={e => setAddForm({...addForm, phone: e.target.value})} 
+                                    placeholder="081234567890"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Address</label>
+                                <Input 
+                                    value={addForm.address} 
+                                    onChange={e => setAddForm({...addForm, address: e.target.value})} 
+                                    placeholder="Store Address"
+                                />
+                            </div>
+                        </div>
+                        <div className="flex justify-end gap-3 mt-8">
+                            <Button variant="outline" onClick={() => setShowAddModal(false)}>Cancel</Button>
+                            <Button onClick={handleAddMerchant}>Create Merchant</Button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* [UPDATED] Edit Subscription Modal with Real Packages */}
             {selectedMerchant && (
@@ -264,7 +405,7 @@ const Merchants = () => {
                         )}
 
                         <div className="flex justify-end gap-3 mt-8">
-                            <Button variant="ghost" onClick={() => { setSelectedMerchant(null); setSelectedPackage(null); }}>Cancel</Button>
+                            <Button variant="outline" onClick={() => { setSelectedMerchant(null); setSelectedPackage(null); }}>Cancel</Button>
                             <Button onClick={handleSaveSubscription}>Save Changes</Button>
                         </div>
                     </div>

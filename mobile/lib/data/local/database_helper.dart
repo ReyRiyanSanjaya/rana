@@ -205,6 +205,50 @@ class DatabaseHelper {
 
   // --- CRUD Operations ---
 
+  // [NEW] Sync Products with Server (Upsert + Delete Stale)
+  Future<void> syncProducts(List<dynamic> serverProducts) async {
+    final db = await instance.database;
+    await db.transaction((txn) async {
+      final serverIds = serverProducts.map((p) => p['id']).toSet();
+
+      // 1. Get all local products that are marked as SYNCED
+      // (We don't want to delete pending products that haven't been uploaded yet)
+      final localProducts = await txn.query('products',
+          columns: ['id'], where: 'syncStatus = 1 OR syncStatus IS NULL');
+      final localIds = localProducts.map((p) => p['id']).toSet();
+
+      // 2. Identify products to delete (Local - Server)
+      final idsToDelete = localIds.difference(serverIds);
+
+      for (var id in idsToDelete) {
+        await txn.delete('products', where: 'id = ?', whereArgs: [id]);
+      }
+
+      // 3. Upsert Server Products
+      for (var p in serverProducts) {
+        await txn.insert(
+            'products',
+            {
+              'id': p['id'],
+              'tenantId': p['tenantId'],
+              'sku': p['sku'],
+              'name': p['name'],
+              'costPrice': p['basePrice'] ?? p['costPrice'] ?? 0,
+              'sellingPrice': p['sellingPrice'],
+              'trackStock': (p['trackStock'] == true) ? 1 : 1,
+              'stock': p['stock'] ?? 0,
+              'category': (p['category'] is Map)
+                  ? (p['category']['name'] ?? 'All')
+                  : (p['category']?.toString() ?? 'All'),
+              'imageUrl': p['imageUrl'],
+              'syncStatus': 1, // Marked as Synced
+              'lastUpdated': DateTime.now().millisecondsSinceEpoch
+            },
+            conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+    });
+  }
+
   Future<void> insertProduct(Map<String, dynamic> product) async {
     final db = await instance.database;
     if (!product.containsKey('category') ||
@@ -259,32 +303,41 @@ class DatabaseHelper {
       Map<String, dynamic> txn, List<Map<String, dynamic>> items) async {
     final db = await instance.database;
     await db.transaction((txnObj) async {
-      // 1. Save Transaction Header
-      await txnObj.insert('transactions', txn);
+      try {
+        // 1. Save Transaction Header
+        await txnObj.insert('transactions', txn);
 
-      // 2. Save Items and Decrement Stock
-      for (var item in items) {
-        // [UPDATED] Ensure costPrice is saved
-        if (!item.containsKey('costPrice')) {
-          // Fallback: fetch current cost from product if not provided in item object
-          final productRes = await txnObj.query('products',
-              columns: ['costPrice'],
-              where: 'id = ?',
-              whereArgs: [item['productId']]);
-          if (productRes.isNotEmpty) {
-            item['costPrice'] = productRes.first['costPrice'] ?? 0;
-          } else {
-            item['costPrice'] = 0;
+        // 2. Save Items and Decrement Stock
+        for (var originalItem in items) {
+          // Create a mutable copy to ensure we can add costPrice
+          final item = Map<String, dynamic>.from(originalItem);
+
+          // [UPDATED] Ensure costPrice is saved
+          if (item['costPrice'] == null) {
+            // Fallback: fetch current cost from product if not provided in item object
+            final productRes = await txnObj.query('products',
+                columns: ['costPrice'],
+                where: 'id = ?',
+                whereArgs: [item['productId']]);
+            if (productRes.isNotEmpty) {
+              item['costPrice'] = productRes.first['costPrice'] ?? 0;
+            } else {
+              item['costPrice'] = 0;
+            }
           }
+
+          await txnObj.insert('transaction_items', item);
+
+          // Decrement stock for the product
+          // We use rawQuery/execute for update
+          await txnObj.rawUpdate(
+              'UPDATE products SET stock = stock - ? WHERE id = ?',
+              [item['quantity'], item['productId']]);
         }
-
-        await txnObj.insert('transaction_items', item);
-
-        // Decrement stock for the product
-        // We use rawQuery/execute for update
-        await txnObj.rawUpdate(
-            'UPDATE products SET stock = stock - ? WHERE id = ?',
-            [item['quantity'], item['productId']]);
+      } catch (e) {
+        // Log the error and rethrow so UI handles it
+        print("Transaction Error: $e");
+        throw e;
       }
     });
   }
@@ -323,6 +376,27 @@ class DatabaseHelper {
       where: 'offlineId = ?',
       whereArgs: [offlineId],
     );
+  }
+
+  // [NEW] Upsert Synced Transaction (From Server to Local)
+  // This does NOT deduct stock because server handles stock for historical data
+  Future<void> upsertSyncedTransaction(
+      Map<String, dynamic> txn, List<Map<String, dynamic>> items) async {
+    final db = await instance.database;
+    await db.transaction((txnObj) async {
+      // 1. Insert/Update Transaction Header
+      await txnObj.insert('transactions', txn,
+          conflictAlgorithm: ConflictAlgorithm.replace);
+
+      // 2. Delete existing items for this transaction (to avoid duplicates/stale data)
+      await txnObj.delete('transaction_items',
+          where: 'transactionOfflineId = ?', whereArgs: [txn['offlineId']]);
+
+      // 3. Insert Items
+      for (var item in items) {
+        await txnObj.insert('transaction_items', item);
+      }
+    });
   }
 
   // --- EXPENSE OPERATIONS ---
