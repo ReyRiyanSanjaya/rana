@@ -26,24 +26,21 @@ class _MarketSearchScreenState extends State<MarketSearchScreen> {
   List<dynamic> _results = [];
   bool _isLoading = false;
   String _activeCategory = 'Semua';
-  String _activeSort =
-      'relevance'; // relevance, price_asc, price_desc, distance
+  String _activeSort = 'relevance';
+  String _activeRatingFilter = 'Semua';
   double? _lat;
   double? _long;
-
-  final List<Map<String, String>> _categories = [
-    {'id': 'Semua', 'label': 'Semua'},
-    {'id': 'Makanan', 'label': 'Makanan'},
-    {'id': 'Minuman', 'label': 'Minuman'},
-    {'id': 'Belanja', 'label': 'Belanja'},
-    {'id': 'Kesehatan', 'label': 'Kesehatan'},
-  ];
+  List<String> _availableCategories = ['Semua'];
 
   @override
   void initState() {
     super.initState();
     _searchCtrl.text = widget.initialQuery ?? '';
     _activeCategory = widget.initialCategory ?? 'Semua';
+    final initialCat = _activeCategory.trim();
+    if (initialCat.isNotEmpty && initialCat != 'Semua') {
+      _availableCategories = ['Semua', initialCat];
+    }
     _loadLocationAndSearch();
   }
 
@@ -75,8 +72,45 @@ class _MarketSearchScreenState extends State<MarketSearchScreen> {
         long: _long,
       );
       if (mounted) {
+        List<dynamic> filtered = res;
+        double? minRating;
+        if (_activeRatingFilter == '4+') {
+          minRating = 4;
+        } else if (_activeRatingFilter == '4.5+') {
+          minRating = 4.5;
+        }
+        if (minRating != null) {
+          filtered = res.where((item) {
+            final rating = (item['averageRating'] as num?)?.toDouble() ?? 0;
+            return rating >= minRating!;
+          }).toList();
+        }
+        final categorySet = <String>{};
+        for (final item in filtered) {
+          final fromTopLevel = (item['category'] ?? '').toString().trim();
+          final fromStore =
+              (item['store']?['category'] ?? '').toString().trim();
+          if (fromTopLevel.isNotEmpty) {
+            categorySet.add(fromTopLevel);
+          }
+          if (fromStore.isNotEmpty) {
+            categorySet.add(fromStore);
+          }
+        }
+        final initialCat = widget.initialCategory?.trim();
+        if (initialCat != null &&
+            initialCat.isNotEmpty &&
+            initialCat != 'Semua') {
+          categorySet.add(initialCat);
+        }
+        final categories = categorySet.toList()..sort();
         setState(() {
-          _results = res;
+          _results = filtered;
+          _availableCategories =
+              categories.isEmpty ? ['Semua'] : ['Semua', ...categories];
+          if (!_availableCategories.contains(_activeCategory)) {
+            _activeCategory = 'Semua';
+          }
           _isLoading = false;
         });
       }
@@ -137,7 +171,6 @@ class _MarketSearchScreenState extends State<MarketSearchScreen> {
         padding: EdgeInsets.symmetric(horizontal: 16 * scale),
         child: Row(
           children: [
-            // Sort Button
             PopupMenuButton<String>(
               initialValue: _activeSort,
               onSelected: (val) {
@@ -151,6 +184,8 @@ class _MarketSearchScreenState extends State<MarketSearchScreen> {
                     value: 'price_asc', child: Text('Termurah')),
                 const PopupMenuItem(
                     value: 'price_desc', child: Text('Termahal')),
+                const PopupMenuItem(
+                    value: 'rating_desc', child: Text('Rating Tertinggi')),
                 const PopupMenuItem(value: 'distance', child: Text('Terdekat')),
               ],
               child: Container(
@@ -173,20 +208,18 @@ class _MarketSearchScreenState extends State<MarketSearchScreen> {
               ),
             ),
             SizedBox(width: 8 * scale),
-            // Category Chips
-            ..._categories.map((cat) {
-              final isActive = _activeCategory == cat['id'];
+            ..._availableCategories.map((label) {
+              final isActive = _activeCategory == label;
               return Padding(
                 padding: EdgeInsets.only(right: 8 * scale),
                 child: FilterChip(
                   label: Text(
-                    cat['label']!,
+                    label,
                     style: TextStyle(fontSize: 12 * scale),
                   ),
                   selected: isActive,
                   onSelected: (val) {
-                    setState(
-                        () => _activeCategory = val ? cat['id']! : 'Semua');
+                    setState(() => _activeCategory = val ? label : 'Semua');
                     _doSearch();
                   },
                   backgroundColor: Colors.white,
@@ -206,6 +239,69 @@ class _MarketSearchScreenState extends State<MarketSearchScreen> {
                 ),
               );
             }),
+            FilterChip(
+              label: Text(
+                '4+ bintang',
+                style: TextStyle(fontSize: 12 * scale),
+              ),
+              selected: _activeRatingFilter == '4+',
+              onSelected: (val) {
+                setState(() {
+                  _activeRatingFilter = val ? '4+' : 'Semua';
+                });
+                _doSearch();
+              },
+              backgroundColor: Colors.white,
+              selectedColor: ThemeConfig.brandColor.withValues(alpha: 0.1),
+              labelStyle: TextStyle(
+                color: _activeRatingFilter == '4+'
+                    ? ThemeConfig.brandColor
+                    : Colors.black87,
+                fontWeight: _activeRatingFilter == '4+'
+                    ? FontWeight.bold
+                    : FontWeight.normal,
+              ),
+              shape: StadiumBorder(
+                side: BorderSide(
+                  color: _activeRatingFilter == '4+'
+                      ? ThemeConfig.brandColor
+                      : Colors.grey.shade300,
+                ),
+              ),
+              showCheckmark: false,
+            ),
+            SizedBox(width: 8 * scale),
+            FilterChip(
+              label: Text(
+                '4.5+ bintang',
+                style: TextStyle(fontSize: 12 * scale),
+              ),
+              selected: _activeRatingFilter == '4.5+',
+              onSelected: (val) {
+                setState(() {
+                  _activeRatingFilter = val ? '4.5+' : 'Semua';
+                });
+                _doSearch();
+              },
+              backgroundColor: Colors.white,
+              selectedColor: ThemeConfig.brandColor.withValues(alpha: 0.1),
+              labelStyle: TextStyle(
+                color: _activeRatingFilter == '4.5+'
+                    ? ThemeConfig.brandColor
+                    : Colors.black87,
+                fontWeight: _activeRatingFilter == '4.5+'
+                    ? FontWeight.bold
+                    : FontWeight.normal,
+              ),
+              shape: StadiumBorder(
+                side: BorderSide(
+                  color: _activeRatingFilter == '4.5+'
+                      ? ThemeConfig.brandColor
+                      : Colors.grey.shade300,
+                ),
+              ),
+              showCheckmark: false,
+            ),
           ],
         ),
       ),
@@ -316,6 +412,7 @@ class _MarketSearchScreenState extends State<MarketSearchScreen> {
       itemCount: _results.length,
       itemBuilder: (context, index) {
         final item = _results[index];
+        final reviewCount = (item['reviewCount'] ?? 0) as num;
         return GestureDetector(
           onTap: () {
             // Re-map to match ProductDetailScreen expectations
@@ -427,6 +524,28 @@ class _MarketSearchScreenState extends State<MarketSearchScreen> {
                       SizedBox(height: 4 * scale),
                       Row(
                         children: [
+                          const Icon(Icons.star,
+                              size: 12, color: ThemeConfig.colorRating),
+                          SizedBox(width: 4 * scale),
+                          Text(
+                            ((item['averageRating'] ?? 0) as num)
+                                .toStringAsFixed(1),
+                            style: TextStyle(
+                              fontSize: 11 * scale,
+                              color: Colors.grey,
+                            ),
+                          ),
+                          if (reviewCount > 0) ...[
+                            SizedBox(width: 4 * scale),
+                            Text(
+                              '(${reviewCount.toInt()})',
+                              style: TextStyle(
+                                fontSize: 10 * scale,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                          SizedBox(width: 8 * scale),
                           Icon(Icons.store,
                               size: 12 * scale, color: Colors.grey),
                           SizedBox(width: 4 * scale),

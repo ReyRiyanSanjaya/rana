@@ -11,6 +11,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:rana_merchant/data/remote/api_service.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:rana_merchant/services/support_read_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -21,11 +22,13 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   String _version = '1.0.0';
+  int _unreadSupportCount = 0;
 
   @override
   void initState() {
     super.initState();
     _loadVersion();
+    Future.microtask(_refreshSupportBadge);
   }
 
   Future<void> _loadVersion() async {
@@ -35,6 +38,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _version = info.version;
       });
     }
+  }
+
+  Future<void> _refreshSupportBadge() async {
+    try {
+      final unread = await SupportReadService().getUnreadCount();
+      if (!mounted) return;
+      setState(() {
+        _unreadSupportCount = unread;
+      });
+    } catch (_) {}
   }
 
   @override
@@ -204,14 +217,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           MaterialPageRoute(
                               builder: (_) => const PrivacyPolicyScreen())),
                     ),
-                    _buildDivider(),
-                    _buildSettingsItem(
-                      icon: Icons.support_agent_rounded,
-                      title: 'Hubungi Bantuan',
-                      subtitle: 'Pusat Bantuan & Chat Admin',
-                      onTap: () => Navigator.push(context,
-                          MaterialPageRoute(builder: (_) => const SupportScreen())),
-                    ),
+                  _buildDivider(),
+                  _buildSettingsItem(
+                    icon: Icons.support_agent_rounded,
+                    title: 'Hubungi Bantuan',
+                    subtitle: 'Pusat Bantuan & Chat Admin',
+                    badgeCount: _unreadSupportCount,
+                    onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const SupportScreen()))
+                        .then((_) => _refreshSupportBadge()),
+                  ),
                     _buildDivider(),
                     _buildSettingsItem(
                       icon: Icons.info_outline_rounded,
@@ -474,17 +491,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
     String? subtitle,
     Widget? trailing,
     VoidCallback? onTap,
+    int? badgeCount,
   }) {
     return ListTile(
       onTap: onTap,
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF1F5F9),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Icon(icon, color: const Color(0xFF64748B), size: 20),
+      leading: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: const Color(0xFF64748B), size: 20),
+          ),
+          if (badgeCount != null && badgeCount > 0)
+            Positioned(
+              right: -4,
+              top: -4,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.red,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                constraints:
+                    const BoxConstraints(minWidth: 18, minHeight: 18),
+                child: Center(
+                  child: Text(
+                    badgeCount > 99 ? '99+' : badgeCount.toString(),
+                    style: GoogleFonts.outfit(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
       title: Text(title,
           style: GoogleFonts.outfit(

@@ -281,7 +281,7 @@ const getOrders = async (req, res) => {
 const updateOrderStatus = async (req, res) => {
     try {
         const { id } = req.params;
-        const { status } = req.body; // PAID, SHIPPED, etc.
+        const { status, pickupCode } = req.body;
 
         // Validate status against enum
         const validStatuses = ['PENDING', 'PAID', 'PROCESSED', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
@@ -291,7 +291,7 @@ const updateOrderStatus = async (req, res) => {
 
         const order = await prisma.wholesaleOrder.update({
             where: { id },
-            data: { status }
+            data: { status, pickupCode: pickupCode !== undefined ? pickupCode : undefined }
         });
 
         if (status === 'PAID' && order.serviceFee && order.serviceFee > 0) {
@@ -410,6 +410,15 @@ const uploadProof = async (req, res) => {
         if (!req.file) return errorResponse(res, "No file uploaded", 400);
         // Assuming public/uploads is served statically
         const url = `/uploads/proofs/${req.file.filename}`;
+        const { orderId } = req.body || {};
+        if (orderId) {
+            try {
+                await prisma.wholesaleOrder.update({
+                    where: { id: orderId },
+                    data: { proofUrl: url }
+                });
+            } catch (_) {}
+        }
         return successResponse(res, { url }, "Proof uploaded");
     } catch (error) {
         return errorResponse(res, "Upload failed", 500, error);

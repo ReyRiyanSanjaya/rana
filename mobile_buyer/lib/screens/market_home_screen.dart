@@ -25,8 +25,14 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
 
   List<dynamic> _announcements = [];
   List<dynamic> _flashSales = [];
-  List<dynamic> _filteredStores = [];
   List<dynamic> _popularProducts = [];
+  List<dynamic> _nearbyStores = [];
+  List<dynamic> _filteredStores = [];
+  List<String> _availableStoreCategories = [];
+  String _storeCategoryFilter = 'Semua';
+  String _storeRatingFilter = 'Semua';
+  String _storeSort = 'default';
+  double _nearbyRadiusKm = 5;
   bool _isLoading = true;
   String _address = 'Memuat lokasi...';
 
@@ -53,7 +59,6 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
       double long = 0;
       String locName = 'Mencari lokasi...';
 
-      // 1. Get Location
       try {
         final position = await _determinePosition();
         lat = position.latitude;
@@ -64,30 +69,37 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
         locName = 'Lokasi Default';
       }
 
-      // Load Announcements
       final announcements = await MarketApiService().getAnnouncements();
 
-      // Load Flash Sales
       final flashSales =
           await MarketApiService().getFlashSaleProducts(lat, long);
 
-      // Load Popular Products
       final popular = await MarketApiService().searchGlobal(
         lat: lat,
         long: long,
         sort: 'rating_desc',
         limit: 10,
       );
-
-      // Load Nearby Stores
-      final nearby = await MarketApiService().getNearbyStores(lat, long);
+      final nearby =
+          await MarketApiService().getNearbyStores(lat, long, radiusKm: _nearbyRadiusKm);
+      final categorySet = <String>{};
+      for (final store in nearby) {
+        final raw = (store['category'] ?? '').toString().trim();
+        if (raw.isNotEmpty) {
+          categorySet.add(raw);
+        }
+      }
 
       if (mounted) {
         setState(() {
           _announcements = announcements;
           _flashSales = flashSales;
           _popularProducts = popular;
-          _filteredStores = nearby;
+          _nearbyStores = nearby;
+          _availableStoreCategories = categorySet.toList()..sort();
+          _storeCategoryFilter = 'Semua';
+          _storeRatingFilter = 'Semua';
+          _rebuildFilteredStores();
           _isLoading = false;
           _address = locName;
           _startTimer();
@@ -98,6 +110,33 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
         setState(() => _isLoading = false);
       }
       debugPrint('Error loading home: $e');
+    }
+  }
+
+  void _rebuildFilteredStores() {
+    _filteredStores = _nearbyStores.where((store) {
+      if (_storeCategoryFilter != 'Semua') {
+        final cat = (store['category'] ?? '').toString().trim();
+        if (cat != _storeCategoryFilter) return false;
+      }
+      final rating = (store['rating'] as num?)?.toDouble() ?? 0;
+      if (_storeRatingFilter == '4+') {
+        if (rating < 4) return false;
+      } else if (_storeRatingFilter == '4.5+') {
+        if (rating < 4.5) return false;
+      }
+      return true;
+    }).toList();
+    _applyStoreSorting();
+  }
+
+  void _applyStoreSorting() {
+    if (_storeSort == 'rating_desc') {
+      _filteredStores.sort((a, b) {
+        final ra = (a['rating'] ?? 0) as num;
+        final rb = (b['rating'] ?? 0) as num;
+        return rb.compareTo(ra);
+      });
     }
   }
 
@@ -180,6 +219,7 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
               SliverToBoxAdapter(child: _buildFlashSale()),
             if (_popularProducts.isNotEmpty)
               SliverToBoxAdapter(child: _buildPopularProducts()),
+            SliverToBoxAdapter(child: _buildTopFavoriteStores()),
             _buildNearbyStoresHeader(),
             _buildNearbyStoresList(),
             const SliverToBoxAdapter(child: SizedBox(height: 100)),
@@ -241,15 +281,230 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
     );
   }
 
-  Widget _buildCategories() {
-    final categories = [
-      {'icon': Icons.restaurant, 'label': 'Makanan'},
-      {'icon': Icons.local_drink, 'label': 'Minuman'},
-      {'icon': Icons.shopping_basket, 'label': 'Belanja'},
-      {'icon': Icons.local_offer, 'label': 'Promo'},
-    ];
-
+  Widget _buildTopFavoriteStores() {
+    if (_nearbyStores.isEmpty) return const SizedBox.shrink();
     final scale = ThemeConfig.tabletScale(context, mobile: 1.0);
+
+    final favorites = _nearbyStores.where((store) {
+      final rating = (store['rating'] as num?)?.toDouble() ?? 0;
+      final reviewCount = (store['reviewCount'] as num?)?.toInt() ?? 0;
+      return rating >= 4.5 && reviewCount >= 10;
+    }).toList();
+
+    favorites.sort((a, b) {
+      final ra = (a['rating'] as num?)?.toDouble() ?? 0;
+      final rb = (b['rating'] as num?)?.toDouble() ?? 0;
+      if (rb.compareTo(ra) != 0) return rb.compareTo(ra);
+      final ca = (a['reviewCount'] as num?)?.toInt() ?? 0;
+      final cb = (b['reviewCount'] as num?)?.toInt() ?? 0;
+      return cb.compareTo(ca);
+    });
+
+    final top = favorites.take(5).toList();
+    if (top.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.fromLTRB(16, 16 * scale, 16, 8 * scale),
+          child: Text(
+            'Toko Paling Disukai di Sekitarmu',
+            style: TextStyle(
+              fontSize: 18 * scale,
+              fontWeight: FontWeight.bold,
+              color: ThemeConfig.textPrimary,
+            ),
+          ),
+        ),
+        SizedBox(
+          height: ThemeConfig.isTablet(context) ? 220 : 180,
+          child: ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            scrollDirection: Axis.horizontal,
+            itemCount: top.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (context, index) {
+              final store = top[index];
+              final distance = (store['distance'] as num?)?.toDouble();
+              final rating = (store['rating'] as num?)?.toDouble() ?? 0;
+              final reviewCount =
+                  (store['reviewCount'] as num?)?.toInt() ?? 0;
+              final imgUrl = MarketApiService()
+                  .resolveFileUrl(store['imageUrl']);
+
+              return GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => StoreDetailScreen(store: store),
+                    ),
+                  );
+                },
+                child: Container(
+                  width: ThemeConfig.isTablet(context) ? 220 : 180,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius:
+                        BorderRadius.circular(ThemeConfig.radiusMedium),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(ThemeConfig.radiusMedium),
+                        ),
+                        child: CachedNetworkImage(
+                          imageUrl: imgUrl,
+                          height: ThemeConfig.isTablet(context) ? 120 : 100,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          errorWidget: (_, __, ___) => Container(
+                            height: 100,
+                            color: Colors.grey.shade200,
+                            child:
+                                const Icon(Icons.store, color: Colors.grey),
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              store['name'] ?? 'Toko Tanpa Nama',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 14 * scale,
+                                fontWeight: FontWeight.w600,
+                                color: ThemeConfig.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                const Icon(Icons.star,
+                                    size: 12,
+                                    color: ThemeConfig.colorRating),
+                                const SizedBox(width: 4),
+                                Text(
+                                  rating.toStringAsFixed(1),
+                                  style: TextStyle(
+                                    fontSize: 11 * scale,
+                                    fontWeight: FontWeight.bold,
+                                    color: ThemeConfig.textPrimary,
+                                  ),
+                                ),
+                                if (reviewCount > 0) ...[
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '($reviewCount)',
+                                    style: TextStyle(
+                                      fontSize: 10 * scale,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Icon(Icons.location_on_outlined,
+                                    size: 12 * scale,
+                                    color: Colors.grey.shade500),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    store['address'] ?? '-',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 11 * scale,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                  ),
+                                ),
+                                if (distance != null) ...[
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${distance.toStringAsFixed(1)} km',
+                                    style: TextStyle(
+                                      fontSize: 10 * scale,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ).animate().fadeIn(duration: 300.ms).slideX(begin: 0.05),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCategories() {
+    final scale = ThemeConfig.tabletScale(context, mobile: 1.0);
+
+    final Map<String, int> categoryCounts = {};
+    for (final store in _nearbyStores) {
+      final name = (store['category'] ?? '').toString().trim();
+      if (name.isEmpty) continue;
+      categoryCounts[name] = (categoryCounts[name] ?? 0) + 1;
+    }
+
+    final sortedNames = List<String>.from(_availableStoreCategories);
+    sortedNames.sort((a, b) {
+      final cb = categoryCounts[b] ?? 0;
+      final ca = categoryCounts[a] ?? 0;
+      if (cb != ca) return cb.compareTo(ca);
+      return a.compareTo(b);
+    });
+
+    final List<Map<String, dynamic>> categories = [];
+    for (final name in sortedNames) {
+      IconData icon;
+      if (name == 'Makanan') {
+        icon = Icons.restaurant;
+      } else if (name == 'Minuman') {
+        icon = Icons.local_drink;
+      } else if (name == 'Belanja') {
+        icon = Icons.shopping_basket;
+      } else {
+        icon = Icons.storefront;
+      }
+      final count = categoryCounts[name] ?? 0;
+      categories.add({'icon': icon, 'label': name, 'count': count});
+      if (categories.length >= 4) break;
+    }
+
+    if (categories.isEmpty) {
+      categories.addAll([
+        {'icon': Icons.restaurant, 'label': 'Makanan', 'count': 0},
+        {'icon': Icons.local_drink, 'label': 'Minuman', 'count': 0},
+        {'icon': Icons.shopping_basket, 'label': 'Belanja', 'count': 0},
+        {'icon': Icons.local_offer, 'label': 'Promo', 'count': 0},
+      ]);
+    }
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -297,6 +552,16 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
                     color: ThemeConfig.textSecondary,
                   ),
                 ),
+                if ((cat['count'] as int) > 0) ...[
+                  SizedBox(height: 2 * scale),
+                  Text(
+                    '${cat['count']} Toko',
+                    style: TextStyle(
+                      fontSize: 10 * scale,
+                      color: Colors.grey.shade500,
+                    ),
+                  ),
+                ],
               ],
             ),
           );
@@ -650,21 +915,224 @@ class _MarketHomeScreenState extends State<MarketHomeScreen> {
 
   Widget _buildNearbyStoresHeader() {
     final scale = ThemeConfig.tabletScale(context, mobile: 1.0);
+    final totalStores = _nearbyStores.length;
+    final totalCategories = _availableStoreCategories.length;
+    final totalReviews = _nearbyStores.fold<int>(
+      0,
+      (sum, store) => sum + ((store['reviewCount'] as num?)?.toInt() ?? 0),
+    );
+    final filteredCount = _filteredStores.length;
+    final hasActiveFilter =
+        _storeCategoryFilter != 'Semua' || _storeRatingFilter != 'Semua';
     return SliverToBoxAdapter(
       child: Padding(
         padding: EdgeInsets.fromLTRB(16, 24 * scale, 16, 12 * scale),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Toko di Sekitarmu',
-              style: TextStyle(
-                fontSize: 18 * scale,
-                fontWeight: FontWeight.bold,
-                color: ThemeConfig.textPrimary,
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Toko di Sekitarmu',
+                    style: TextStyle(
+                      fontSize: 18 * scale,
+                      fontWeight: FontWeight.bold,
+                      color: ThemeConfig.textPrimary,
+                    ),
+                  ),
+                ),
+                DropdownButton<double>(
+                  value: _nearbyRadiusKm,
+                  underline: const SizedBox.shrink(),
+                  style: TextStyle(
+                    fontSize: 12 * scale,
+                    color: ThemeConfig.textSecondary,
+                  ),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 3,
+                      child: Text('3 km'),
+                    ),
+                    DropdownMenuItem(
+                      value: 5,
+                      child: Text('5 km'),
+                    ),
+                    DropdownMenuItem(
+                      value: 10,
+                      child: Text('10 km'),
+                    ),
+                  ],
+                  onChanged: (value) async {
+                    if (value == null) return;
+                    setState(() {
+                      _nearbyRadiusKm = value;
+                    });
+                    await _loadData();
+                  },
+                ),
+                const SizedBox(width: 8),
+                DropdownButton<String>(
+                  value: _storeSort,
+                  underline: const SizedBox.shrink(),
+                  style: TextStyle(
+                    fontSize: 12 * scale,
+                    color: ThemeConfig.textSecondary,
+                  ),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'default',
+                      child: Text('Urut: Terdekat'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'rating_desc',
+                      child: Text('Urut: Rating'),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setState(() {
+                      _storeSort = value;
+                      _applyStoreSorting();
+                    });
+                  },
+                ),
+              ],
             ),
+            if (totalStores > 0)
+              Padding(
+                padding: EdgeInsets.only(top: 4 * scale),
+                child: Text(
+                  totalCategories > 0
+                      ? totalReviews > 0
+                          ? '$totalStores toko • $totalReviews ulasan di $totalCategories kategori'
+                          : '$totalStores toko di $totalCategories kategori'
+                      : totalReviews > 0
+                          ? '$totalStores toko • $totalReviews ulasan di sekitarmu'
+                          : '$totalStores toko di sekitarmu',
+                  style: TextStyle(
+                    fontSize: 11 * scale,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ),
+            if (hasActiveFilter && filteredCount != totalStores)
+              Padding(
+                padding: EdgeInsets.only(top: 2 * scale),
+                child: Text(
+                  'Menampilkan $filteredCount dari $totalStores toko sesuai filter',
+                  style: TextStyle(
+                    fontSize: 11 * scale,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ),
+            if (_availableStoreCategories.isNotEmpty)
+              SizedBox(
+                height: 32 * scale,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  shrinkWrap: true,
+                  children: [
+                    _buildStoreCategoryChip('Semua'),
+                    ..._availableStoreCategories.map(
+                      (c) => _buildStoreCategoryChip(c),
+                    ),
+                  ],
+                ),
+              ),
+            if (totalStores > 0)
+              SizedBox(
+                height: 32 * scale,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  shrinkWrap: true,
+                  children: [
+                    _buildStoreRatingChip('Semua rating', 'Semua'),
+                    _buildStoreRatingChip('4+ bintang', '4+'),
+                    _buildStoreRatingChip('4.5+ bintang', '4.5+'),
+                  ],
+                ),
+              ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStoreCategoryChip(String label) {
+    final scale = ThemeConfig.tabletScale(context, mobile: 1.0);
+    final isSelected = _storeCategoryFilter == label;
+    return Padding(
+      padding: EdgeInsets.only(left: 8 * scale),
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _storeCategoryFilter = label;
+            _rebuildFilteredStores();
+          });
+        },
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: 10 * scale,
+            vertical: 4 * scale,
+          ),
+          decoration: BoxDecoration(
+            color: isSelected ? ThemeConfig.brandColor : Colors.white,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: isSelected
+                  ? ThemeConfig.brandColor
+                  : Colors.grey.shade300,
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 11 * scale,
+              fontWeight: FontWeight.w500,
+              color: isSelected ? Colors.white : ThemeConfig.textSecondary,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStoreRatingChip(String label, String value) {
+    final scale = ThemeConfig.tabletScale(context, mobile: 1.0);
+    final isSelected = _storeRatingFilter == value;
+    return Padding(
+      padding: EdgeInsets.only(left: 8 * scale),
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _storeRatingFilter = value;
+            _rebuildFilteredStores();
+          });
+        },
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: 10 * scale,
+            vertical: 4 * scale,
+          ),
+          decoration: BoxDecoration(
+            color: isSelected ? ThemeConfig.brandColor : Colors.white,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: isSelected
+                  ? ThemeConfig.brandColor
+                  : Colors.grey.shade300,
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 11 * scale,
+              fontWeight: FontWeight.w500,
+              color: isSelected ? Colors.white : ThemeConfig.textSecondary,
+            ),
+          ),
         ),
       ),
     );
@@ -738,6 +1206,11 @@ class _StoreCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scale = ThemeConfig.tabletScale(context, mobile: 1.0);
+    final distance = (store['distance'] as num?)?.toDouble();
+    final rating = (store['rating'] as num?)?.toDouble();
+    final reviewCount = (store['reviewCount'] as num?)?.toInt() ?? 0;
+    final isFavorite =
+        rating != null && rating >= 4.8 && reviewCount >= 20;
 
     return GestureDetector(
       onTap: () {
@@ -784,29 +1257,81 @@ class _StoreCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    store['name'] ?? 'Toko Tanpa Nama',
-                    style: TextStyle(
-                      fontSize: 16 * scale,
-                      fontWeight: FontWeight.bold,
-                      color: ThemeConfig.textPrimary,
-                    ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          store['name'] ?? 'Toko Tanpa Nama',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 16 * scale,
+                            fontWeight: FontWeight.bold,
+                            color: ThemeConfig.textPrimary,
+                          ),
+                        ),
+                      ),
+                      if (isFavorite) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 8 * scale, vertical: 3 * scale),
+                          decoration: BoxDecoration(
+                            color: ThemeConfig.colorRating.withValues(
+                              alpha: 0.15,
+                            ),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.emoji_events,
+                                size: 14,
+                                color: ThemeConfig.colorRating,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Favorit pelanggan',
+                                style: TextStyle(
+                                  fontSize: 10 * scale,
+                                  fontWeight: FontWeight.w600,
+                                  color: ThemeConfig.colorRating,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(Icons.star,
-                          size: 14, color: ThemeConfig.colorRating),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${store['rating'] ?? 0.0}',
-                        style: TextStyle(
-                          fontSize: 12 * scale,
-                          fontWeight: FontWeight.bold,
-                          color: ThemeConfig.textPrimary,
+                      if (rating != null && rating > 0) ...[
+                        const Icon(Icons.star,
+                            size: 14, color: ThemeConfig.colorRating),
+                        const SizedBox(width: 4),
+                        Text(
+                          rating.toStringAsFixed(1),
+                          style: TextStyle(
+                            fontSize: 12 * scale,
+                            fontWeight: FontWeight.bold,
+                            color: ThemeConfig.textPrimary,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
+                        if (reviewCount > 0) ...[
+                          const SizedBox(width: 4),
+                          Text(
+                            '• $reviewCount ulasan',
+                            style: TextStyle(
+                              fontSize: 11 * scale,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                        const SizedBox(width: 8),
+                      ],
                       Container(
                         padding: EdgeInsets.symmetric(
                             horizontal: 6 * scale, vertical: 2 * scale),
@@ -842,6 +1367,17 @@ class _StoreCard extends StatelessWidget {
                           ),
                         ),
                       ),
+                      if (distance != null) ...[
+                        const SizedBox(width: 8),
+                        Text(
+                          '${distance.toStringAsFixed(1)} km',
+                          style: TextStyle(
+                            fontSize: 11 * scale,
+                            color: Colors.grey.shade600,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ],

@@ -7,6 +7,8 @@ import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import { Table, Thead, Tbody, Th, Td, Tr } from '../components/ui/Table';
 import Input from "../components/ui/Input"; // [NEW]
+import { ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip } from 'recharts';
+import { ArrowLeft, Pencil, Bell, Ban, CheckCircle, Wallet, List } from 'lucide-react';
 
 const MerchantDetail = () => {
     const { id } = useParams();
@@ -183,8 +185,8 @@ const MerchantDetail = () => {
         <AdminLayout>
             {/* Header */}
             <div className="mb-8">
-                <Button variant="outline" onClick={() => navigate('/merchants')} className="mb-4">
-                    &larr; Back to Merchants
+                <Button variant="outline" onClick={() => navigate('/merchants')} className="mb-4" icon={ArrowLeft}>
+                    Back to Merchants
                 </Button>
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
@@ -194,14 +196,14 @@ const MerchantDetail = () => {
                     </div>
                     <div className="flex gap-2 flex-wrap">
                         <Badge variant={merchant.tenant?.subscriptionStatus === 'ACTIVE' ? 'success' : 'warning'}>{merchant.tenant?.subscriptionStatus}</Badge>
-                        <Button variant="outline" onClick={() => setShowEditModal(true)}>Edit Details</Button>
-                        <Button variant="outline" onClick={() => navigate(`/merchants/${id}/menu`)}>Manage Menu</Button>
-                        <Button variant="secondary" onClick={() => setShowNotifyModal(true)}>Send Notification</Button>
+                        <Button variant="outline" onClick={() => setShowEditModal(true)} icon={Pencil}>Edit Details</Button>
+                        <Button variant="outline" onClick={() => navigate(`/merchants/${id}/menu`)} icon={List}>Manage Menu</Button>
+                        <Button variant="secondary" onClick={() => setShowNotifyModal(true)} icon={Bell}>Send Notification</Button>
                         
                         {merchant.tenant?.subscriptionStatus === 'ACTIVE' ? (
-                            <Button variant="destructive" onClick={handleSuspend}>Suspend</Button>
+                            <Button variant="destructive" onClick={handleSuspend} icon={Ban}>Suspend</Button>
                         ) : (
-                            <Button className="bg-green-600 hover:bg-green-700 text-white" onClick={handleActivate}>Activate</Button>
+                            <Button onClick={handleActivate} icon={CheckCircle}>Activate</Button>
                         )}
                     </div>
                 </div>
@@ -313,10 +315,36 @@ const MerchantDetail = () => {
                             <h3 className="text-white/70 text-sm font-medium uppercase">Current Balance</h3>
                             <p className="text-3xl font-bold mt-2">{formatCurrency(merchant.balance)}</p>
                         </Card>
-                        <Button onClick={() => setShowWalletModal(true)} className="bg-slate-900 text-white hover:bg-slate-800">
+                        <Button onClick={() => setShowWalletModal(true)} icon={Wallet}>
                             Adjust Balance
                         </Button>
                     </div>
+
+                    <Card>
+                        <h3 className="p-4 font-semibold border-b">Wallet Activity Chart</h3>
+                        <div className="h-64 p-4">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart
+                                    data={(merchant.walletHistory || []).slice().reverse().map(log => ({
+                                        date: new Date(log.occurredAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' }),
+                                        amount: log.type === 'CASH_IN' ? log.amount : -log.amount
+                                    }))}
+                                >
+                                    <defs>
+                                        <linearGradient id="colorAmt" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#6366F1" stopOpacity={0.4}/>
+                                            <stop offset="95%" stopColor="#6366F1" stopOpacity={0}/>
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="date" />
+                                    <YAxis tickFormatter={(v) => new Intl.NumberFormat('id-ID').format(v)} />
+                                    <Tooltip formatter={(v) => formatCurrency(v)} />
+                                    <Area type="monotone" dataKey="amount" stroke="#6366F1" fillOpacity={1} fill="url(#colorAmt)" />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </Card>
 
                     <Card>
                         <h3 className="p-4 font-semibold border-b">Recent Wallet Activity</h3>
@@ -367,7 +395,7 @@ const MerchantDetail = () => {
                                     <Td>{u.email}</Td>
                                     <Td><Badge>{u.role}</Badge></Td>
                                     <Td>
-                                        <Button variant="link" className="text-xs text-indigo-600 hover:underline h-auto p-0" onClick={() => { setSelectedUser(u); setShowResetModal(true); }}>Reset Password</Button>
+                                        <Button variant="link" className="text-xs h-auto p-0" onClick={() => { setSelectedUser(u); setShowResetModal(true); }}>Reset Password</Button>
                                     </Td>
                                 </Tr>
                             ))}
@@ -414,7 +442,7 @@ const MerchantDetail = () => {
                         </div>
                         <div className="flex justify-end gap-3 mt-8">
                             <Button variant="outline" onClick={() => setShowWalletModal(false)}>Cancel</Button>
-                            <Button className="bg-slate-900 text-white hover:bg-slate-800" onClick={handleAdjustWallet}>Confirm</Button>
+                            <Button onClick={handleAdjustWallet}>Confirm</Button>
                         </div>
                     </div>
                 </div>

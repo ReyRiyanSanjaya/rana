@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import api from '../api';
 import AdminLayout from '../components/AdminLayout';
 import { Table, Thead, Tbody, Th, Td, Tr } from '../components/ui/Table';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
-import { Download, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Download, ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
 
 const Transactions = () => {
     const [transactions, setTransactions] = useState([]);
@@ -14,6 +15,9 @@ const Transactions = () => {
     const [totalPages, setTotalPages] = useState(1);
     const [loading, setLoading] = useState(true);
     const [exporting, setExporting] = useState(false);
+    const [error, setError] = useState(null);
+    const [search, setSearch] = useState('');
+    const [selectedTransaction, setSelectedTransaction] = useState(null);
 
     // Filters
     const [startDate, setStartDate] = useState('');
@@ -22,9 +26,11 @@ const Transactions = () => {
     const [category, setCategory] = useState(''); // Store Category
     const [paymentStatus, setPaymentStatus] = useState('');
     const [paymentMethod, setPaymentMethod] = useState('');
+    const location = useLocation();
 
     const fetchTransactions = async () => {
         setLoading(true);
+        setError(null);
         try {
             const params = {
                 page,
@@ -38,21 +44,46 @@ const Transactions = () => {
             };
             const res = await api.get('/admin/transactions', { params });
             if (res.data.status === 'success') {
-                setTransactions(res.data.data.transactions);
-                setTotal(res.data.data.total);
-                setTotalPages(res.data.data.totalPages);
+                setTransactions(res.data.data.transactions || []);
+                setTotal(res.data.data.total || 0);
+                setTotalPages(res.data.data.totalPages || 1);
+            } else {
+                setTransactions([]);
+                setTotal(0);
+                setTotalPages(1);
+                setError(res.data.message || 'Failed to load transactions');
             }
-        } catch (error) {
-            console.error(error);
+        } catch (err) {
+            console.error(err);
+            setTransactions([]);
+            setTotal(0);
+            setTotalPages(1);
+            setError(err.response?.data?.message || 'Failed to load transactions');
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        // Debounce or just fetch on simple changes
         fetchTransactions();
     }, [page, startDate, endDate, area, category, paymentStatus, paymentMethod]);
+
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const qsStartDate = params.get('startDate') || '';
+        const qsEndDate = params.get('endDate') || '';
+        const qsArea = params.get('area') || '';
+        const qsCategory = params.get('category') || '';
+        const qsStatus = params.get('paymentStatus') || '';
+        const qsMethod = params.get('paymentMethod') || '';
+
+        if (qsStartDate) setStartDate(qsStartDate);
+        if (qsEndDate) setEndDate(qsEndDate);
+        if (qsArea) setArea(qsArea);
+        if (qsCategory) setCategory(qsCategory);
+        if (qsStatus) setPaymentStatus(qsStatus);
+        if (qsMethod) setPaymentMethod(qsMethod);
+    }, [location.search]);
 
     const handleExport = async () => {
         setExporting(true);
@@ -66,24 +97,24 @@ const Transactions = () => {
                 paymentMethod: paymentMethod || undefined
             };
             const res = await api.get('/admin/transactions/export', { params });
-            const data = res.data.data;
+            const data = Array.isArray(res.data.data) ? res.data.data : [];
 
-            // Convert to CSV
             const csvRows = [];
-            const headers = ['ID', 'Date', 'Merchant', 'Store Location', 'Store Category', 'Amount', 'Payment Method', 'Status', 'O2O Status'];
+            const headers = ['ID', 'Date', 'Merchant', 'Store Location', 'Store Category', 'Amount', 'Payment Method', 'Status', 'O2O Status', 'Cashier'];
             csvRows.push(headers.join(','));
 
             data.forEach(row => {
                 const values = [
                     row.id,
-                    new Date(row.occurredAt).toISOString(),
-                    `"${row.store.name}"`,
-                    `"${row.store.location || ''}"`,
-                    `"${row.store.category || ''}"`,
+                    row.occurredAt ? new Date(row.occurredAt).toISOString() : '',
+                    `"${row.store || ''}"`,
+                    `"${row.storeLocation || ''}"`,
+                    `"${row.storeCategory || ''}"`,
                     row.totalAmount,
                     row.paymentMethod,
                     row.paymentStatus,
-                    row.orderStatus
+                    row.orderStatus,
+                    `"${row.cashier || ''}"`
                 ];
                 csvRows.push(values.join(','));
             });
@@ -96,16 +127,47 @@ const Transactions = () => {
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-
-        } catch (error) {
-            console.error(error);
+        } catch (err) {
+            console.error(err);
             alert("Failed to export data");
         } finally {
             setExporting(false);
         }
     };
 
-    const formatCurrency = (val) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(val);
+    const formatCurrency = (val) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(val || 0);
+
+    const filteredTransactions = transactions.filter((t) => {
+        const q = search.trim().toLowerCase();
+        if (!q) return true;
+        const storeName = (t.store?.name || '').toLowerCase();
+        const storeLocation = (t.store?.location || '').toLowerCase();
+        const storeCategory = (t.store?.category || '').toLowerCase();
+        const tenantName = (t.tenant?.name || '').toLowerCase();
+        const cashierName = (t.user?.name || '').toLowerCase();
+        const method = (t.paymentMethod || '').toLowerCase();
+        const status = (t.paymentStatus || '').toLowerCase();
+        const id = (t.id || '').toLowerCase();
+        return (
+            storeName.includes(q) ||
+            storeLocation.includes(q) ||
+            storeCategory.includes(q) ||
+            tenantName.includes(q) ||
+            cashierName.includes(q) ||
+            method.includes(q) ||
+            status.includes(q) ||
+            id.includes(q)
+        );
+    });
+
+    const pageTotalAmount = filteredTransactions.reduce((sum, t) => sum + (t.totalAmount || 0), 0);
+
+    const getOrderStatusVariant = (status) => {
+        if (!status) return 'secondary';
+        if (status === 'COMPLETED' || status === 'DELIVERED') return 'success';
+        if (status === 'CANCELLED' || status === 'FAILED') return 'error';
+        return 'warning';
+    };
 
     return (
         <AdminLayout>
@@ -125,6 +187,25 @@ const Transactions = () => {
                             Export to Excel (CSV)
                         </Button>
                     </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Card className="p-4 flex flex-col">
+                        <span className="text-xs font-semibold text-slate-500 uppercase">Total Transaksi (filter aktif)</span>
+                        <span className="mt-2 text-2xl font-bold text-slate-900">{total}</span>
+                    </Card>
+                    <Card className="p-4 flex flex-col">
+                        <span className="text-xs font-semibold text-slate-500 uppercase">Total Nilai di Halaman Ini</span>
+                        <span className="mt-2 text-2xl font-bold text-emerald-700">{formatCurrency(pageTotalAmount)}</span>
+                    </Card>
+                    <Card className="p-4 flex flex-col">
+                        <span className="text-xs font-semibold text-slate-500 uppercase">Rentang Tanggal</span>
+                        <span className="mt-2 text-sm text-slate-700">
+                            {startDate || endDate
+                                ? `${startDate || 'Semua'} s.d. ${endDate || 'Sekarang'}`
+                                : 'Semua tanggal'}
+                        </span>
+                    </Card>
                 </div>
 
                 <Card className="p-4">
@@ -197,16 +278,60 @@ const Transactions = () => {
                             </select>
                         </div>
                     </div>
-                    <div className="mt-4 pt-4 border-t border-slate-100 text-sm text-slate-500 flex justify-between">
-                        <span>Filter active: {total} records found</span>
-                        {(startDate || endDate || area || category || paymentStatus || paymentMethod) && (
-                            <Button variant="outline" size="sm" onClick={() => {
-                                setStartDate(''); setEndDate(''); setArea(''); setCategory(''); setPaymentStatus(''); setPaymentMethod('');
-                            }} className="text-blue-600 border-blue-200 hover:bg-blue-50">Clear Filters</Button>
-                        )}
+                    <div className="mt-4 flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
+                        <div className="relative w-full md:w-80">
+                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <Search className="h-4 w-4 text-slate-400" />
+                            </div>
+                            <input
+                                type="text"
+                                placeholder="Cari ID, Merchant, Kasir, metode pembayaran..."
+                                className="pl-10 pr-9 py-2 w-full border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none text-sm transition shadow-sm"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                            />
+                            {search && (
+                                <button
+                                    type="button"
+                                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
+                                    onClick={() => setSearch('')}
+                                >
+                                    <X className="h-4 w-4" />
+                                </button>
+                            )}
+                        </div>
+                        <div className="flex flex-col md:flex-row md:items-center gap-2 text-sm text-slate-500">
+                            <span>{total} total transaksi; menampilkan {filteredTransactions.length} di halaman ini</span>
+                            {(startDate || endDate || area || category || paymentStatus || paymentMethod) && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                        setStartDate('');
+                                        setEndDate('');
+                                        setArea('');
+                                        setCategory('');
+                                        setPaymentStatus('');
+                                        setPaymentMethod('');
+                                    }}
+                                    className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                                >
+                                    Clear Filters
+                                </Button>
+                            )}
+                        </div>
                     </div>
                 </Card>
             </div>
+
+            {error && (
+                <div className="mb-4 p-4 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm flex items-center justify-between">
+                    <span>{error}</span>
+                    <Button size="sm" variant="outline" onClick={fetchTransactions}>
+                        Retry
+                    </Button>
+                </div>
+            )}
 
             <Card className="overflow-hidden border border-slate-200 shadow-sm">
                 <Table>
@@ -214,23 +339,29 @@ const Transactions = () => {
                         <Tr>
                             <Th>Date</Th>
                             <Th>Merchant / Area</Th>
+                            <Th>Category</Th>
                             <Th>Amount</Th>
                             <Th>Method</Th>
                             <Th>Status</Th>
                             <Th>Cashier</Th>
+                            <Th>O2O Status</Th>
                         </Tr>
                     </Thead>
                     <Tbody>
                         {loading ? (
                             <Tr>
-                                <Td colSpan="6" className="text-center py-12 text-slate-400">Loading data...</Td>
+                                <Td colSpan="8" className="text-center py-12 text-slate-400">Loading data...</Td>
                             </Tr>
-                        ) : transactions.length === 0 ? (
+                        ) : filteredTransactions.length === 0 ? (
                             <Tr>
-                                <Td colSpan="6" className="text-center py-12 text-slate-400">No transactions found.</Td>
+                                <Td colSpan="8" className="text-center py-12 text-slate-400">No transactions found.</Td>
                             </Tr>
-                        ) : transactions.map((t) => (
-                            <Tr key={t.id}>
+                        ) : filteredTransactions.map((t) => (
+                            <Tr
+                                key={t.id}
+                                className="cursor-pointer"
+                                onClick={() => setSelectedTransaction(t)}
+                            >
                                 <Td>
                                     <div className="flex flex-col">
                                         <span className="font-medium text-slate-900">{new Date(t.occurredAt).toLocaleDateString()}</span>
@@ -242,6 +373,9 @@ const Transactions = () => {
                                         <span className="font-medium text-slate-900">{t.store?.name}</span>
                                         <span className="text-xs text-slate-500">{t.store?.location || '-'}</span>
                                     </div>
+                                </Td>
+                                <Td>
+                                    <span className="text-sm text-slate-600">{t.store?.category || '-'}</span>
                                 </Td>
                                 <Td>
                                     <span className="font-mono font-medium text-slate-700">{formatCurrency(t.totalAmount)}</span>
@@ -256,6 +390,11 @@ const Transactions = () => {
                                 </Td>
                                 <Td>
                                     <span className="text-sm text-slate-600">{t.user?.name || '-'}</span>
+                                </Td>
+                                <Td>
+                                    <Badge variant={getOrderStatusVariant(t.orderStatus)}>
+                                        {t.orderStatus || '-'}
+                                    </Badge>
                                 </Td>
                             </Tr>
                         ))}
@@ -287,6 +426,123 @@ const Transactions = () => {
                     </div>
                 </div>
             </Card>
+            {selectedTransaction && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
+                    onClick={() => setSelectedTransaction(null)}
+                >
+                    <div
+                        className="w-full max-w-2xl bg-white rounded-xl shadow-2xl overflow-hidden"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex items-center justify-between px-6 py-4 border-b bg-slate-50">
+                            <div>
+                                <h2 className="text-lg font-semibold text-slate-900">Detail Transaksi</h2>
+                                <p className="text-xs text-slate-500">
+                                    ID: {selectedTransaction.id}
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                className="p-1 rounded-full hover:bg-slate-200 text-slate-500"
+                                onClick={() => setSelectedTransaction(null)}
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+                        <div className="px-6 py-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <h3 className="text-xs font-semibold text-slate-500 uppercase">Informasi Utama</h3>
+                                <div className="text-sm">
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-500">Tanggal</span>
+                                        <span className="font-medium text-slate-900">
+                                            {selectedTransaction.occurredAt
+                                                ? `${new Date(selectedTransaction.occurredAt).toLocaleDateString()} ${new Date(selectedTransaction.occurredAt).toLocaleTimeString()}`
+                                                : '-'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-500">Nominal</span>
+                                        <span className="font-semibold text-emerald-700">
+                                            {formatCurrency(selectedTransaction.totalAmount)}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-500">Metode</span>
+                                        <span className="font-medium text-slate-900">
+                                            {selectedTransaction.paymentMethod || '-'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-500">Status Pembayaran</span>
+                                        <span>
+                                            <Badge variant={selectedTransaction.paymentStatus === 'PAID' ? 'success' : 'warning'}>
+                                                {selectedTransaction.paymentStatus}
+                                            </Badge>
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-500">Status O2O</span>
+                                        <span>
+                                            <Badge variant={getOrderStatusVariant(selectedTransaction.orderStatus)}>
+                                                {selectedTransaction.orderStatus || '-'}
+                                            </Badge>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <h3 className="text-xs font-semibold text-slate-500 uppercase">Merchant & Kasir</h3>
+                                <div className="text-sm space-y-1">
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-500">Merchant</span>
+                                        <span className="font-medium text-slate-900">
+                                            {selectedTransaction.store?.name || '-'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-500">Lokasi</span>
+                                        <span className="text-slate-900">
+                                            {selectedTransaction.store?.location || '-'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-500">Kategori</span>
+                                        <span className="text-slate-900">
+                                            {selectedTransaction.store?.category || '-'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-500">Tenant</span>
+                                        <span className="text-slate-900">
+                                            {selectedTransaction.tenant?.name || '-'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-500">Kasir</span>
+                                        <span className="text-slate-900">
+                                            {selectedTransaction.user?.name || '-'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-500">Sumber</span>
+                                        <span className="text-slate-900">
+                                            {selectedTransaction.source || '-'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-500">Tipe Pemenuhan</span>
+                                        <span className="text-slate-900">
+                                            {selectedTransaction.fulfillmentType || '-'}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </AdminLayout>
     );
 };

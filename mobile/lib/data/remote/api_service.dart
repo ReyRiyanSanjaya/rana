@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:http_parser/http_parser.dart';
 import 'package:flutter/foundation.dart';
 import 'package:rana_merchant/data/local/database_helper.dart';
 import 'package:rana_merchant/config/api_config.dart'; // [NEW] Config
@@ -303,11 +304,19 @@ class ApiService {
       {List<int>? fileBytes, String? fileName}) async {
     try {
       String name = fileName ?? filePath.split('/').last;
+      String ext = '';
+      if (name.contains('.')) {
+        ext = name.split('.').last.toLowerCase();
+      }
+      String mime = 'jpeg';
+      if (ext == 'png') mime = 'png';
+      if (ext == 'gif') mime = 'gif';
+      if (ext == 'webp') mime = 'webp';
       FormData formData;
 
       if (fileBytes != null) {
         formData = FormData.fromMap({
-          'file': MultipartFile.fromBytes(fileBytes, filename: name),
+          'file': MultipartFile.fromBytes(fileBytes, filename: name, contentType: MediaType('image', mime)),
         });
       } else {
         formData = FormData.fromMap({
@@ -317,9 +326,26 @@ class ApiService {
 
       final response = await _dio.post('/wholesale/upload-proof',
           data: formData,
-          options: Options(headers: {'Authorization': 'Bearer ${_token}'}));
+          options: Options(
+              contentType: 'multipart/form-data',
+              headers: {'Authorization': 'Bearer ${_token}'}));
 
-      return response.data['url']; // Return the uploaded URL
+      final body = response.data;
+      String? url;
+      if (body is Map) {
+        final inner = body['data'];
+        if (inner is Map && inner['url'] != null) {
+          url = inner['url']?.toString();
+        } else if (body['url'] != null) {
+          url = body['url']?.toString();
+        }
+      } else if (body is String && body.trim().isNotEmpty) {
+        url = body.trim();
+      }
+      if (url == null || url.isEmpty) {
+        throw Exception(_messageFromApiBody(body, fallback: 'Upload response invalid'));
+      }
+      return url;
     } catch (e) {
       throw Exception('Upload failed: $e');
     }
@@ -875,6 +901,15 @@ class ApiService {
     } catch (e) {
       print('Failed to fetch app menus: $e');
       return [];
+    }
+  }
+  Future<Map<String, dynamic>> fetchMenuMaintenance() async {
+    try {
+      final response = await _dio.get('/system/app-menus/maintenance');
+      return Map<String, dynamic>.from(response.data['data'] ?? {});
+    } catch (e) {
+      print('Failed to fetch menu maintenance: $e');
+      return {};
     }
   }
 

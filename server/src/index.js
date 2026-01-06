@@ -4,6 +4,7 @@ const cors = require('cors');
 const morgan = require('morgan');
 const helmet = require('helmet');
 const path = require('path'); // [FIX] Added path module
+const bcrypt = require('bcrypt');
 
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
@@ -128,8 +129,38 @@ async function ensureBlogSeed() {
     }
 }
 
+async function ensureSuperAdminSeed() {
+    const existing = await prisma.user.count({ where: { role: 'SUPER_ADMIN' } });
+    if (existing > 0) return;
+    const email = (process.env.ADMIN_EMAIL || 'admin@rana.id').toLowerCase();
+    const password = process.env.ADMIN_PASSWORD || 'Admin!12345';
+    const hashed = await bcrypt.hash(password, 10);
+    const adminTenant = await prisma.tenant.upsert({
+        where: { id: 'rana_admin_tenant' },
+        update: {},
+        create: {
+            id: 'rana_admin_tenant',
+            name: 'Rana Platform',
+            plan: 'ENTERPRISE',
+            subscriptionStatus: 'ACTIVE'
+        }
+    });
+    await prisma.user.create({
+        data: {
+            email,
+            passwordHash: hashed,
+            name: 'Platform Admin',
+            role: 'SUPER_ADMIN',
+            tenantId: adminTenant.id,
+            storeId: null
+        }
+    });
+    console.log(`[Seed] SUPER_ADMIN created: ${email}`);
+}
+
 server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`Environment: ${process.env.NODE_ENV}`);
     ensureBlogSeed().catch((e) => console.error(e));
+    ensureSuperAdminSeed().catch((e) => console.error(e));
 });

@@ -740,17 +740,32 @@ const getPayoutChart = async (req, res) => {
 // [NEW] Get Merchants List with Filters
 const getMerchants = async (req, res) => {
     try {
-        const { status, search } = req.query;
+        const {
+            status,
+            search,
+            plan,
+            city,
+            createdFrom,
+            createdTo,
+            sort = 'createdAt:desc',
+            limit,
+            offset
+        } = req.query;
+
         const where = {};
 
-        // Filter by Subscription Status (Tenant level)
         if (status) {
-            where.tenant = {
-                subscriptionStatus: status
-            };
+            where.tenant = { subscriptionStatus: status };
         }
 
-        // Search by Store Name or Tenant Name
+        if (plan) {
+            where.tenant = { ...(where.tenant || {}), plan };
+        }
+
+        if (city) {
+            where.location = { contains: city, mode: 'insensitive' };
+        }
+
         if (search) {
             where.OR = [
                 { name: { contains: search, mode: 'insensitive' } },
@@ -758,11 +773,29 @@ const getMerchants = async (req, res) => {
             ];
         }
 
+        if (createdFrom || createdTo) {
+            where.createdAt = {};
+            if (createdFrom) where.createdAt.gte = new Date(createdFrom);
+            if (createdTo) where.createdAt.lte = new Date(createdTo);
+        }
+
+        let orderBy = { createdAt: 'desc' };
+        if (typeof sort === 'string') {
+            const [field, dir] = sort.split(':');
+            if (field && dir && ['asc', 'desc'].includes(dir)) {
+                orderBy = { [field]: dir };
+            }
+        }
+
+        const take = Number.isFinite(parseInt(limit)) ? Math.min(parseInt(limit, 10), 100) : undefined;
+        const skip = Number.isFinite(parseInt(offset)) ? Math.max(parseInt(offset, 10), 0) : undefined;
+
         const merchants = await prisma.store.findMany({
             where,
             include: {
                 tenant: {
                     select: {
+                        id: true,
                         name: true,
                         plan: true,
                         subscriptionStatus: true,
@@ -771,7 +804,9 @@ const getMerchants = async (req, res) => {
                     }
                 }
             },
-            orderBy: { createdAt: 'desc' }
+            orderBy,
+            ...(take ? { take } : {}),
+            ...(skip ? { skip } : {})
         });
         successResponse(res, merchants);
     } catch (error) {
@@ -795,6 +830,58 @@ const exportWithdrawals = async (req, res) => {
     } catch (error) {
         console.error(error);
         errorResponse(res, "Failed to export data", 500);
+    }
+};
+
+const exportMerchants = async (req, res) => {
+    try {
+        const merchants = await prisma.store.findMany({
+            include: {
+                tenant: {
+                    select: {
+                        id: true,
+                        name: true,
+                        plan: true,
+                        subscriptionStatus: true,
+                        trialEndsAt: true,
+                        subscriptionEndsAt: true
+                    }
+                }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+        if (req.query.format === 'csv') {
+            const header = [
+                'Store Name',
+                'City',
+                'Balance',
+                'Tenant Name',
+                'Plan',
+                'Status',
+                'Trial Ends',
+                'Subscription Ends',
+                'Created At'
+            ].join(',');
+            const rows = merchants.map(m => [
+                (m.name || '').replace(/,/g, ' '),
+                (m.location || '').replace(/,/g, ' '),
+                m.balance ?? 0,
+                (m.tenant?.name || '').replace(/,/g, ' '),
+                m.tenant?.plan || '',
+                m.tenant?.subscriptionStatus || '',
+                m.tenant?.trialEndsAt ? new Date(m.tenant.trialEndsAt).toISOString() : '',
+                m.tenant?.subscriptionEndsAt ? new Date(m.tenant.subscriptionEndsAt).toISOString() : '',
+                m.createdAt ? new Date(m.createdAt).toISOString() : ''
+            ].join(','));
+            const csv = [header, ...rows].join('\n');
+            res.set('Content-Type', 'text/csv');
+            res.set('Content-Disposition', 'attachment; filename="merchants.csv"');
+            return res.status(200).send(csv);
+        }
+        successResponse(res, merchants);
+    } catch (error) {
+        console.error(error);
+        errorResponse(res, "Failed to export merchants", 500);
     }
 };
 
@@ -1248,13 +1335,20 @@ const rejectSubscriptionRequest = async (req, res) => {
 // [NEW] Get Advanced Analytics
 const getBusinessAnalytics = async (req, res) => {
     try {
-        // 1. Total Revenue
+        const city = typeof req.query.city === 'string' ? req.query.city.trim() : '';
+        const categoryFilter = typeof req.query.category === 'string' ? req.query.category.trim() : '';
+        const storeFilter = city || categoryFilter
+            ? {
+                ...(city ? { location: { contains: city, mode: 'insensitive' } } : {}),
+                ...(categoryFilter ? { category: { equals: categoryFilter, mode: 'insensitive' } } : {})
+            }
+            : undefined;
+
         const totalRevenueResult = await prisma.platformRevenue.aggregate({
             _sum: { amount: true }
         });
         const totalRevenue = totalRevenueResult._sum.amount || 0;
 
-        // 2. Revenue by Source
         const revenueBySource = await prisma.platformRevenue.groupBy({
             by: ['source'],
             _sum: { amount: true }
@@ -1269,23 +1363,24 @@ const getBusinessAnalytics = async (req, res) => {
         const totalTxnFees = getRevenueSum('TRANSACTION_FEE');
         const totalWholesaleFees = getRevenueSum('WHOLESALE_FEE');
 
-        // 3. Monthly Revenue (Last 6 Months)
-        const sixMonthsAgo = new Date();
-        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
-        sixMonthsAgo.setDate(1); // Start of month
+        const monthsParam = parseInt(req.query.months, 10);
+        const months = Number.isFinite(monthsParam) ? Math.min(Math.max(monthsParam, 1), 24) : 6;
+
+        const rangeEnd = new Date();
+        const rangeStart = new Date(rangeEnd);
+        rangeStart.setMonth(rangeStart.getMonth() - (months - 1));
+        rangeStart.setDate(1);
 
         const revenueLogs = await prisma.platformRevenue.findMany({
-            where: { createdAt: { gte: sixMonthsAgo } },
+            where: { createdAt: { gte: rangeStart } },
             orderBy: { createdAt: 'asc' }
         });
 
-        // Aggregate by Month-Year in JS
         const monthlyRevenue = {};
-        // Initialize keys
-        for (let i = 0; i < 6; i++) {
-            const d = new Date(sixMonthsAgo);
+        for (let i = 0; i < months; i++) {
+            const d = new Date(rangeStart);
             d.setMonth(d.getMonth() + i);
-            const key = d.toLocaleString('default', { month: 'short', year: '2-digit' }); // Jan 24
+            const key = d.toLocaleString('default', { month: 'short', year: '2-digit' });
             monthlyRevenue[key] = 0;
         }
 
@@ -1296,21 +1391,17 @@ const getBusinessAnalytics = async (req, res) => {
             }
         });
 
-        // Convert to array for Recharts
         const revenueChart = Object.keys(monthlyRevenue).map(key => ({
             name: key,
             revenue: monthlyRevenue[key]
         }));
 
-        // 4. Merchant Growth (New Tenants per month)
-        // Similar logic for Tenants
         const tenants = await prisma.tenant.findMany({
-            where: { createdAt: { gte: sixMonthsAgo } }
+            where: { createdAt: { gte: rangeStart } }
         });
         const monthlyGrowth = {};
-        // Initialize keys
-        for (let i = 0; i < 6; i++) {
-            const d = new Date(sixMonthsAgo);
+        for (let i = 0; i < months; i++) {
+            const d = new Date(rangeStart);
             d.setMonth(d.getMonth() + i);
             const key = d.toLocaleString('default', { month: 'short', year: '2-digit' });
             monthlyGrowth[key] = 0;
@@ -1326,32 +1417,32 @@ const getBusinessAnalytics = async (req, res) => {
             count: monthlyGrowth[key]
         }));
 
-        // 5. Active Subscribers
         const activeSubscribers = await prisma.tenant.count({
             where: { plan: { not: 'FREE' }, subscriptionStatus: 'ACTIVE' }
         });
 
-        // [NEW] 6. Metrics: ARPU (Average Revenue Per User/Tenant)
         const totalTenants = await prisma.tenant.count();
         const arpu = totalTenants > 0 ? (totalRevenue / totalTenants) : 0;
 
-        // [NEW] 7. Churn (Cancelled / Total)
         const cancelledTenants = await prisma.tenant.count({
             where: { subscriptionStatus: 'CANCELLED' }
         });
         const churnRate = totalTenants > 0 ? ((cancelledTenants / totalTenants) * 100).toFixed(1) : 0;
 
-        // [NEW] 8. Top Merchants by Transaction Volume
         const topMerchantsResult = await prisma.transaction.groupBy({
             by: ['storeId'],
             _sum: { totalAmount: true },
+            where: storeFilter
+                ? {
+                    store: storeFilter
+                }
+                : undefined,
             orderBy: {
                 _sum: { totalAmount: 'desc' }
             },
-            take: 5
+            take: 20
         });
 
-        // Enrich with Store Names
         const topMerchants = [];
         for (const tm of topMerchantsResult) {
             const store = await prisma.store.findUnique({
@@ -1360,18 +1451,19 @@ const getBusinessAnalytics = async (req, res) => {
             });
             if (store) {
                 topMerchants.push({
-                    name: store.name, // or store.tenant.name
+                    name: store.name,
+                    tenantName: store.tenant?.name || null,
                     volume: tm._sum.totalAmount
                 });
             }
         }
 
-        // [NEW] 9. Merchant Distribution by Location
         const locationStats = await prisma.store.groupBy({
             by: ['location'],
             _count: { id: true },
             where: {
-                location: { not: null }
+                location: { not: null },
+                ...(storeFilter ? storeFilter : {})
             },
             orderBy: {
                 _count: { id: 'desc' }
@@ -1382,6 +1474,79 @@ const getBusinessAnalytics = async (req, res) => {
         const merchantByLocation = locationStats.map(stat => ({
             name: stat.location,
             count: stat._count.id
+        }));
+
+        const merchantCategoryStats = await prisma.store.groupBy({
+            by: ['category'],
+            _count: { id: true },
+            where: {
+                category: { not: null },
+                ...(storeFilter ? storeFilter : {})
+            },
+            orderBy: {
+                _count: { id: 'desc' }
+            }
+        });
+
+        const merchantByCategory = merchantCategoryStats.map(stat => ({
+            category: stat.category,
+            count: stat._count.id
+        }));
+
+        const planStats = await prisma.tenant.groupBy({
+            by: ['plan'],
+            _count: { id: true }
+        });
+
+        const tenantByPlan = planStats.map(stat => ({
+            plan: stat.plan,
+            count: stat._count.id
+        }));
+
+        const txnByMethodRaw = await prisma.transaction.groupBy({
+            by: ['paymentMethod'],
+            _count: { id: true },
+            _sum: { totalAmount: true },
+            where: {
+                occurredAt: {
+                    gte: rangeStart,
+                    lte: rangeEnd
+                },
+                ...(storeFilter
+                    ? {
+                        store: storeFilter
+                    }
+                    : {})
+            }
+        });
+
+        const txnByMethod = txnByMethodRaw.map(row => ({
+            paymentMethod: row.paymentMethod,
+            count: row._count.id,
+            amount: row._sum.totalAmount || 0
+        }));
+
+        const txnBySourceRaw = await prisma.transaction.groupBy({
+            by: ['source'],
+            _count: { id: true },
+            _sum: { totalAmount: true },
+            where: {
+                occurredAt: {
+                    gte: rangeStart,
+                    lte: rangeEnd
+                },
+                ...(storeFilter
+                    ? {
+                        store: storeFilter
+                    }
+                    : {})
+            }
+        });
+
+        const txnBySource = txnBySourceRaw.map(row => ({
+            source: row.source,
+            count: row._count.id,
+            amount: row._sum.totalAmount || 0
         }));
 
         successResponse(res, {
@@ -1395,8 +1560,16 @@ const getBusinessAnalytics = async (req, res) => {
             activeSubscribers,
             arpu,
             churnRate,
+            totalTenants,
+            cancelledTenants,
+            rangeStart,
+            rangeEnd,
             topMerchants,
-            merchantByLocation
+            merchantByLocation,
+            merchantByCategory,
+            tenantByPlan,
+            txnByMethod,
+            txnBySource
         });
 
     } catch (error) {
@@ -1417,9 +1590,21 @@ const getAppMenus = async (req, res) => {
     }
 };
 
+const allowedMenuKeys = [
+    'POS','PRODUCT','REPORT','STOCK','ADS','FLASH_SALE','PROMO','SUPPORT','SETTINGS','KULAKAN','PPOB','WALLET','SCAN','ORDER'
+];
+const allowedRoutes = [
+    '/pos','/products','/reports','/stock','/marketing','/flashsale','/promo','/support','/settings','/kulakan','/ppob','/wallet','/orders','/scan'
+];
 const createAppMenu = async (req, res) => {
     try {
         const { key, label, icon, route, order } = req.body;
+        if (!allowedMenuKeys.includes(String(key).toUpperCase())) {
+            return errorResponse(res, "Invalid key", 400);
+        }
+        if (!allowedRoutes.includes(String(route))) {
+            return errorResponse(res, "Invalid route", 400);
+        }
         const menu = await prisma.appMenu.create({
             data: {
                 key,
@@ -1430,6 +1615,10 @@ const createAppMenu = async (req, res) => {
                 isActive: true
             }
         });
+        try {
+            const { getIo } = require('../socket');
+            getIo().emit('app_menus:update', { type: 'create', menu });
+        } catch (e) {}
         successResponse(res, menu, "Menu created");
     } catch (error) {
         console.error(error);
@@ -1442,6 +1631,12 @@ const updateAppMenu = async (req, res) => {
     try {
         const { id } = req.params;
         const { key, label, icon, route, isActive, order } = req.body;
+        if (key && !allowedMenuKeys.includes(String(key).toUpperCase())) {
+            return errorResponse(res, "Invalid key", 400);
+        }
+        if (route && !allowedRoutes.includes(String(route))) {
+            return errorResponse(res, "Invalid route", 400);
+        }
 
         const menu = await prisma.appMenu.update({
             where: { id },
@@ -1454,6 +1649,10 @@ const updateAppMenu = async (req, res) => {
                 order: order !== undefined ? parseInt(order) : undefined
             }
         });
+        try {
+            const { getIo } = require('../socket');
+            getIo().emit('app_menus:update', { type: 'update', menu });
+        } catch (e) {}
         successResponse(res, menu, "Menu updated");
     } catch (error) {
         console.error(error);
@@ -1464,10 +1663,66 @@ const updateAppMenu = async (req, res) => {
 const deleteAppMenu = async (req, res) => {
     try {
         const { id } = req.params;
-        await prisma.appMenu.delete({ where: { id } });
+        const deleted = await prisma.appMenu.delete({ where: { id } });
+        try {
+            const { getIo } = require('../socket');
+            getIo().emit('app_menus:update', { type: 'delete', id: deleted.id });
+        } catch (e) {}
         successResponse(res, null, "Menu deleted");
     } catch (error) {
         errorResponse(res, "Failed to delete menu", 500);
+    }
+};
+
+const getAppMenuMaintenance = async (req, res) => {
+    try {
+        const settings = await prisma.systemSettings.findMany({
+            where: { key: { startsWith: 'MAINTENANCE_MENU_' } }
+        });
+        const map = {};
+        for (const s of settings) {
+            try {
+                map[s.key.replace('MAINTENANCE_MENU_', '')] = JSON.parse(s.value);
+            } catch {
+                map[s.key.replace('MAINTENANCE_MENU_', '')] = { active: false };
+            }
+        }
+        successResponse(res, map);
+    } catch (error) {
+        errorResponse(res, "Failed to fetch maintenance settings", 500);
+    }
+};
+
+const updateAppMenuMaintenance = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { active, message, until } = req.body;
+        const menu = await prisma.appMenu.findUnique({ where: { id } });
+        if (!menu) return errorResponse(res, "Menu not found", 404);
+        const key = `MAINTENANCE_MENU_${menu.key}`;
+        const payload = {
+            active: !!active,
+            message: message || '',
+            until: until || null
+        };
+        await prisma.systemSettings.upsert({
+            where: { key },
+            update: { value: JSON.stringify(payload) },
+            create: { key, value: JSON.stringify(payload), description: `Maintenance settings for ${menu.key}` }
+        });
+        // Optional: toggle visibility based on maintenance
+        await prisma.appMenu.update({
+            where: { id },
+            data: { isActive: !payload.active }
+        });
+        try {
+            const { getIo } = require('../socket');
+            getIo().emit('maintenance:update', { key: menu.key, ...payload });
+        } catch (e) {}
+        successResponse(res, payload, "Maintenance updated");
+    } catch (error) {
+        console.error(error);
+        errorResponse(res, "Failed to update maintenance", 500);
     }
 };
 
@@ -1512,7 +1767,6 @@ const getAllTransactions = async (req, res) => {
             };
         }
 
-        // Filter by Store fields (Area/Location, Category)
         if (area || category) {
             where.store = {
                 ...(area && { location: { contains: area, mode: 'insensitive' } }),
@@ -1525,7 +1779,8 @@ const getAllTransactions = async (req, res) => {
                 where,
                 include: {
                     store: { select: { name: true, location: true, category: true } },
-                    tenant: { select: { name: true } }
+                    tenant: { select: { name: true } },
+                    user: { select: { name: true } }
                 },
                 skip,
                 take: parseInt(limit),
@@ -1581,6 +1836,9 @@ const exportTransactions = async (req, res) => {
             occurredAt: t.occurredAt,
             tenant: t.tenant?.name || null,
             store: t.store?.name || null,
+            storeName: t.store?.name || null,
+            storeLocation: t.store?.location || null,
+            storeCategory: t.store?.category || null,
             totalAmount: t.totalAmount,
             buyerFee: t.buyerFee || 0,
             merchantFee: t.merchantFee || 0,
@@ -1626,6 +1884,7 @@ module.exports = {
     getSettings,
     updateSettings,
     exportWithdrawals,
+    exportMerchants,
     updateMerchantSubscription, // [NEW]
     getAnnouncements,
     createAnnouncement,
@@ -1634,6 +1893,9 @@ module.exports = {
     createAppMenu,
     updateAppMenu,
     deleteAppMenu,
+    getAppMenuMaintenance,
+    updateAppMenuMaintenance,
+    // maintenance handlers appended below
     getMerchantDetail, // [NEW]
     adjustMerchantWallet, // [NEW]
     sendNotification, // [NEW]

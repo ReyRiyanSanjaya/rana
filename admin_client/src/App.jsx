@@ -25,10 +25,14 @@ import ManageMenu from './pages/ManageMenu'; // [NEW]
 import AdminLayout from './components/AdminLayout';
 import FlashSales from './pages/FlashSales';
 import ReferralMonitoring from './pages/ReferralMonitoring';
+import { getToken, isTokenExpired, getUser } from './lib/auth';
 
 const ProtectedRoute = ({ children }) => {
-  const token = localStorage.getItem('adminToken');
+  const token = getToken();
   if (!token) return <Navigate to="/login" replace />;
+  if (isTokenExpired()) return <Navigate to="/login" replace />;
+  const user = getUser();
+  if (!user || user.role !== 'SUPER_ADMIN') return <Navigate to="/login" replace />;
   return children;
 };
 
@@ -154,9 +158,7 @@ function App() {
           <ProtectedRoute><TopUps /></ProtectedRoute>
         } />
 
-        <Route path="/announcements" element={
-          <ProtectedRoute><Announcements /></ProtectedRoute>
-        } />
+        
 
         <Route path="/blog" element={
           <ProtectedRoute><BlogManager /></ProtectedRoute>

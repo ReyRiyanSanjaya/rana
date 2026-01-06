@@ -21,6 +21,9 @@ import 'package:rana_merchant/screens/purchase_screen.dart';
 import 'package:rana_merchant/screens/order_list_screen.dart';
 import 'package:rana_merchant/providers/wallet_provider.dart'; // [FIX] Added missing import
 import 'package:rana_merchant/screens/wallet_screen.dart';
+import 'package:rana_merchant/screens/maintenance_screen.dart';
+import 'package:rana_merchant/config/assets_config.dart';
+import 'package:lottie/lottie.dart';
 import 'package:rana_merchant/screens/scan_screen.dart';
 import 'package:lottie/lottie.dart';
 import 'package:rana_merchant/services/notification_service.dart';
@@ -35,6 +38,7 @@ import 'package:rana_merchant/screens/payment_screen.dart'; // [NEW] Refactored
 import 'package:rana_merchant/services/sync_service.dart'; // [NEW]
 import 'package:rana_merchant/services/connectivity_service.dart'; // [NEW]
 import 'package:rana_merchant/widgets/no_connection_screen.dart'; // [NEW]
+import 'package:rana_merchant/services/support_read_service.dart';
 import 'package:rana_merchant/screens/wholesale_main_screen.dart';
 import 'package:rana_merchant/screens/ppob_screen.dart'; // [NEW] feature
 import 'package:rana_merchant/screens/notification_screen.dart'; // [NEW]
@@ -70,6 +74,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _bottomNavIndex = 0;
   int _newOrdersCount = 0;
   int _unreadNotificationCount = 0;
+  int _unreadSupportCount = 0;
   String? _storeName;
   String? _storeContact;
   final List<GlobalKey<NavigatorState>> _tabNavigatorKeys =
@@ -92,6 +97,10 @@ class _HomeScreenState extends State<HomeScreen> {
   int _desktopSelectedIndex = 0; // [NEW] Tablet/Desktop Navigation Index
   bool _isOffline = false; // [NEW] Offline Status
   Timer? _offlineCheckTimer; // [NEW]
+  Map<String, dynamic> _maintenanceMap = {};
+  StreamSubscription<Map<String, dynamic>>? _maintSub;
+  StreamSubscription<void>? _menusSub;
+  StreamSubscription<bool>? _connSub;
 
   // [NEW] Icon Mapper
   IconData _getIcon(String name) {
@@ -181,11 +190,15 @@ class _HomeScreenState extends State<HomeScreen> {
       if (mounted) _loadProducts();
     });
 
-    // [NEW] 3. Trigger Background Sync if Online
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (await ConnectivityService().hasInternetConnection()) {
-        SyncService().syncProducts();
-        SyncService().syncTransactions();
+    ConnectivityService().startMonitoring();
+    _connSub = ConnectivityService().onStatusChanged.listen((isOnline) async {
+      if (!mounted) return;
+      setState(() {
+        _isOffline = !isOnline;
+      });
+      if (isOnline && !SyncService().isSyncing) {
+        await SyncService().syncProducts();
+        await SyncService().syncTransactions();
       }
     });
 
@@ -194,6 +207,22 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadBeginnerTipFlag();
     _maybeStartHomeTour();
     _appMenusFuture = ApiService().fetchAppMenus();
+    Future.microtask(() async {
+      _maintenanceMap = await ApiService().fetchMenuMaintenance();
+      if (mounted) setState(() {});
+    });
+    RealtimeService().init();
+    SyncService().startAutoSync();
+    RealtimeService().startAutoManage();
+    _maintSub = RealtimeService().maintenanceStream.listen((map) {
+      _maintenanceMap = map;
+      if (mounted) setState(() {});
+    });
+    _menusSub = RealtimeService().menusUpdateStream.listen((_) {
+      setState(() {
+        _appMenusFuture = ApiService().fetchAppMenus();
+      });
+    });
     // [NEW] Load Wallet Data for Home Card
     Future.microtask(() => context.read<WalletProvider>().loadData());
 
@@ -234,15 +263,11 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() => _isScrolled = false);
     });
 
-    _autoSyncTimer = Timer.periodic(const Duration(seconds: 30), (timer) async {
-      final isOnline = await ConnectivityService().hasInternetConnection();
-      if (isOnline && !SyncService().isSyncing) {
-        await SyncService().syncTransactions();
-      }
-    });
+    
 
     _refreshNewOrdersCountFromApi();
     _refreshNotificationBadge();
+    _refreshSupportBadge();
     _realtimeService.init();
     _realtimeService.addTransactionListener(_handleRealtimeOrderEvent);
     _checkOnboardingSuccessFlag();
@@ -332,6 +357,9 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     _syncSubscription?.cancel(); // [NEW]
     _autoSyncTimer?.cancel();
+    _connSub?.cancel();
+    _maintSub?.cancel();
+    _menusSub?.cancel();
     _scrollController.dispose();
     _realtimeService.removeTransactionListener(_handleRealtimeOrderEvent);
     _realtimeService.dispose();
@@ -466,6 +494,16 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       },
     );
+  }
+
+  Future<void> _refreshSupportBadge() async {
+    try {
+      final unread = await SupportReadService().getUnreadCount();
+      if (!mounted) return;
+      setState(() {
+        _unreadSupportCount = unread;
+      });
+    } catch (_) {}
   }
 
   Widget _buildHomeTourOverlay(BuildContext context) {
@@ -1591,8 +1629,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 m['key'] == 'FLASH_SALE' ||
                 m['route'] == '/marketing' ||
                 m['route'] == '/flashsale');
-            if (!menuItems
-                .any((m) => m['key'] == 'PROMO' || m['route'] == '/promo')) {
+            if (!menuItems.any(
+                (m) => m['key'] == 'PROMO' || m['route'] == '/promo')) {
               menuItems.insert(insertIndex,
                   {'label': 'Promosi', 'key': 'PROMO', 'route': '/promo'});
             }
@@ -1634,6 +1672,24 @@ class _HomeScreenState extends State<HomeScreen> {
               return InkWell(
                 borderRadius: BorderRadius.circular(24),
                 onTap: () {
+                  final maint =
+                      (_maintenanceMap[key] != null && _maintenanceMap[key]['active'] == true);
+                  if (maint) {
+                    final String msg =
+                        (_maintenanceMap[key]['message'] ?? 'Fitur sedang dalam perawatan');
+                    final String? until =
+                        _maintenanceMap[key]['until'] != null ? _maintenanceMap[key]['until'] : null;
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => MaintenanceScreen(
+                                  title: label,
+                                  message: msg,
+                                  until: until,
+                                  animationAsset: AssetsConfig.lottieLivePulse,
+                                )));
+                    return;
+                  }
                   if (route == '/orders') {
                     _switchTab(1);
                     return;
@@ -1660,7 +1716,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   }
 
                   Navigator.push(
-                      context, MaterialPageRoute(builder: (_) => screen));
+                          context, MaterialPageRoute(builder: (_) => screen))
+                      .then((_) {
+                    if (route == '/support') {
+                      _refreshSupportBadge();
+                    }
+                  });
                 },
                 child: Column(
                   children: [
@@ -1684,6 +1745,36 @@ class _HomeScreenState extends State<HomeScreen> {
                               ]),
                           child: Icon(icon, color: color, size: 28),
                         ),
+                        if ((_maintenanceMap[key] != null && _maintenanceMap[key]['active'] == true))
+                          Positioned(
+                            right: -6,
+                            top: -6,
+                            child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.redAccent,
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: Lottie.asset(
+                                        AssetsConfig.lottieLivePulse,
+                                        repeat: true,
+                                        fit: BoxFit.contain,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'Maintenance',
+                                      style: GoogleFonts.poppins(color: Colors.white, fontSize: 10),
+                                    ),
+                                  ],
+                                )),
+                          ),
                         if (route == '/orders' && _newOrdersCount > 0)
                           Positioned(
                             right: -4,
@@ -1702,6 +1793,34 @@ class _HomeScreenState extends State<HomeScreen> {
                                   _newOrdersCount > 99
                                       ? '99+'
                                       : _newOrdersCount.toString(),
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        if ((key == 'SUPPORT' || route == '/support') &&
+                            _unreadSupportCount > 0)
+                          Positioned(
+                            right: -4,
+                            top: -4,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              constraints: const BoxConstraints(
+                                  minWidth: 20, minHeight: 20),
+                              child: Center(
+                                child: Text(
+                                  _unreadSupportCount > 99
+                                      ? '99+'
+                                      : _unreadSupportCount.toString(),
                                   style: GoogleFonts.poppins(
                                     color: Colors.white,
                                     fontSize: 10,
@@ -1734,6 +1853,8 @@ class _HomeScreenState extends State<HomeScreen> {
           );
         });
   }
+
+ 
 
   // [NEW] Drawer for Mobile Navigation
   Widget _buildDrawer(BuildContext context) {

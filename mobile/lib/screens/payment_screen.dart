@@ -207,8 +207,15 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
                             SoundService.playSuccess();
 
-                            // [NEW] Trigger Sync in background
-                            SyncService().syncTransactions();
+                            // [NEW] Sync immediately and await to ensure server receives it
+                            try {
+                              await SyncService().syncTransactions();
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Sync gagal: $e')));
+                              }
+                            }
 
                             final txnData = {
                               'offlineId':

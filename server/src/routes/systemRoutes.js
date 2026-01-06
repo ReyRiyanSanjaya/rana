@@ -6,6 +6,7 @@ const systemController = require('../controllers/systemController');
 router.get('/payment-info', systemController.getPaymentInfo);
 router.get('/announcements', systemController.getActiveAnnouncements);
 router.get('/app-menus', systemController.getAppMenus);
+router.get('/app-menus/maintenance', systemController.getAppMenuMaintenancePublic);
 
 // Protected System Info
 const verifyToken = require('../middleware/auth');

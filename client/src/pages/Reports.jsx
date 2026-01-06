@@ -4,6 +4,8 @@ import { TrendingUp, TrendingDown, DollarSign, Package, Users, Calendar, ArrowRi
 import DashboardLayout from '../components/layout/DashboardLayout';
 import { fetchProfitLoss, fetchProducts } from '../services/api';
 import { formatCurrency } from '../utils/format';
+import { initTransactionsStream, subscribeTransactions } from '../services/transactionsStream';
+import RealtimeBadge from '../components/RealtimeBadge';
 
 const COLORS = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444'];
 
@@ -34,11 +36,9 @@ const Reports = () => {
     useEffect(() => {
         const loadData = async () => {
             try {
-                // Fetch Last 30 Days
                 const end = new Date();
                 const start = new Date();
                 start.setDate(start.getDate() - 30);
-
                 const data = await fetchProfitLoss(start.toISOString().split('T')[0], end.toISOString().split('T')[0]);
                 setPnlData(data);
             } catch (err) {
@@ -48,6 +48,12 @@ const Reports = () => {
             }
         };
         loadData();
+        initTransactionsStream();
+        const unsub = subscribeTransactions(() => {
+            // Refresh analytics when new transactions arrive
+            loadData();
+        });
+        return () => unsub();
     }, []);
 
     if (loading) return <DashboardLayout><div className="flex h-screen items-center justify-center">Loading Analytics...</div></DashboardLayout>;
@@ -89,6 +95,7 @@ const Reports = () => {
                         <p className="text-slate-500 mt-1">Real-time insights into your business performance.</p>
                     </div>
                     <div className="flex space-x-2 bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
+                        <RealtimeBadge />
                         {['sales', 'inventory', 'customers'].map(tab => (
                             <button
                                 key={tab}

@@ -5,6 +5,7 @@ import DashboardLayout from '../components/layout/DashboardLayout';
 import { fetchDashboardStats } from '../services/api';
 import api from '../services/api'; // [NEW] Default export is axios instance
 import { io } from 'socket.io-client';
+import RealtimeBadge from '../components/RealtimeBadge';
 
 const StatCard = ({ title, value, subtext, icon: Icon, colorClass }) => (
     <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
@@ -83,9 +84,12 @@ const Dashboard = () => {
     return (
         <DashboardLayout>
             <div className="space-y-6">
-                <div>
-                    <h2 className="text-2xl font-bold text-slate-900">Financial Overview</h2>
-                    <p className="text-slate-500">Today's performance summary</p>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h2 className="text-2xl font-bold text-slate-900">Financial Overview</h2>
+                        <p className="text-slate-500">Today's performance summary</p>
+                    </div>
+                    <RealtimeBadge />
                 </div>
 
                 {/* Financial Metrics */}

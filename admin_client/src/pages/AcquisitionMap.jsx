@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polygon, Tooltip as LeafletTooltip, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polygon, Circle, Tooltip as LeafletTooltip, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import AdminLayout from '../components/AdminLayout';
 import api from '../api';
 import Card from '../components/ui/Card';
+import Button from '../components/ui/Button';
 import L from 'leaflet';
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
-import { Target, Map as MapIcon, Navigation } from 'lucide-react';
+import { Target, Map as MapIcon, Navigation, Eye, Flame, Download } from 'lucide-react';
 
 // Fix Leaflet Default Icon
 let DefaultIcon = L.icon({
@@ -46,11 +47,15 @@ const CITIES = {
 };
 
 // Component to handle map view changes
-const MapController = ({ center, zoom }) => {
+const MapController = ({ center, zoom, bounds }) => {
     const map = useMap();
     useEffect(() => {
-        map.flyTo(center, zoom, { duration: 1.5 });
-    }, [center, zoom, map]);
+        if (bounds) {
+            map.fitBounds(bounds, { animate: true, duration: 1.0, padding: [20, 20] });
+        } else {
+            map.flyTo(center, zoom, { duration: 1.5 });
+        }
+    }, [center, zoom, bounds, map]);
     return null;
 };
 
@@ -59,21 +64,36 @@ const AcquisitionMap = () => {
     const [activeCity, setActiveCity] = useState(CITIES.MEDAN);
     const [districtStats, setDistrictStats] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [statusFilter, setStatusFilter] = useState('');
+    const [planFilter, setPlanFilter] = useState('');
+    const [dateFrom, setDateFrom] = useState('');
+    const [dateTo, setDateTo] = useState('');
+    const [showMarkers, setShowMarkers] = useState(true);
+    const [showHeat, setShowHeat] = useState(false);
+    const [focusBounds, setFocusBounds] = useState(null);
 
     useEffect(() => {
         const fetchStores = async () => {
             try {
-                const res = await api.get('/admin/merchants');
+                setLoading(true);
+                const params = new URLSearchParams();
+                params.append('city', activeCity.name);
+                if (statusFilter) params.append('status', statusFilter);
+                if (planFilter) params.append('plan', planFilter);
+                if (dateFrom) params.append('createdFrom', dateFrom);
+                if (dateTo) params.append('createdTo', dateTo);
+                const res = await api.get(`/admin/merchants?${params.toString()}`);
                 const validStores = res.data.data.filter(s => s.latitude && s.longitude);
                 setStores(validStores);
             } catch (error) {
-                console.error("Failed to fetch stores", error); // Handle gracefully
+                console.error("Failed to fetch stores", error);
             } finally {
                 setLoading(false);
             }
         };
         fetchStores();
-    }, []);
+        setFocusBounds(null);
+    }, [activeCity, statusFilter, planFilter, dateFrom, dateTo]);
 
     // Recalculate stats when city or stores change
     useEffect(() => {
@@ -91,8 +111,25 @@ const AcquisitionMap = () => {
         setDistrictStats(stats);
     }, [activeCity, stores]);
 
+    const exportCsv = () => {
+        const params = new URLSearchParams();
+        params.append('format', 'csv');
+        params.append('city', activeCity.name);
+        if (statusFilter) params.append('status', statusFilter);
+        if (planFilter) params.append('plan', planFilter);
+        if (dateFrom) params.append('createdFrom', dateFrom);
+        if (dateTo) params.append('createdTo', dateTo);
+        window.open(`/api/admin/merchants/export?${params.toString()}`, '_blank');
+    };
+
+    const boundsFromDistrict = (district) => {
+        const [sw, ne] = district.bounds;
+        return [sw, ne];
+    };
+
     return (
         <AdminLayout>
+            <div className="relative overflow-x-hidden w-full">
             <div className="absolute inset-0 bg-gradient-to-br from-slate-50 to-blue-50/30 z-[-1]" />
 
             <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -104,7 +141,7 @@ const AcquisitionMap = () => {
                 </div>
 
                 {/* City Switcher */}
-                <div className="bg-white/80 backdrop-blur-md p-1.5 rounded-xl border border-white/50 shadow-sm flex items-center space-x-1">
+                <div className="bg-white/80 backdrop-blur-md p-1.5 rounded-xl border border-white/50 shadow-sm flex items-center space-x-1 flex-wrap">
                     {Object.values(CITIES).map(city => (
                         <button
                             key={city.name}
@@ -121,6 +158,52 @@ const AcquisitionMap = () => {
                 </div>
             </div>
 
+            <Card className="mb-4">
+                <div className="p-3 flex flex-col md:flex-row md:flex-wrap gap-3 items-center">
+                    <select
+                        className="px-3 py-2 border border-primary-300 rounded-lg text-sm bg-white"
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                    >
+                        <option value="">All Status</option>
+                        <option value="ACTIVE">Active</option>
+                        <option value="TRIAL">Trial</option>
+                        <option value="EXPIRED">Expired</option>
+                        <option value="CANCELLED">Cancelled</option>
+                    </select>
+                    <select
+                        className="px-3 py-2 border border-primary-300 rounded-lg text-sm bg-white"
+                        value={planFilter}
+                        onChange={(e) => setPlanFilter(e.target.value)}
+                    >
+                        <option value="">All Plans</option>
+                        <option value="FREE">Free</option>
+                        <option value="PREMIUM">Premium</option>
+                        <option value="ENTERPRISE">Enterprise</option>
+                    </select>
+                    <input
+                        type="date"
+                        className="px-3 py-2 border border-primary-300 rounded-lg text-sm bg-white"
+                        value={dateFrom}
+                        onChange={(e) => setDateFrom(e.target.value)}
+                    />
+                    <input
+                        type="date"
+                        className="px-3 py-2 border border-primary-300 rounded-lg text-sm bg-white"
+                        value={dateTo}
+                        onChange={(e) => setDateTo(e.target.value)}
+                    />
+                    <div className="flex-1" />
+                    <Button variant="outline" icon={Download} onClick={exportCsv}>Export CSV</Button>
+                    <Button variant={showMarkers ? 'secondary' : 'outline'} icon={Eye} onClick={() => setShowMarkers(v => !v)}>
+                        {showMarkers ? 'Hide Markers' : 'Show Markers'}
+                    </Button>
+                    <Button variant={showHeat ? 'secondary' : 'outline'} icon={Flame} onClick={() => setShowHeat(v => !v)}>
+                        {showHeat ? 'Hide Heat' : 'Show Heat'}
+                    </Button>
+                </div>
+            </Card>
+
             <Card className="h-[650px] overflow-hidden rounded-2xl border border-white/60 shadow-xl relative z-0 bg-white/40 backdrop-blur-sm">
                 {loading ? (
                     <div className="flex h-full flex-col items-center justify-center text-slate-400">
@@ -135,7 +218,7 @@ const AcquisitionMap = () => {
                             style={{ height: '100%', width: '100%', background: 'transparent' }}
                             zoomControl={false}
                         >
-                            <MapController center={activeCity.center} zoom={activeCity.zoom} />
+                            <MapController center={activeCity.center} zoom={activeCity.zoom} bounds={focusBounds} />
 
                             {/* Dark/Light Mode compatible elegant tiles */}
                             <TileLayer
@@ -164,6 +247,9 @@ const AcquisitionMap = () => {
                                             },
                                             mouseout: (e) => {
                                                 e.target.setStyle({ fillOpacity: 0.15, weight: 0 });
+                                            },
+                                            click: () => {
+                                                setFocusBounds(boundsFromDistrict(district));
                                             }
                                         }}
                                     >
@@ -185,10 +271,29 @@ const AcquisitionMap = () => {
                                     </Polygon>
                                 );
                             })}
+                            {showHeat && stores.map((s) => (
+                                <Circle
+                                    key={s.id}
+                                    center={[s.latitude, s.longitude]}
+                                    radius={120}
+                                    pathOptions={{ color: '#669BBC', fillColor: '#669BBC', fillOpacity: 0.2, weight: 0 }}
+                                />
+                            ))}
+                            {showMarkers && stores.map((s) => (
+                                <Marker key={s.id} position={[s.latitude, s.longitude]}>
+                                    <Popup>
+                                        <div className="text-sm">
+                                            <div className="font-semibold">{s.name}</div>
+                                            <div className="text-slate-500">{s.location}</div>
+                                            <div className="mt-1 text-xs">Plan: {s.tenant?.plan} • Status: {s.tenant?.subscriptionStatus}</div>
+                                        </div>
+                                    </Popup>
+                                </Marker>
+                            ))}
                         </MapContainer>
 
                         {/* Floating Glass Panel - Stats */}
-                        <div className="absolute top-6 right-6 w-64 bg-white/80 backdrop-blur-xl p-5 rounded-2xl shadow-lg border border-white/50 z-[1000] transition-all hover:bg-white/90">
+                        <div className="absolute top-4 right-4 w-64 max-w-[90vw] bg-white/80 backdrop-blur-xl p-5 rounded-2xl shadow-lg border border-white/50 z-[1000] transition-all hover:bg-white/90">
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="font-bold text-slate-800 flex items-center">
                                     <Target size={18} className="mr-2 text-indigo-500" />
@@ -198,7 +303,11 @@ const AcquisitionMap = () => {
 
                             <div className="space-y-3">
                                 {districtStats.map(d => (
-                                    <div key={d.name} className="flex items-center justify-between group cursor-default">
+                                    <div
+                                        key={d.name}
+                                        className="flex items-center justify-between group cursor-pointer"
+                                        onClick={() => setFocusBounds(boundsFromDistrict(d))}
+                                    >
                                         <div className="flex items-center">
                                             <div
                                                 className="w-2.5 h-2.5 rounded-full mr-3 shadow-sm transition-all group-hover:scale-125"
@@ -223,6 +332,7 @@ const AcquisitionMap = () => {
                     </>
                 )}
             </Card>
+            </div>
         </AdminLayout>
     );
 };

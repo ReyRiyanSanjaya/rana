@@ -48,9 +48,18 @@ const getNearbyStores = async (req, res) => {
                 take: 3,
                 select: { id: true, name: true, sellingPrice: true, imageUrl: true, description: true }
             });
+
+            const aggs = await prisma.review.aggregate({
+                where: { product: { storeId: store.id } },
+                _avg: { rating: true },
+                _count: { rating: true }
+            });
+
             result.push({
                 ...store,
-                distance: store.distance, // Ensure it's passed
+                distance: store.distance,
+                rating: aggs._avg.rating || 0,
+                reviewCount: aggs._count.rating || 0,
                 products
             });
         }
@@ -226,15 +235,16 @@ const searchGlobal = async (req, res) => {
                 sellingPrice: true,
                 imageUrl: true,
                 description: true,
-                averageRating: true, // [NEW]
-                reviewCount: true,   // [NEW]
+                averageRating: true,
+                reviewCount: true,
                 storeId: true,
                 store: {
                     select: {
                         name: true,
                         latitude: true,
                         longitude: true,
-                        location: true
+                        location: true,
+                        category: true
                     }
                 }
             },
@@ -255,7 +265,7 @@ const searchGlobal = async (req, res) => {
                 const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
                 dist = R * c;
             }
-            return { ...p, distance: dist };
+            return { ...p, distance: dist, category: p.store.category };
         });
 
         if (sort === 'distance' && lat && long) {

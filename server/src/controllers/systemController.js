@@ -138,16 +138,46 @@ const updateFeeSettings = async (req, res) => {
 
 const getAppMenus = async (req, res) => {
     try {
-        const menus = await prisma.appMenu.findMany({
-            where: { isActive: true },
+        const allMenus = await prisma.appMenu.findMany({
             orderBy: { order: 'asc' }
         });
-        successResponse(res, menus);
+        const settings = await prisma.systemSettings.findMany({
+            where: { key: { startsWith: 'MAINTENANCE_MENU_' } }
+        });
+        const maintActive = new Set();
+        for (const s of settings) {
+            try {
+                const val = JSON.parse(s.value);
+                if (val && val.active === true) {
+                    maintActive.add(s.key.replace('MAINTENANCE_MENU_', ''));
+                }
+            } catch { }
+        }
+        const visibleMenus = allMenus.filter(m => m.isActive === true || maintActive.has(m.key));
+        successResponse(res, visibleMenus);
     } catch (error) {
         errorResponse(res, "Failed to fetch app menus", 500);
     }
 };
 
+const getAppMenuMaintenancePublic = async (req, res) => {
+    try {
+        const settings = await prisma.systemSettings.findMany({
+            where: { key: { startsWith: 'MAINTENANCE_MENU_' } }
+        });
+        const map = {};
+        for (const s of settings) {
+            try {
+                map[s.key.replace('MAINTENANCE_MENU_', '')] = JSON.parse(s.value);
+            } catch {
+                map[s.key.replace('MAINTENANCE_MENU_', '')] = { active: false };
+            }
+        }
+        successResponse(res, map);
+    } catch (error) {
+        errorResponse(res, "Failed to fetch maintenance map", 500);
+    }
+};
 const getActiveAnnouncements = async (req, res) => {
     try {
         const announcements = await prisma.announcement.findMany({
@@ -368,6 +398,7 @@ module.exports = {
     updateAnnouncement, // Admin
     deleteAnnouncement, // Admin
     getAppMenus,
+    getAppMenuMaintenancePublic,
     getNotifications,
     markAllNotificationsRead,
     getPublicSettings,

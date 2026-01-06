@@ -7,6 +7,7 @@ import 'package:rana_merchant/data/local/database_helper.dart';
 import 'package:rana_merchant/data/remote/api_service.dart';
 import 'package:rana_merchant/services/notification_service.dart';
 import 'package:rana_merchant/services/sync_service.dart'; // [NEW]
+import 'package:rana_merchant/services/connectivity_service.dart';
 
 typedef TransactionEventHandler = void Function(Map<String, dynamic> data);
 
@@ -17,8 +18,15 @@ class RealtimeService {
 
   io.Socket? _socket;
   bool _initialized = false;
+  StreamSubscription<bool>? _connSub;
 
   final List<TransactionEventHandler> _transactionListeners = [];
+  final _maintenanceController = StreamController<Map<String, dynamic>>.broadcast();
+  Stream<Map<String, dynamic>> get maintenanceStream => _maintenanceController.stream;
+  final _menusUpdateController = StreamController<void>.broadcast();
+  Stream<void> get menusUpdateStream => _menusUpdateController.stream;
+  final _transactionsController = StreamController<Map<String, dynamic>>.broadcast();
+  Stream<Map<String, dynamic>> get transactionsStream => _transactionsController.stream;
 
   io.Socket _ensureConnected() {
     if (_socket != null && _socket!.connected) return _socket!;
@@ -72,6 +80,7 @@ class RealtimeService {
           in List<TransactionEventHandler>.from(_transactionListeners)) {
         unawaited(Future<void>.microtask(() => handler(data)));
       }
+      _transactionsController.add(data);
 
       NotificationService().showNotification(
         id: DateTime.now().millisecondsSinceEpoch % 100000,
@@ -100,7 +109,33 @@ class RealtimeService {
       );
     });
 
+    s.on('maintenance:update', (payload) async {
+      try {
+        final map = await ApiService().fetchMenuMaintenance();
+        _maintenanceController.add(map);
+      } catch (_) {}
+    });
+    s.on('app_menus:update', (_) {
+      _menusUpdateController.add(null);
+    });
+
     _initialized = true;
+  }
+
+  void startAutoManage() {
+    ConnectivityService().startMonitoring();
+    _connSub?.cancel();
+    _connSub = ConnectivityService().onStatusChanged.listen((online) {
+      if (online) {
+        final s = _ensureConnected();
+        if (!s.connected) {
+          s.connect();
+        }
+        SyncService().syncTransactions();
+      } else {
+        _socket?.disconnect();
+      }
+    });
   }
 
   void addTransactionListener(TransactionEventHandler handler) {
@@ -119,5 +154,10 @@ class RealtimeService {
     _socket?.dispose();
     _socket = null;
     _initialized = false;
+    _maintenanceController.close();
+    _menusUpdateController.close();
+    _transactionsController.close();
+    _connSub?.cancel();
+    _connSub = null;
   }
 }

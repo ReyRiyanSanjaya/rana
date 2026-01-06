@@ -14,6 +14,7 @@ import {
     DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu";
 import Input from "../components/ui/Input";
+ 
 
 const Kulakan = () => {
     const [activeTab, setActiveTab] = useState('orders'); // Default to orders for monitoring
@@ -25,10 +26,20 @@ const Kulakan = () => {
     const [coupons, setCoupons] = useState([]);
     const [banners, setBanners] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [orderPage, setOrderPage] = useState(1);
+    const [orderPerPage, setOrderPerPage] = useState(9);
+    const [productPage, setProductPage] = useState(1);
+    const [productPerPage, setProductPerPage] = useState(10);
 
     // Filter States
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('ALL');
+    const [categoryFilter, setCategoryFilter] = useState('Semua');
+    const [sortField, setSortField] = useState('price');
+    const [sortDir, setSortDir] = useState('asc');
+    const [minPrice, setMinPrice] = useState('');
+    const [maxPrice, setMaxPrice] = useState('');
+    const [scanCode, setScanCode] = useState('');
 
     // Modal States
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -45,7 +56,7 @@ const Kulakan = () => {
     });
     const [categoryForm, setCategoryForm] = useState({ name: '', isActive: true });
     const [couponForm, setCouponForm] = useState({
-        code: '', type: 'FIXED', value: '', minOrder: '', maxDiscount: '', isActive: true
+        code: '', type: 'FIXED', value: '', minOrder: '', maxDiscount: '', startDate: '', endDate: '', isActive: true
     });
     const [bannerForm, setBannerForm] = useState({ title: '', imageUrl: '', description: '', isActive: true });
 
@@ -81,7 +92,10 @@ const Kulakan = () => {
 
     const fetchProducts = async () => {
         try {
-            const res = await api.get('/wholesale/products?category=Semua');
+            const params = new URLSearchParams();
+            if (categoryFilter) params.append('category', categoryFilter);
+            if (searchTerm) params.append('search', searchTerm);
+            const res = await api.get(`/wholesale/products?${params.toString() || ''}`);
             if (res.data.status === 'success') setProducts(res.data.data);
         } catch (error) { console.error(error); } finally { setLoading(false); }
     };
@@ -96,7 +110,9 @@ const Kulakan = () => {
     const fetchOrders = async (silent = false) => {
         if (!silent) setLoading(true);
         try {
-            const res = await api.get('/wholesale/orders');
+            const params = new URLSearchParams();
+            if (statusFilter && statusFilter !== 'ALL') params.append('status', statusFilter);
+            const res = await api.get(`/wholesale/orders?${params.toString() || ''}`);
             if (res.data.status === 'success') {
                 setOrders(res.data.data);
                 // Update selected order if open
@@ -210,9 +226,9 @@ const Kulakan = () => {
     };
 
     // --- ORDER HANDLERS ---
-    const updateOrderStatus = async (id, status) => {
+    const updateOrderStatus = async (id, status, pickupCode) => {
         try {
-            await api.put(`/wholesale/orders/${id}/status`, { status });
+            await api.put(`/wholesale/orders/${id}/status`, { status, pickupCode });
             fetchOrders(); // Refresh immediately
         } catch (e) { alert("Failed update status"); }
     };
@@ -319,12 +335,79 @@ const Kulakan = () => {
     };
 
     const renderOrders = () => {
+        const pagedOrders = orders.slice((orderPage - 1) * orderPerPage, (orderPage - 1) * orderPerPage + orderPerPage);
+        const totalOrderPages = Math.max(1, Math.ceil(orders.length / orderPerPage));
         // Filter logic could go here
         return (
             <div>
-                 <InvoiceToPrint />
+                <InvoiceToPrint />
+                <div className="flex items-center gap-2 mb-4">
+                    <Input placeholder="Scan/Enter Pickup Code" value={scanCode} onChange={(e)=>setScanCode(e.target.value)} />
+                    <Button
+                        variant="outline"
+                        onClick={async ()=>{
+                            if (!scanCode) return;
+                            try {
+                                const res = await api.post('/wholesale/orders/scan', { pickupCode: scanCode });
+                                if (res.data.status === 'success') {
+                                    fetchOrders();
+                                    setScanCode('');
+                                    alert('Order marked as DELIVERED');
+                                }
+                            } catch {
+                                alert('Failed to scan code');
+                            }
+                        }}
+                    >
+                        Confirm Delivery
+                    </Button>
+                </div>
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                        <select
+                            className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white"
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                        >
+                            <option value="ALL">All</option>
+                            <option value="PENDING">Pending</option>
+                            <option value="PAID">Paid</option>
+                            <option value="PROCESSED">Processed</option>
+                            <option value="SHIPPED">Shipped</option>
+                            <option value="DELIVERED">Delivered</option>
+                            <option value="CANCELLED">Cancelled</option>
+                        </select>
+                        <Button variant="outline" onClick={() => fetchOrders()}>Apply</Button>
+                    </div>
+                    <Button
+                        variant="secondary"
+                        onClick={() => {
+                            const rows = orders.map(o => ({
+                                id: o.id,
+                                status: o.status,
+                                items: o.items?.length || 0,
+                                totalAmount: o.totalAmount,
+                                serviceFee: o.serviceFee,
+                                shippingCost: o.shippingCost,
+                                paymentMethod: o.paymentMethod,
+                                createdAt: new Date(o.createdAt).toISOString()
+                            }));
+                            const headers = Object.keys(rows[0] || { id: '', status: '', items: 0, totalAmount: 0, serviceFee: 0, shippingCost: 0, paymentMethod: '', createdAt: '' });
+                            const csv = [headers.join(','), ...rows.map(r => headers.map(h => r[h]).join(','))].join('\n');
+                            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `orders_${Date.now()}.csv`;
+                            a.click();
+                            URL.revokeObjectURL(url);
+                        }}
+                    >
+                        Export CSV
+                    </Button>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {orders.map(order => (
+                    {pagedOrders.map(order => (
                         <div key={order.id} className="bg-white border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedOrder(order)}>
                             <div className="flex justify-between items-start mb-3">
                                 <div>
@@ -370,6 +453,25 @@ const Kulakan = () => {
                         </div>
                     ))}
                 </div>
+                <div className="flex items-center justify-between mt-4">
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm text-slate-600">Rows per page</span>
+                        <select
+                            className="px-2 py-1 border rounded text-sm bg-white"
+                            value={orderPerPage}
+                            onChange={(e) => { setOrderPerPage(parseInt(e.target.value)); setOrderPage(1); }}
+                        >
+                            <option value={6}>6</option>
+                            <option value={9}>9</option>
+                            <option value={12}>12</option>
+                        </select>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Button variant="outline" onClick={() => setOrderPage(p => Math.max(1, p - 1))}>Prev</Button>
+                        <span className="text-sm">Page {orderPage} / {totalOrderPages}</span>
+                        <Button variant="outline" onClick={() => setOrderPage(p => Math.min(totalOrderPages, p + 1))}>Next</Button>
+                    </div>
+                </div>
 
                 {/* ORDER DETAIL MODAL */}
                 {selectedOrder && (
@@ -394,9 +496,32 @@ const Kulakan = () => {
                             </div>
 
                              {selectedOrder.proofUrl && (
+                            <div className="mb-6 p-4 border rounded bg-slate-50">
+                                <h4 className="text-sm font-semibold text-slate-500 mb-2">Payment Proof</h4>
+                                <img src={selectedOrder.proofUrl} alt="Transfer Proof" className="max-h-64 object-contain mx-auto rounded border" />
+                            </div>
+                            )}
+                            {!selectedOrder.proofUrl && (
                                 <div className="mb-6 p-4 border rounded bg-slate-50">
-                                    <h4 className="text-sm font-semibold text-slate-500 mb-2">Payment Proof</h4>
-                                    <img src={selectedOrder.proofUrl} alt="Transfer Proof" className="max-h-64 object-contain mx-auto rounded border" />
+                                    <h4 className="text-sm font-semibold text-slate-500 mb-2">Upload Payment Proof</h4>
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={async (e) => {
+                                            const file = e.target.files?.[0];
+                                            if (!file) return;
+                                            const fd = new FormData();
+                                            fd.append('file', file);
+                                            fd.append('orderId', selectedOrder.id);
+                                            try {
+                                                await api.post('/wholesale/upload-proof', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+                                                fetchOrders();
+                                            } catch {
+                                                alert('Failed to upload proof');
+                                            }
+                                            e.target.value = '';
+                                        }}
+                                    />
                                 </div>
                             )}
 
@@ -430,7 +555,10 @@ const Kulakan = () => {
                                     <Button className="bg-indigo-600 text-white" onClick={() => updateOrderStatus(selectedOrder.id, 'PROCESSED')}>Process Order</Button>
                                 )}
                                 {selectedOrder.status === 'PROCESSED' && (
-                                    <Button className="bg-orange-500 text-white" onClick={() => updateOrderStatus(selectedOrder.id, 'SHIPPED')}>Ship Order</Button>
+                                    <>
+                                        <Input placeholder="Pickup/Tracking Code" value={selectedOrder.pickupCode || ''} onChange={(e)=>setSelectedOrder({...selectedOrder, pickupCode: e.target.value})} />
+                                        <Button className="bg-orange-500 text-white" onClick={() => updateOrderStatus(selectedOrder.id, 'SHIPPED', selectedOrder.pickupCode)}>Ship Order</Button>
+                                    </>
                                 )}
                                 <Button variant="outline" onClick={() => setSelectedOrder(null)}>Close</Button>
                             </div>
@@ -443,7 +571,23 @@ const Kulakan = () => {
 
     // ... (Keep existing Product, Category, Coupon renderers) ...
     const renderProducts = () => {
-        const filtered = products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
+        const filtered = products
+            .filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()))
+            .filter(p => {
+                const price = p.price || 0;
+                const min = minPrice ? parseFloat(minPrice) : null;
+                const max = maxPrice ? parseFloat(maxPrice) : null;
+                if (min !== null && price < min) return false;
+                if (max !== null && price > max) return false;
+                return true;
+            })
+            .sort((a,b) => {
+                const va = sortField === 'price' ? (a.price || 0) : (a.stock || 0);
+                const vb = sortField === 'price' ? (b.price || 0) : (b.stock || 0);
+                return sortDir === 'asc' ? va - vb : vb - va;
+            });
+        const paged = filtered.slice((productPage - 1) * productPerPage, (productPage - 1) * productPerPage + productPerPage);
+        const totalPages = Math.max(1, Math.ceil(filtered.length / productPerPage));
         return (
             <div>
                 <div className="flex justify-between items-center mb-4">
@@ -451,7 +595,78 @@ const Kulakan = () => {
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                         <Input placeholder="Search products..." className="pl-10" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
                     </div>
-                    <Button onClick={() => openModal('product')} className="bg-indigo-600 text-white"><Plus size={18} className="mr-2" /> Add Product</Button>
+                    <div className="flex items-center gap-2">
+                        <select
+                            className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white"
+                            value={categoryFilter}
+                            onChange={(e) => setCategoryFilter(e.target.value)}
+                        >
+                            <option value="Semua">Semua</option>
+                            {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                        <Input placeholder="Min Price" type="number" value={minPrice} onChange={(e)=>setMinPrice(e.target.value)} />
+                        <Input placeholder="Max Price" type="number" value={maxPrice} onChange={(e)=>setMaxPrice(e.target.value)} />
+                        <select
+                            className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white"
+                            value={sortField}
+                            onChange={(e) => setSortField(e.target.value)}
+                        >
+                            <option value="price">Price</option>
+                            <option value="stock">Stock</option>
+                        </select>
+                        <select
+                            className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white"
+                            value={sortDir}
+                            onChange={(e) => setSortDir(e.target.value)}
+                        >
+                            <option value="asc">Asc</option>
+                            <option value="desc">Desc</option>
+                        </select>
+                        <Button variant="outline" onClick={() => fetchProducts()}>Apply</Button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Button onClick={() => openModal('product')} className="bg-indigo-600 text-white"><Plus size={18} className="mr-2" /> Add Product</Button>
+                        <input
+                            id="csvImport"
+                            type="file"
+                            accept=".csv"
+                            style={{ display: 'none' }}
+                            onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                const text = await file.text();
+                                const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+                                const header = lines[0].split(',').map(h => h.trim());
+                                const required = ['name','categoryId','price','stock'];
+                                if (!required.every(r => header.includes(r))) {
+                                    alert('CSV headers wajib: name, categoryId, price, stock');
+                                    e.target.value = '';
+                                    return;
+                                }
+                                const idx = Object.fromEntries(header.map((h,i)=>[h,i]));
+                                let success = 0, fail = 0;
+                                for (let i=1;i<lines.length;i++){
+                                    const cols = lines[i].split(',').map(c=>c.trim());
+                                    if (cols.length < header.length) continue;
+                                    const payload = {
+                                        name: cols[idx['name']],
+                                        categoryId: cols[idx['categoryId']],
+                                        price: parseFloat(cols[idx['price']]),
+                                        stock: parseInt(cols[idx['stock']]),
+                                        supplierName: idx['supplierName']!==undefined ? cols[idx['supplierName']] : undefined,
+                                        imageUrl: idx['imageUrl']!==undefined ? cols[idx['imageUrl']] : undefined,
+                                        description: idx['description']!==undefined ? cols[idx['description']] : undefined
+                                    };
+                                    try { await api.post('/wholesale/products', payload); success++; }
+                                    catch { fail++; }
+                                }
+                                alert(`Import selesai: ${success} sukses, ${fail} gagal`);
+                                fetchProducts();
+                                e.target.value = '';
+                            }}
+                        />
+                        <Button variant="outline" onClick={() => document.getElementById('csvImport').click()}>Import CSV</Button>
+                    </div>
                 </div>
                 <div className="overflow-x-auto bg-white border rounded-lg">
                     <table className="w-full text-left">
@@ -467,7 +682,7 @@ const Kulakan = () => {
                         </thead>
                         <tbody className="divide-y">
                             {filtered.length === 0 ? <tr><td colSpan={6} className="p-4 text-center text-slate-500">No products found</td></tr> :
-                                filtered.map(p => (
+                                paged.map(p => (
                                     <tr key={p.id} className="hover:bg-slate-50">
                                         <td className="px-6 py-4">
                                             <div className="flex items-center">
@@ -495,6 +710,25 @@ const Kulakan = () => {
                         </tbody>
                     </table>
                 </div>
+                <div className="flex items-center justify-between mt-4">
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm text-slate-600">Rows per page</span>
+                        <select
+                            className="px-2 py-1 border rounded text-sm bg-white"
+                            value={productPerPage}
+                            onChange={(e) => { setProductPerPage(parseInt(e.target.value)); setProductPage(1); }}
+                        >
+                            <option value={10}>10</option>
+                            <option value={20}>20</option>
+                            <option value={50}>50</option>
+                        </select>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Button variant="outline" onClick={() => setProductPage(p => Math.max(1, p - 1))}>Prev</Button>
+                        <span className="text-sm">Page {productPage} / {totalPages}</span>
+                        <Button variant="outline" onClick={() => setProductPage(p => Math.min(totalPages, p + 1))}>Next</Button>
+                    </div>
+                </div>
             </div>
         );
     };
@@ -508,6 +742,17 @@ const Kulakan = () => {
                  <div key={c.id} className="bg-white p-4 rounded border flex justify-between items-center">
                      <span className="font-medium">{c.name}</span>
                      <div className="flex gap-2">
+                         <Badge variant={c.isActive ? 'success' : 'secondary'}>{c.isActive ? 'Active' : 'Inactive'}</Badge>
+                         <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={async () => {
+                                await api.put(`/wholesale/categories/${c.id}`, { isActive: !c.isActive });
+                                fetchCategories();
+                            }}
+                         >
+                            {c.isActive ? 'Deactivate' : 'Activate'}
+                         </Button>
                          <Button variant="outline" size="sm" onClick={() => openModal('category', c)}><Edit size={16}/></Button>
                          <Button variant="outline" size="sm" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => deleteCategory(c.id)}><Trash2 size={16}/></Button>
                      </div>
@@ -549,7 +794,18 @@ const Kulakan = () => {
                          <div className="font-medium">{b.title}</div>
                      </div>
                      <div className="flex gap-2 items-center">
+                         <Badge variant={b.isActive ? 'success' : 'secondary'}>{b.isActive ? 'Active' : 'Inactive'}</Badge>
                          <Button variant="outline" size="sm" onClick={() => openModal('banner', b)}><Edit size={16}/></Button>
+                         <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={async () => {
+                                await api.put(`/wholesale/banners/${b.id}`, { isActive: !b.isActive });
+                                fetchBanners();
+                            }}
+                         >
+                            {b.isActive ? 'Deactivate' : 'Activate'}
+                         </Button>
                          <Button variant="outline" size="sm" className="text-red-600 border-red-200 hover:bg-red-50" onClick={(e) => deleteBanner(b.id, e)}><Trash2 size={16}/></Button>
                      </div>
                  </div>
@@ -613,14 +869,19 @@ const Kulakan = () => {
                                 <Input label="Category Name" value={categoryForm.name} onChange={e => setCategoryForm({...categoryForm, name: e.target.value})} />
                             )}
 
-                             {modalType === 'coupon' && (
+                            {modalType === 'coupon' && (
                                 <>
                                     <Input label="Code" value={couponForm.code} onChange={e => setCouponForm({...couponForm, code: e.target.value})} />
                                     <Input label="Value" type="number" value={couponForm.value} onChange={e => setCouponForm({...couponForm, value: e.target.value})} />
                                     <select className="w-full border rounded p-2" value={couponForm.type} onChange={e => setCouponForm({...couponForm, type: e.target.value})}>
                                         <option value="FIXED">Fixed Amount</option>
                                         <option value="PERCENTAGE">Percentage</option>
+                                        <option value="FREE_SHIPPING">Free Shipping</option>
                                     </select>
+                                    <Input label="Min Order" type="number" value={couponForm.minOrder} onChange={e => setCouponForm({...couponForm, minOrder: e.target.value})} />
+                                    <Input label="Max Discount" type="number" value={couponForm.maxDiscount} onChange={e => setCouponForm({...couponForm, maxDiscount: e.target.value})} />
+                                    <Input label="Start Date" type="date" value={couponForm.startDate} onChange={e => setCouponForm({...couponForm, startDate: e.target.value})} />
+                                    <Input label="End Date" type="date" value={couponForm.endDate} onChange={e => setCouponForm({...couponForm, endDate: e.target.value})} />
                                 </>
                             )}
 

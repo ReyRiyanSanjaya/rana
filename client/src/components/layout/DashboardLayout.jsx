@@ -79,7 +79,7 @@ const DashboardLayout = ({ children }) => {
     }
 
     return (
-        <div className="flex h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-200">
+        <div className="flex h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-200 overflow-x-hidden">
             {/* Sidebar */}
             <aside className={`
         fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transform transition-transform duration-200 ease-in-out
@@ -122,7 +122,7 @@ const DashboardLayout = ({ children }) => {
             </aside>
 
             {/* Main Content */}
-            <div className="flex-1 flex flex-col overflow-hidden">
+            <div className="flex-1 flex flex-col overflow-hidden min-w-0">
                 {/* Header */}
                 <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 h-16 flex items-center justify-between px-6 transition-colors duration-200">
                     <button
@@ -144,8 +144,10 @@ const DashboardLayout = ({ children }) => {
                 </header>
 
                 {/* Page Content */}
-                <main className="flex-1 overflow-auto p-6 text-slate-900 dark:text-slate-100">
-                    {children}
+                <main className="flex-1 overflow-y-auto overflow-x-hidden p-6 text-slate-900 dark:text-slate-100">
+                    <div className="max-w-7xl mx-auto w-full">
+                        {children}
+                    </div>
                 </main>
             </div>
         </div>

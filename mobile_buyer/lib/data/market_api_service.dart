@@ -195,10 +195,17 @@ class MarketApiService {
     }
   }
 
-  Future<List<dynamic>> getNearbyStores(double lat, double long) async {
+  Future<List<dynamic>> getNearbyStores(double lat, double long,
+      {double? radiusKm}) async {
     try {
-      final response = await _dio
-          .get('/market/nearby', queryParameters: {'lat': lat, 'long': long});
+      final response = await _dio.get(
+        '/market/nearby',
+        queryParameters: {
+          'lat': lat,
+          'long': long,
+          if (radiusKm != null) 'radius': radiusKm,
+        },
+      );
 
       if (_isSuccess(response.data)) return response.data['data'] ?? [];
       throw Exception(_messageFromBody(response.data,

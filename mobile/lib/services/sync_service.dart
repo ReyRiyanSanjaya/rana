@@ -15,6 +15,15 @@ class SyncService {
   // [NEW] Data Change Stream
   final _dataChangeController = StreamController<void>.broadcast();
   Stream<void> get onDataChanged => _dataChangeController.stream;
+  Timer? _autoTimer;
+  StreamSubscription<bool>? _connSub;
+  bool _autoEnabled = false;
+  DateTime? _lastSyncAt;
+  bool _online = false;
+  final _statusController = StreamController<Map<String, dynamic>>.broadcast();
+  Stream<Map<String, dynamic>> get statusStream => _statusController.stream;
+  DateTime? get lastSyncAt => _lastSyncAt;
+  bool get isOnline => _online;
 
   Future<void> syncTransactions() async {
     if (_isSyncing) return;
@@ -72,6 +81,11 @@ class SyncService {
 
       // [NEW] Notify listeners
       _dataChangeController.add(null);
+      _lastSyncAt = DateTime.now();
+      _statusController.add({
+        'online': _online,
+        'lastSyncAt': _lastSyncAt?.toIso8601String()
+      });
     } catch (e) {
       if (kDebugMode) debugPrint('Sync Error: $e');
       rethrow;
@@ -136,5 +150,49 @@ class SyncService {
     } catch (e) {
       if (kDebugMode) debugPrint('Product Sync Error: $e');
     }
+  }
+
+  void startAutoSync({Duration interval = const Duration(seconds: 15)}) {
+    if (_autoEnabled) return;
+    _autoEnabled = true;
+    ConnectivityService().startMonitoring();
+    _connSub?.cancel();
+    _connSub = ConnectivityService().onStatusChanged.listen((online) async {
+      _online = online;
+      _statusController.add({
+        'online': _online,
+        'lastSyncAt': _lastSyncAt?.toIso8601String()
+      });
+      if (online) {
+        try {
+          await syncTransactions();
+        } catch (_) {}
+      }
+    });
+    _autoTimer?.cancel();
+    _autoTimer = Timer.periodic(interval, (_) async {
+      final online = await ConnectivityService().hasInternetConnection();
+      _online = online;
+      _statusController.add({
+        'online': _online,
+        'lastSyncAt': _lastSyncAt?.toIso8601String()
+      });
+      if (!online) return;
+      try {
+        await syncTransactions();
+      } catch (_) {}
+    });
+  }
+
+  void stopAutoSync() {
+    _autoEnabled = false;
+    _autoTimer?.cancel();
+    _autoTimer = null;
+    _connSub?.cancel();
+    _connSub = null;
+    _statusController.add({
+      'online': _online,
+      'lastSyncAt': _lastSyncAt?.toIso8601String()
+    });
   }
 }

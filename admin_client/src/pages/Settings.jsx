@@ -13,7 +13,6 @@ const Settings = () => {
         BANK_ACCOUNT_NUMBER: '8735089123',
         BANK_ACCOUNT_NAME: 'PT RANA TEKNOLOGI INDONESIA',
         PLATFORM_FEE_PERCENTAGE: '',
-        BUYER_SERVICE_FEE: '0',
         DIGIFLAZZ_USERNAME: '',
         DIGIFLAZZ_MODE: 'production',
         DIGIFLAZZ_BASE_URL: '',
@@ -23,9 +22,12 @@ const Settings = () => {
         DIGIFLAZZ_API_KEY_IS_SET: 'false',
         DIGIFLAZZ_WEBHOOK_SECRET: '',
         DIGIFLAZZ_WEBHOOK_SECRET_IS_SET: 'false',
-        WHOLESALE_SERVICE_FEE: '2500',
         WHOLESALE_SHIPPING_COST_PER_KM: '3000',
-        WHOLESALE_PAYMENT_METHODS: 'Transfer Bank (BCA),Transfer Bank (Mandiri),Bayar di Tempat (COD)'
+        WHOLESALE_PAYMENT_METHODS: 'Transfer Bank (BCA),Transfer Bank (Mandiri),Bayar di Tempat (COD)',
+        DEFAULT_LANGUAGE: 'id_ID',
+        ENABLE_SIGNUP: 'true',
+        SUPPORT_WHATSAPP_NUMBER: '+6281234567890',
+        COMPANY_LOGO_URL: ''
     });
     const [loading, setLoading] = useState(false);
     const [digiflazzApiKeyInput, setDigiflazzApiKeyInput] = useState('');
@@ -64,7 +66,6 @@ const Settings = () => {
         setLoading(true);
         try {
             await Promise.all([
-                api.post('/admin/settings', { key: 'WHOLESALE_SERVICE_FEE', value: settings.WHOLESALE_SERVICE_FEE, description: 'Service Fee (Biaya Layanan)' }),
                 api.post('/admin/settings', { key: 'WHOLESALE_SHIPPING_COST_PER_KM', value: settings.WHOLESALE_SHIPPING_COST_PER_KM, description: 'Shipping Cost per KM' }),
                 api.post('/admin/settings', { key: 'WHOLESALE_PAYMENT_METHODS', value: settings.WHOLESALE_PAYMENT_METHODS, description: 'Payment Methods' }),
             ]);
@@ -85,9 +86,8 @@ const Settings = () => {
                 api.post('/admin/settings', { key: 'BANK_ACCOUNT_NUMBER', value: settings.BANK_ACCOUNT_NUMBER, description: 'Account Number' }),
                 api.post('/admin/settings', { key: 'BANK_ACCOUNT_NAME', value: settings.BANK_ACCOUNT_NAME, description: 'Account Name' }),
                 api.post('/admin/settings', { key: 'PLATFORM_FEE_PERCENTAGE', value: settings.PLATFORM_FEE_PERCENTAGE, description: 'Platform Fee %' }),
-                api.post('/admin/settings', { key: 'BUYER_SERVICE_FEE', value: settings.BUYER_SERVICE_FEE, description: 'Buyer Service Fee' }),
             ]);
-            alert("Bank & Fee Settings Saved!");
+            alert("Bank & Platform Fee Settings Saved!");
         } catch (error) {
             console.error(error);
             alert("Failed to save some settings");
@@ -182,15 +182,6 @@ const Settings = () => {
                     </div>
 
                     <div className="grid grid-cols-1 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Service Fee (Biaya Layanan)</label>
-                            <Input
-                                type="number"
-                                placeholder="2500"
-                                value={settings.WHOLESALE_SERVICE_FEE || ''}
-                                onChange={(e) => handleChange('WHOLESALE_SERVICE_FEE', e.target.value)}
-                            />
-                        </div>
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-1">Shipping Cost per KM (Ongkir)</label>
                             <Input
@@ -287,16 +278,6 @@ const Settings = () => {
                                         onChange={(e) => handleChange('PLATFORM_FEE_PERCENTAGE', e.target.value)}
                                     />
                                     <p className="text-xs text-slate-500 mt-1">Deducted from merchant sales.</p>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Buyer Service Fee (Rp)</label>
-                                    <Input
-                                        type="number"
-                                        placeholder="1000"
-                                        value={settings.BUYER_SERVICE_FEE || ''}
-                                        onChange={(e) => handleChange('BUYER_SERVICE_FEE', e.target.value)}
-                                    />
-                                    <p className="text-xs text-slate-500 mt-1">Added to buyer transaction total.</p>
                                 </div>
                             </div>
                         </div>
@@ -434,6 +415,82 @@ const Settings = () => {
                                 Save Digiflazz Settings
                             </Button>
                         </div>
+                    </div>
+                </Card>
+
+                {/* Platform Settings */}
+                <Card className="p-6 h-fit">
+                    <div className="flex items-start justify-between mb-6">
+                        <div>
+                            <h3 className="font-semibold text-slate-900">Platform Settings</h3>
+                            <p className="text-sm text-slate-500 mt-1">Global configuration for language, signup, and branding.</p>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Default Language</label>
+                            <Input
+                                placeholder="id_ID"
+                                value={settings.DEFAULT_LANGUAGE || ''}
+                                onChange={(e) => handleChange('DEFAULT_LANGUAGE', e.target.value)}
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Enable Signup</label>
+                            <select
+                                className="w-full border rounded p-2"
+                                value={settings.ENABLE_SIGNUP || 'true'}
+                                onChange={(e) => handleChange('ENABLE_SIGNUP', e.target.value)}
+                            >
+                                <option value="true">Enabled</option>
+                                <option value="false">Disabled</option>
+                            </select>
+                        </div>
+                        <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Support WhatsApp Number</label>
+                            <Input
+                                placeholder="+6281234567890"
+                                value={settings.SUPPORT_WHATSAPP_NUMBER || ''}
+                                onChange={(e) => handleChange('SUPPORT_WHATSAPP_NUMBER', e.target.value)}
+                            />
+                        </div>
+                        <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Company Logo URL</label>
+                            <Input
+                                placeholder="https://example.com/logo.png"
+                                value={settings.COMPANY_LOGO_URL || ''}
+                                onChange={(e) => handleChange('COMPANY_LOGO_URL', e.target.value)}
+                            />
+                            {settings.COMPANY_LOGO_URL && (
+                                <div className="p-4 mt-2 bg-slate-50 rounded border border-slate-200">
+                                    <img src={settings.COMPANY_LOGO_URL} alt="Logo Preview" className="max-h-48 object-contain" />
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    <div className="pt-4 mt-2">
+                        <Button
+                            onClick={async () => {
+                                setLoading(true);
+                                try {
+                                    await Promise.all([
+                                        api.post('/admin/settings', { key: 'DEFAULT_LANGUAGE', value: settings.DEFAULT_LANGUAGE, description: 'Default Language' }),
+                                        api.post('/admin/settings', { key: 'ENABLE_SIGNUP', value: settings.ENABLE_SIGNUP, description: 'Enable Signup' }),
+                                        api.post('/admin/settings', { key: 'SUPPORT_WHATSAPP_NUMBER', value: settings.SUPPORT_WHATSAPP_NUMBER, description: 'Support WhatsApp' }),
+                                        api.post('/admin/settings', { key: 'COMPANY_LOGO_URL', value: settings.COMPANY_LOGO_URL, description: 'Company Logo' }),
+                                    ]);
+                                    alert('Platform settings saved!');
+                                } catch (e) {
+                                    alert('Failed to save platform settings');
+                                } finally {
+                                    setLoading(false);
+                                }
+                            }}
+                            isLoading={loading}
+                            className="w-full sm:w-auto"
+                        >
+                            Save Platform Settings
+                        </Button>
                     </div>
                 </Card>
             </div>

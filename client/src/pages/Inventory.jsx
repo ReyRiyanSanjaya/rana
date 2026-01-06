@@ -4,6 +4,7 @@ import DashboardLayout from '../components/layout/DashboardLayout';
 import api, { fetchProductLogs, adjustStock, fetchInventoryIntelligence, fetchDashboardStats, createProduct, updateProduct, deleteProduct, fetchProducts } from '../services/api';
 import { Package, Plus, Minus, History, AlertTriangle, Search, TrendingUp, TrendingDown, Edit, Trash2, X } from 'lucide-react';
 import { io } from 'socket.io-client';
+import RealtimeBadge from '../components/RealtimeBadge';
 
 const Inventory = () => {
     const [activeTab, setActiveTab] = useState('stock'); // 'stock', 'intelligence'
@@ -187,6 +188,7 @@ const Inventory = () => {
                         <p className="text-slate-500 dark:text-slate-400">Track stock levels and analyze product performance.</p>
                     </div>
                     <div className="flex items-center space-x-3">
+                        <RealtimeBadge />
                         <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
                             <button
                                 onClick={() => setActiveTab('stock')}

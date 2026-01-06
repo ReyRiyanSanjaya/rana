@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import api from '../api';
 import AdminLayout from '../components/AdminLayout';
 import Card from '../components/ui/Card';
-import Button from '../components/ui/button';
+import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import { Layout, Image, Type, Save, Globe, Users, Star, List, Percent, Wallet } from 'lucide-react';
 
@@ -26,9 +26,13 @@ const ContentManager = () => {
         wholesaleSubtotal: 0,
         withdrawalAmount: 0
     });
+    const [coreValuesList, setCoreValuesList] = useState([]);
+    const [featuresList, setFeaturesList] = useState([]);
+    const [publicCms, setPublicCms] = useState({});
 
     useEffect(() => {
         fetchSettings();
+        fetchPublic();
     }, []);
 
     const fetchSettings = async () => {
@@ -37,10 +41,30 @@ const ContentManager = () => {
             const settingsMap = {};
             res.data.data.forEach(s => settingsMap[s.key] = s.value);
             setSettings(prev => ({ ...prev, ...settingsMap }));
+            try {
+                const cv = settingsMap.CMS_CORE_VALUES ? JSON.parse(settingsMap.CMS_CORE_VALUES) : [];
+                setCoreValuesList(Array.isArray(cv) ? cv : []);
+            } catch {
+                setCoreValuesList([]);
+            }
+            try {
+                const fl = settingsMap.CMS_FEATURES_LIST ? JSON.parse(settingsMap.CMS_FEATURES_LIST) : [];
+                setFeaturesList(Array.isArray(fl) ? fl : []);
+            } catch {
+                setFeaturesList([]);
+            }
         } catch (error) {
             console.error(error);
         } finally {
             setLoading(false);
+        }
+    };
+    const fetchPublic = async () => {
+        try {
+            const res = await api.get('/system/cms-content');
+            setPublicCms(res.data.data || {});
+        } catch {
+            setPublicCms({});
         }
     };
 
@@ -196,35 +220,76 @@ const ContentManager = () => {
 
                 {activeTab === 'values' && (
                     <Card className="p-6 col-span-2">
-                        <h3 className="text-lg font-bold mb-4">Advanced Config (JSON)</h3>
+                        <h3 className="text-lg font-bold mb-4">Core Values & Features</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                                <label className="block text-sm font-medium mb-1">Core Values (JSON Array)</label>
-                                <p className="text-xs text-gray-500 mb-2">Example: {`[{"title": "Speed", "desc": "Fast..." }]`}</p>
-                                <textarea
-                                    className="w-full h-60 border rounded p-2 font-mono text-xs"
-                                    value={settings.CMS_CORE_VALUES}
-                                    onChange={e => setSettings({ ...settings, CMS_CORE_VALUES: e.target.value })}
-                                />
-                                <div className="mt-2">
-                                    <Button onClick={() => handleJsonSave('CMS_CORE_VALUES', settings.CMS_CORE_VALUES)}>Save Core Values</Button>
+                                <div className="flex justify-between items-center mb-2">
+                                    <label className="block text-sm font-medium">Core Values</label>
+                                    <Button size="sm" onClick={() => setCoreValuesList([...coreValuesList, { title: '', desc: '' }])}>Add</Button>
+                                </div>
+                                <div className="space-y-3">
+                                    {coreValuesList.map((item, idx) => (
+                                        <div key={idx} className="border rounded p-3 space-y-2">
+                                            <Input value={item.title} onChange={e => {
+                                                const arr = [...coreValuesList]; arr[idx] = { ...arr[idx], title: e.target.value }; setCoreValuesList(arr);
+                                            }} placeholder="Title" />
+                                            <Input value={item.desc} onChange={e => {
+                                                const arr = [...coreValuesList]; arr[idx] = { ...arr[idx], desc: e.target.value }; setCoreValuesList(arr);
+                                            }} placeholder="Description" />
+                                            <div className="flex justify-end">
+                                                <Button variant="destructive" size="sm" onClick={() => setCoreValuesList(coreValuesList.filter((_, i) => i !== idx))}>Remove</Button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="mt-3">
+                                    <Button onClick={() => handleJsonSave('CMS_CORE_VALUES', JSON.stringify(coreValuesList))}>Save Core Values</Button>
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium mb-1">Features List (JSON Array)</label>
-                                <textarea
-                                    className="w-full h-60 border rounded p-2 font-mono text-xs"
-                                    value={settings.CMS_FEATURES_LIST}
-                                    onChange={e => setSettings({ ...settings, CMS_FEATURES_LIST: e.target.value })}
-                                />
-                                <div className="mt-2">
-                                    <Button onClick={() => handleJsonSave('CMS_FEATURES_LIST', settings.CMS_FEATURES_LIST)}>Save Features</Button>
+                                <div className="flex justify-between items-center mb-2">
+                                    <label className="block text-sm font-medium">Features</label>
+                                    <Button size="sm" onClick={() => setFeaturesList([...featuresList, { title: '', desc: '' }])}>Add</Button>
+                                </div>
+                                <div className="space-y-3">
+                                    {featuresList.map((item, idx) => (
+                                        <div key={idx} className="border rounded p-3 space-y-2">
+                                            <Input value={item.title} onChange={e => {
+                                                const arr = [...featuresList]; arr[idx] = { ...arr[idx], title: e.target.value }; setFeaturesList(arr);
+                                            }} placeholder="Title" />
+                                            <Input value={item.desc} onChange={e => {
+                                                const arr = [...featuresList]; arr[idx] = { ...arr[idx], desc: e.target.value }; setFeaturesList(arr);
+                                            }} placeholder="Description" />
+                                            <div className="flex justify-end">
+                                                <Button variant="destructive" size="sm" onClick={() => setFeaturesList(featuresList.filter((_, i) => i !== idx))}>Remove</Button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="mt-3">
+                                    <Button onClick={() => handleJsonSave('CMS_FEATURES_LIST', JSON.stringify(featuresList))}>Save Features</Button>
                                 </div>
                             </div>
                         </div>
                     </Card>
                 )}
-
+                <Card className="p-6 col-span-2">
+                    <h3 className="text-lg font-bold mb-4">Public Preview</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="border rounded p-4">
+                            <div className="font-semibold mb-2">Hero Title</div>
+                            <div className="text-slate-700">{publicCms.CMS_HERO_TITLE || settings.CMS_HERO_TITLE}</div>
+                        </div>
+                        <div className="border rounded p-4">
+                            <div className="font-semibold mb-2">Hero Subtitle</div>
+                            <div className="text-slate-700">{publicCms.CMS_HERO_SUBTITLE || settings.CMS_HERO_SUBTITLE}</div>
+                        </div>
+                        <div className="border rounded p-4">
+                            <div className="font-semibold mb-2">Contact</div>
+                            <div className="text-slate-700">{(publicCms.CMS_CONTACT_EMAIL || settings.CMS_CONTACT_EMAIL) + ' • ' + (publicCms.CMS_CONTACT_PHONE || settings.CMS_CONTACT_PHONE)}</div>
+                        </div>
+                    </div>
+                </Card>
                 {activeTab === 'fees' && (
                     <Card className="p-6 col-span-2">
                         <h3 className="text-lg font-bold mb-4">Fee Settings</h3>

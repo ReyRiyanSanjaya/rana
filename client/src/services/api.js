@@ -64,8 +64,8 @@ export const fetchDashboardStats = async (date) => {
 };
 
 export const fetchProfitLoss = async (params) => {
-    const res = await api.get('/reports/profit-loss', { params });
-    return res.data.data;
+  const res = await api.get('/reports/profit-loss', { params });
+  return res.data.data;
 };
 
 export const recordExpense = async (data) => {
@@ -87,8 +87,8 @@ export const recordDebt = async (data) => {
 
 // --- Cash Management ---
 export const fetchWalletData = async () => {
-    const res = await api.get('/wallet');
-    return res.data.data;
+  const res = await api.get('/wallet');
+  return res.data.data;
 };
 
 export const requestWithdrawal = async (data) => {
@@ -107,8 +107,8 @@ export const triggerDailyReport = async (storeId, date) => {
 
 // --- Merchant Management (Admin/Super Admin) ---
 export const fetchMerchants = async () => {
-    const res = await api.get('/admin/merchants');
-    return res.data.data;
+  const res = await api.get('/admin/merchants');
+  return res.data.data;
 };
 
 export const createMerchant = async (data) => {
@@ -120,3 +120,8 @@ export const deleteMerchant = async (id) => {
 };
 
 export default api;
+
+export const fetchTransactionHistory = async () => {
+  const res = await api.get('/transactions/history');
+  return res.data.data || [];
+};

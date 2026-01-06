@@ -1,7 +1,8 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Store, Map, BarChart, ShoppingBag, LogOut, Search, Bell, Settings, Command, Wallet, CreditCard, Package, Megaphone, MessageSquare, Smartphone, Shield, Layout, FileText, List, Gift } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { getRole, getUser, logout } from '../lib/auth';
 import { Button } from './ui/Button';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Separator } from './ui/separator';
@@ -46,6 +47,7 @@ const SearchResultItem = ({ to, title, subtitle, icon: Icon, onClick }) => (
 
 const AdminLayout = ({ children }) => {
     const location = useLocation();
+    const navigate = useNavigate();
 
     // [NEW] Search State
     const [searchQuery, setSearchQuery] = React.useState('');
@@ -74,6 +76,35 @@ const AdminLayout = ({ children }) => {
         return () => clearTimeout(timer);
     }, [searchQuery]);
 
+    const [roleAccess, setRoleAccess] = React.useState(null);
+    const currentRole = React.useMemo(() => {
+        const r = getRole();
+        return r || null;
+    }, []);
+    React.useEffect(() => {
+        (async () => {
+            try {
+                const { default: api } = await import('../api');
+                const res = await api.get('/admin/settings');
+                const map = {};
+                (res.data.data || []).forEach(s => map[s.key] = s.value);
+                const parsed = map.ADMIN_ROLE_MENU_ACCESS ? JSON.parse(map.ADMIN_ROLE_MENU_ACCESS) : null;
+                setRoleAccess(parsed);
+            } catch {
+                setRoleAccess(null);
+            }
+        })();
+    }, []);
+    const isAllowed = React.useCallback((path) => {
+        if (!currentRole) return false;
+        if (!roleAccess || !roleAccess[currentRole]) return true;
+        return roleAccess[currentRole].includes(path);
+    }, [roleAccess, currentRole]);
+    React.useEffect(() => {
+        const user = getUser();
+        if (!user || !currentRole) navigate('/login');
+        else if (roleAccess && roleAccess[currentRole] && !isAllowed(location.pathname)) navigate('/');
+    }, [roleAccess, currentRole, location.pathname, isAllowed, navigate]);
     const navItems = [
         { icon: LayoutDashboard, label: 'Dashboard', to: '/' },
         { icon: Map, label: 'Acquisition Map', to: '/map' },
@@ -101,7 +132,6 @@ const AdminLayout = ({ children }) => {
         { icon: FileText, label: 'Blog Manager', to: '/blog' }, // [NEW]
         { icon: List, label: 'Flash Sales', to: '/flashsales' },
         { icon: MessageSquare, label: 'Support', to: '/support' },
-        { icon: Bell, label: 'Info Terkini', to: '/announcements' }, // [NEW]
     ];
 
     const clearSearch = () => {
@@ -110,7 +140,7 @@ const AdminLayout = ({ children }) => {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50/50 flex">
+        <div className="min-h-screen bg-slate-50/50 flex overflow-x-hidden">
             {/* Sidebar */}
             <aside className="hidden md:flex flex-col w-64 bg-white border-r border-slate-200 fixed inset-y-0 left-0 z-50">
                 {/* Sidebar Header */}
@@ -128,7 +158,7 @@ const AdminLayout = ({ children }) => {
                     <div className="px-2 mb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
                         Platform
                     </div>
-                    {navItems.map((item) => (
+                    {navItems.filter(i => isAllowed(i.to)).map((item) => (
                         <SidebarItem
                             key={item.to}
                             icon={item.icon}
@@ -141,7 +171,7 @@ const AdminLayout = ({ children }) => {
                     <div className="mt-6 px-2 mb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
                         Finance
                     </div>
-                    {financeItems.map((item) => (
+                    {financeItems.filter(i => isAllowed(i.to)).map((item) => (
                         <SidebarItem
                             key={item.to}
                             icon={item.icon}
@@ -154,7 +184,7 @@ const AdminLayout = ({ children }) => {
                     <div className="mt-6 px-2 mb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
                         System
                     </div>
-                    {systemItems.map((item) => (
+                    {systemItems.filter(i => isAllowed(i.to)).map((item) => (
                         <SidebarItem
                             key={item.to}
                             icon={item.icon}
@@ -209,10 +239,7 @@ const AdminLayout = ({ children }) => {
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                                 className="text-red-500 focus:text-red-500 cursor-pointer"
-                                onClick={() => {
-                                    localStorage.removeItem('adminToken');
-                                    window.location.href = '/login';
-                                }}
+                                onClick={() => logout()}
                             >
                                 <LogOut className="mr-2 h-4 w-4" />
                                 Log out
@@ -223,7 +250,7 @@ const AdminLayout = ({ children }) => {
             </aside>
 
             {/* Main Layout (Header + Content) */}
-            <div className="flex-1 md:ml-64 flex flex-col min-h-screen transition-all duration-300 ease-in-out">
+            <div className="flex-1 md:ml-64 flex flex-col min-h-screen transition-all duration-300 ease-in-out min-w-0">
                 {/* Header */}
                 <header className="sticky top-0 z-40 w-full h-14 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-6">
                     <div className="flex items-center gap-4 text-sm text-slate-500">
@@ -302,7 +329,9 @@ const AdminLayout = ({ children }) => {
 
                 {/* Content Area */}
                 <main className="flex-1 p-6 overflow-x-hidden">
-                    {children}
+                    <div className="max-w-7xl mx-auto w-full">
+                        {children}
+                    </div>
                 </main>
             </div>
         </div>

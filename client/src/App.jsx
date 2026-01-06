@@ -20,6 +20,7 @@ import Features from './pages/Features'; // [NEW]
 import Contact from './pages/Contact'; // [NEW]
 import Support from './pages/Support'; // [NEW]
 import FlashSales from './pages/FlashSales';
+import Transactions from './pages/Transactions';
 
 // Placeholders for other routes
 const Placeholder = ({ title }) => (
@@ -60,6 +61,11 @@ function App() {
                     <Route path="/inventory" element={
                         <ProtectedRoute allowedRoles={['OWNER', 'STORE_MANAGER']}>
                             <Inventory />
+                        </ProtectedRoute>
+                    } />
+                    <Route path="/transactions" element={
+                        <ProtectedRoute allowedRoles={['OWNER', 'STORE_MANAGER']}>
+                            <Transactions />
                         </ProtectedRoute>
                     } />
 

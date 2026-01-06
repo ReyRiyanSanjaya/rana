@@ -7,7 +7,7 @@ import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
-import { Package, Calendar, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Package, Calendar, Clock, ChevronLeft, ChevronRight, Plus, Eye, Cog, Download, Ban, CheckCircle } from 'lucide-react';
 
 const Merchants = () => {
     const navigate = useNavigate();
@@ -16,6 +16,11 @@ const Merchants = () => {
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
+    const [planFilter, setPlanFilter] = useState('');
+    const [cityFilter, setCityFilter] = useState('');
+    const [dateFrom, setDateFrom] = useState('');
+    const [dateTo, setDateTo] = useState('');
+    const [sort, setSort] = useState('createdAt:desc');
 
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
@@ -24,6 +29,7 @@ const Merchants = () => {
     const [selectedMerchant, setSelectedMerchant] = useState(null);
     const [selectedPackage, setSelectedPackage] = useState(null);
     const [subForm, setSubForm] = useState({ status: 'TRIAL' }); // Removed plan field
+    const [selectedRows, setSelectedRows] = useState([]);
 
     // Add Merchant State
     const [showAddModal, setShowAddModal] = useState(false);
@@ -38,13 +44,21 @@ const Merchants = () => {
 
     useEffect(() => {
         fetchMerchants();
-        fetchPackages(); // [NEW]
-    }, []);
+        fetchPackages();
+    }, [statusFilter, search, planFilter, cityFilter, dateFrom, dateTo, sort]);
 
     const fetchMerchants = async () => {
         try {
             setLoading(true);
-            const res = await api.get('/admin/merchants');
+            const params = new URLSearchParams();
+            if (statusFilter) params.append('status', statusFilter);
+            if (search) params.append('search', search);
+            if (planFilter) params.append('plan', planFilter);
+            if (cityFilter) params.append('city', cityFilter);
+            if (dateFrom) params.append('createdFrom', dateFrom);
+            if (dateTo) params.append('createdTo', dateTo);
+            if (sort) params.append('sort', sort);
+            const res = await api.get(`/admin/merchants?${params.toString()}`);
             setMerchants(res.data.data);
         } catch (error) {
             console.error(error);
@@ -65,15 +79,7 @@ const Merchants = () => {
 
     const formatCurrency = (val) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val);
 
-    const filteredMerchants = merchants.filter(m => {
-        const matchesSearch = m.name?.toLowerCase().includes(search.toLowerCase()) ||
-            m.tenant?.name?.toLowerCase().includes(search.toLowerCase()) ||
-            m.tenant?.email?.toLowerCase().includes(search.toLowerCase());
-        
-        const matchesStatus = statusFilter ? m.tenant?.subscriptionStatus === statusFilter : true;
-
-        return matchesSearch && matchesStatus;
-    });
+    const filteredMerchants = merchants;
 
     // Pagination Logic
     const indexOfLastItem = currentPage * itemsPerPage;
@@ -104,6 +110,41 @@ const Merchants = () => {
         setSubForm({
             status: merchant.tenant?.subscriptionStatus || 'TRIAL'
         });
+    };
+
+    const toggleSelectAll = (checked) => {
+        if (checked) setSelectedRows(currentMerchants.map(m => m.id));
+        else setSelectedRows([]);
+    };
+
+    const toggleRow = (id) => {
+        setSelectedRows(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+    };
+
+    const bulkUpdateSubscription = async (newStatus) => {
+        try {
+            const targets = merchants.filter(m => selectedRows.includes(m.id));
+            for (const m of targets) {
+                if (m.tenant?.id) {
+                    await api.put(`/admin/merchants/${m.tenant.id}/subscription`, { subscriptionStatus: newStatus });
+                }
+            }
+            alert('Bulk action completed');
+            setSelectedRows([]);
+            fetchMerchants();
+        } catch (e) {
+            alert('Bulk action failed');
+        }
+    };
+
+    const handleExportCsv = () => {
+        const params = new URLSearchParams();
+        if (statusFilter) params.append('status', statusFilter);
+        if (planFilter) params.append('plan', planFilter);
+        if (cityFilter) params.append('city', cityFilter);
+        if (dateFrom) params.append('createdFrom', dateFrom);
+        if (dateTo) params.append('createdTo', dateTo);
+        window.open(`/api/admin/merchants/export?format=csv&${params.toString()}`, '_blank');
     };
 
     // [UPDATED] Save subscription with package duration
@@ -150,22 +191,22 @@ const Merchants = () => {
         <AdminLayout>
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-bold text-slate-900">Merchants Management</h1>
-                <Button className="shadow-sm" onClick={() => setShowAddModal(true)}>
-                    + Add Merchant
+                <Button onClick={() => setShowAddModal(true)} icon={Plus}>
+                    Add Merchant
                 </Button>
             </div>
 
             <Card className="mb-6">
-                <div className="p-4 flex flex-col md:flex-row gap-4 items-center">
+                <div className="p-4 flex flex-wrap gap-3 items-center">
                     <input
                         type="text"
                         placeholder="Search merchant, tenant, email..."
-                        className="flex-1 px-4 py-2 border border-slate-300 rounded-lg outline-none focus:border-indigo-500 w-full"
+                        className="flex-1 min-w-[220px] px-4 py-2 border border-slate-300 rounded-lg outline-none focus:border-indigo-500"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                     />
                     <select 
-                        className="px-4 py-2 border border-slate-300 rounded-lg outline-none text-sm bg-white min-w-[150px]"
+                        className="px-3 py-2 border border-slate-300 rounded-lg outline-none text-sm bg-white flex-[1_1_140px] min-w-[140px]"
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value)}
                     >
@@ -175,13 +216,71 @@ const Merchants = () => {
                         <option value="EXPIRED">Expired</option>
                         <option value="CANCELLED">Cancelled</option>
                     </select>
+                    <select
+                        className="px-3 py-2 border border-slate-300 rounded-lg outline-none text-sm bg-white flex-[1_1_140px] min-w-[140px]"
+                        value={planFilter}
+                        onChange={(e) => setPlanFilter(e.target.value)}
+                    >
+                        <option value="">All Plans</option>
+                        <option value="FREE">Free</option>
+                        <option value="PREMIUM">Premium</option>
+                        <option value="ENTERPRISE">Enterprise</option>
+                    </select>
+                    <input
+                        type="text"
+                        placeholder="City"
+                        className="px-3 py-2 border border-slate-300 rounded-lg outline-none text-sm bg-white flex-[1_1_140px] min-w-[140px]"
+                        value={cityFilter}
+                        onChange={(e) => setCityFilter(e.target.value)}
+                    />
+                    <input
+                        type="date"
+                        className="px-3 py-2 border border-slate-300 rounded-lg outline-none text-sm bg-white flex-[1_1_140px]"
+                        value={dateFrom}
+                        onChange={(e) => setDateFrom(e.target.value)}
+                    />
+                    <input
+                        type="date"
+                        className="px-3 py-2 border border-slate-300 rounded-lg outline-none text-sm bg-white flex-[1_1_140px]"
+                        value={dateTo}
+                        onChange={(e) => setDateTo(e.target.value)}
+                    />
+                    <select
+                        className="px-3 py-2 border border-slate-300 rounded-lg outline-none text-sm bg-white flex-[1_1_160px] min-w-[160px]"
+                        value={sort}
+                        onChange={(e) => setSort(e.target.value)}
+                    >
+                        <option value="createdAt:desc">Newest</option>
+                        <option value="createdAt:asc">Oldest</option>
+                        <option value="balance:desc">Balance High</option>
+                        <option value="balance:asc">Balance Low</option>
+                        <option value="name:asc">Name A-Z</option>
+                        <option value="name:desc">Name Z-A</option>
+                    </select>
+                    <Button variant="outline" onClick={handleExportCsv} icon={Download} className="flex-[0_0_auto]">Export CSV</Button>
                 </div>
             </Card>
 
             <Card className="overflow-hidden">
-                <Table>
+                {selectedRows.length > 0 && (
+                    <div className="flex items-center justify-between p-3 border-b bg-indigo-50">
+                        <span className="text-sm text-indigo-700">{selectedRows.length} selected</span>
+                        <div className="flex gap-2">
+                            <Button variant="destructive" size="sm" onClick={() => bulkUpdateSubscription('CANCELLED')} icon={Ban}>Suspend</Button>
+                            <Button size="sm" onClick={() => bulkUpdateSubscription('ACTIVE')} icon={CheckCircle}>Activate</Button>
+                        </div>
+                    </div>
+                )}
+                <Table className="min-w-full">
                     <Thead>
                         <Tr>
+                            <Th>
+                                <input
+                                    type="checkbox"
+                                    checked={selectedRows.length === currentMerchants.length && currentMerchants.length > 0}
+                                    onChange={(e) => toggleSelectAll(e.target.checked)}
+                                />
+                            </Th>
                             <Th>Store Info</Th>
                             <Th>Owner</Th>
                             <Th>Active Balance</Th>
@@ -193,14 +292,21 @@ const Merchants = () => {
                     <Tbody>
                         {loading ? (
                             <Tr>
-                                <Td colSpan="6" className="text-center py-12 text-slate-400">Loading merchants...</Td>
+                                <Td colSpan="7" className="text-center py-12 text-slate-400">Loading merchants...</Td>
                             </Tr>
                         ) : currentMerchants.length === 0 ? (
                             <Tr>
-                                <Td colSpan="6" className="text-center py-12 text-slate-400">No merchants found.</Td>
+                                <Td colSpan="7" className="text-center py-12 text-slate-400">No merchants found.</Td>
                             </Tr>
                         ) : currentMerchants.map((m) => (
                             <Tr key={m.id}>
+                                <Td>
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedRows.includes(m.id)}
+                                        onChange={() => toggleRow(m.id)}
+                                    />
+                                </Td>
                                 <Td>
                                     <div className="flex flex-col">
                                         <span className="font-medium text-slate-900">{m.name}</span>
@@ -219,7 +325,6 @@ const Merchants = () => {
                                 <Td>
                                     <div className="flex flex-col">
                                         <span className="text-xs text-slate-500">Status: {m.tenant?.subscriptionStatus}</span>
-                                        {/* Show subscriptionEndsAt or trialEndsAt */}
                                         {m.tenant?.subscriptionStatus === 'ACTIVE' && m.tenant?.subscriptionEndsAt ? (
                                             <span className="text-[10px] text-green-600 flex items-center gap-1">
                                                 <Clock size={10} /> {getDaysRemaining(m.tenant.subscriptionEndsAt)} hari tersisa
@@ -238,9 +343,11 @@ const Merchants = () => {
                                         <Badge variant="danger">Expired</Badge>
                                     )}
                                 </Td>
-                                <Td className="text-right flex gap-2 justify-end">
-                                    <Button variant="outline" size="sm" onClick={() => navigate(`/merchants/${m.id}`)}>View</Button>
-                                    <Button variant="secondary" size="sm" onClick={() => handleEditSubscription(m)}>Manage Plan</Button>
+                                <Td className="text-right">
+                                    <div className="inline-flex gap-2 flex-wrap justify-end">
+                                        <Button variant="outline" size="sm" onClick={() => navigate(`/merchants/${m.id}`)} icon={Eye}>View</Button>
+                                        <Button variant="secondary" size="sm" onClick={() => handleEditSubscription(m)} icon={Cog}>Manage Plan</Button>
+                                    </div>
                                 </Td>
                             </Tr>
                         ))}

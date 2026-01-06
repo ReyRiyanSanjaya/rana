@@ -30,6 +30,9 @@ class _PosScreenState extends State<PosScreen> {
 
   List<String> _categories = ['All'];
   StreamSubscription? _syncSubscription;
+  StreamSubscription<Map<String, dynamic>>? _statusSub;
+  bool _online = true;
+  DateTime? _lastSyncAt;
 
   @override
   void initState() {
@@ -39,11 +42,20 @@ class _PosScreenState extends State<PosScreen> {
     _syncSubscription = SyncService().onDataChanged.listen((_) {
       if (mounted) _loadProducts();
     });
+    _statusSub = SyncService().statusStream.listen((map) {
+      final online = map['online'] == true;
+      final last = map['lastSyncAt']?.toString();
+      setState(() {
+        _online = online;
+        _lastSyncAt = last != null && last.isNotEmpty ? DateTime.tryParse(last) : _lastSyncAt;
+      });
+    });
   }
 
   @override
   void dispose() {
     _syncSubscription?.cancel();
+    _statusSub?.cancel();
     super.dispose();
   }
 
@@ -93,69 +105,62 @@ class _PosScreenState extends State<PosScreen> {
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 600; // Adjusted breakpoint for tablets
 
-    // Adjust grid count based on layout
-    int gridCrossAxisCount = 2;
-    double gridChildAspectRatio = 0.66;
-
+    // Compact grid: more products per screen
+    double gridSpacing = 8;
     final availableGridWidth = isTablet ? screenWidth - 380 : screenWidth;
+    const double minTileWidth = 130; // target compact tile width, safer for height
+    int gridCrossAxisCount =
+        (availableGridWidth / minTileWidth).floor().clamp(2, 8);
+    double gridChildAspectRatio = 0.78;
 
-    if (availableGridWidth >= 1000) {
-      gridCrossAxisCount = 4;
-      gridChildAspectRatio = 0.9;
-    } else if (availableGridWidth >= 600) {
+    if (!isTablet && gridCrossAxisCount < 3) {
       gridCrossAxisCount = 3;
-      gridChildAspectRatio = 0.82;
     }
 
     final productBody = Column(
       children: [
         // -- Search & Categories --
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             color: Colors.white,
-            border: Border(bottom: BorderSide(color: Colors.grey.shade100)),
+            border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
             borderRadius: const BorderRadius.only(
-              bottomLeft: Radius.circular(24),
-              bottomRight: Radius.circular(24),
+              bottomLeft: Radius.circular(12),
+              bottomRight: Radius.circular(12),
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.03),
-                blurRadius: 12,
-                offset: const Offset(0, 6),
-              ),
-            ],
           ),
           child: Column(
             children: [
               TextField(
                 decoration: InputDecoration(
                   hintText: 'Cari Produk...',
-                  hintStyle: GoogleFonts.poppins(color: Colors.grey[400]),
+                  isDense: true,
+                  hintStyle:
+                      GoogleFonts.poppins(color: Colors.grey[400], fontSize: 12),
                   prefixIcon: Icon(Icons.search, color: Colors.grey[400]),
                   filled: true,
                   fillColor: Colors.grey[50],
                   enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(10),
                     borderSide: BorderSide(color: Colors.grey.shade200),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(10),
                     borderSide: BorderSide(
                         color: Theme.of(context).colorScheme.primary),
                   ),
                   contentPadding:
-                      const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                      const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
                 ),
                 onChanged: (val) {
                   _searchQuery = val;
                   _filterProducts();
                 },
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
               SizedBox(
-                height: 40,
+                height: 28,
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
                   itemCount: _categories.length,
@@ -163,7 +168,7 @@ class _PosScreenState extends State<PosScreen> {
                     final cat = _categories[i];
                     final isSelected = _selectedCategory == cat;
                     return Padding(
-                      padding: const EdgeInsets.only(right: 8),
+                      padding: const EdgeInsets.only(right: 4),
                       child: InkWell(
                         onTap: () {
                           SoundService.playBeep(); // [FIX] Add sound
@@ -172,11 +177,11 @@ class _PosScreenState extends State<PosScreen> {
                             _filterProducts();
                           });
                         },
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(14),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 8),
+                              horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
                               color: isSelected
                                   ? Theme.of(context)
@@ -184,7 +189,7 @@ class _PosScreenState extends State<PosScreen> {
                                       .primary
                                       .withOpacity(0.1)
                                   : Colors.white,
-                              borderRadius: BorderRadius.circular(20),
+                              borderRadius: BorderRadius.circular(14),
                               border: Border.all(
                                   color: isSelected
                                       ? Theme.of(context).colorScheme.primary
@@ -197,7 +202,7 @@ class _PosScreenState extends State<PosScreen> {
                                     ? Theme.of(context).colorScheme.primary
                                     : Colors.grey[600],
                                 fontWeight: FontWeight.w600,
-                                fontSize: 13),
+                                fontSize: 11),
                           ),
                         ),
                       ),
@@ -230,12 +235,12 @@ class _PosScreenState extends State<PosScreen> {
                       ),
                     )
                   : GridView.builder(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.fromLTRB(6, 6, 6, 6),
                       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: gridCrossAxisCount,
                         childAspectRatio: gridChildAspectRatio,
-                        crossAxisSpacing: 16,
-                        mainAxisSpacing: 16,
+                        crossAxisSpacing: gridSpacing,
+                        mainAxisSpacing: gridSpacing,
                       ),
                       itemCount: _filteredProducts.length,
                       itemBuilder: (ctx, i) {
@@ -282,11 +287,19 @@ class _PosScreenState extends State<PosScreen> {
         backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
         elevation: 0,
         centerTitle: false,
-        title: Text('Kasir',
-            style: GoogleFonts.poppins(
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.primary,
-                fontSize: 24)),
+        title: Row(
+          children: [
+            Expanded(
+              child: Text('Kasir',
+                  style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.primary,
+                      fontSize: 18)),
+            ),
+            _buildStatusBadge(),
+          ],
+        ),
+        toolbarHeight: 44,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1.0),
           child: Container(
@@ -382,16 +395,49 @@ class _PosScreenState extends State<PosScreen> {
         color: Colors.white,
         border: Border.all(
             color: Theme.of(context).colorScheme.primary.withOpacity(0.15)),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: IconButton(
-        icon: Icon(icon, color: Colors.black87),
+        icon: Icon(icon, color: Colors.black87, size: 18),
         onPressed: onTap,
-        splashRadius: 24,
+        splashRadius: 20,
       ),
     );
   }
 
+  Widget _buildStatusBadge() {
+    final text = _online ? 'Realtime' : 'Offline';
+    final color = _online ? const Color(0xFF16A34A) : const Color(0xFF64748B);
+    String syncText = '';
+    if (_lastSyncAt != null) {
+      final h = _lastSyncAt!.hour.toString().padLeft(2, '0');
+      final m = _lastSyncAt!.minute.toString().padLeft(2, '0');
+      final s = _lastSyncAt!.second.toString().padLeft(2, '0');
+      final t = '$h:$m:$s';
+      syncText = ' • $t';
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: _online ? const Color(0xFF22C55E).withOpacity(0.12) : const Color(0xFF94A3B8).withOpacity(0.12),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: _online ? const Color(0xFF22C55E).withOpacity(0.4) : const Color(0xFF94A3B8).withOpacity(0.4)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 6),
+          Text('$text$syncText',
+              style: GoogleFonts.poppins(fontSize: 11, color: color, fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
   void _showCartSheet(BuildContext context, CartProvider cart) {
     final media = MediaQuery.of(context);
     final isTablet = media.size.width >= 600;

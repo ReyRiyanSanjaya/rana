@@ -34,6 +34,7 @@ router.put('/merchants/:tenantId/subscription', adminController.updateMerchantSu
 router.get('/merchants/:id', adminController.getMerchantDetail); // [NEW]
 router.post('/merchants/:storeId/wallet/adjust', adminController.adjustMerchantWallet); // [NEW]
 router.post('/merchants/:tenantId/notify', adminController.sendNotification); // [NEW]
+router.get('/merchants/export', adminController.exportMerchants);
 
 // Merchant Menu Management
 router.get('/merchants/:storeId/products', adminController.getMerchantProducts);
@@ -70,6 +71,8 @@ router.get('/app-menus', adminController.getAppMenus);
 router.post('/app-menus', adminController.createAppMenu);
 router.put('/app-menus/:id', adminController.updateAppMenu);
 router.delete('/app-menus/:id', adminController.deleteAppMenu);
+router.get('/app-menus/maintenance', adminController.getAppMenuMaintenance);
+router.put('/app-menus/:id/maintenance', adminController.updateAppMenuMaintenance);
 
 // User Management
 router.put('/users/:id/password', adminController.resetUserPassword);
