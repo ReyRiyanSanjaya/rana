@@ -21,7 +21,7 @@ const PORT = process.env.PORT || 4000;
 // Middleware
 // Middleware
 app.use(cors({ origin: true, credentials: true })); // [FIX] Allow all origins dynamically
-app.options('*', cors()); // [FIX] Enable Pre-Flight for all routes
+app.options('*', cors({ origin: true, credentials: true })); // [FIX] Enable Pre-Flight for all routes with credentials
 
 app.use(helmet({
     crossOriginResourcePolicy: false, // [FIX] Allow resources to be loaded cross-origin

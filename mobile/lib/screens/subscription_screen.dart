@@ -39,9 +39,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     final sub = Provider.of<SubscriptionProvider>(context);
     
     return Scaffold(
+      backgroundColor: const Color(0xFFFFF8F0),
       appBar: AppBar(
         title: Text('Berlangganan Rana', style: GoogleFonts.poppins(color: Colors.black)),
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFFFFF8F0),
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
       ),

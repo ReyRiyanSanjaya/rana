@@ -45,6 +45,7 @@ import 'package:rana_merchant/screens/notification_screen.dart'; // [NEW]
 import 'package:rana_merchant/screens/blog_detail_screen.dart'; // [NEW]
 import 'package:rana_merchant/screens/blog_list_screen.dart'; // [NEW]
 import 'package:rana_merchant/screens/subscription_pending_screen.dart'; // [NEW] Lock Screen
+import 'package:rana_merchant/screens/subscription_expired_screen.dart'; // [NEW] Expired Screen
 import 'package:rana_merchant/screens/login_screen.dart';
 import 'dart:async'; // For Timer
 import 'package:flutter/services.dart';

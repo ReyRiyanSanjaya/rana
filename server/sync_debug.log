@@ -4268,3 +4268,31 @@ Foreign key constraint violated: `Transaction_storeId_fkey (index)`
 [2026-01-06T07:06:33.555Z] Success: 244137fc-f70d-49d5-8b17-208063d36958
 [2026-01-06T07:06:33.618Z] Receiving Sync: {"offlineId":"e339e1b1-28e8-4a3e-8afc-90ccbf12a1ec","cashierId":"89f5de1e-c212-49d6-9a56-bbd8fffe867b","totalAmount":270000,"paymentMethod":"CASH","occurredAt":"2026-01-06T14:06:32.090","items":[{"productId":"47f78b55-b1ab-43cf-aa04-02076e70ad9d","quantity":30,"price":9000}]}
 [2026-01-06T07:06:33.623Z] Already Synced: 244137fc-f70d-49d5-8b17-208063d36958
+[2026-01-06T16:34:49.974Z] Receiving Sync: {"offlineId":"9ad428a0-eddb-430a-bf1f-32e8ed5b4f39","cashierId":"c0425aed-b477-4505-91ad-151db55454af","totalAmount":52051,"paymentMethod":"CASH","occurredAt":"2026-01-06T23:34:49.079","items":[{"productId":"f37922c8-6011-4300-b210-1cfb87ab1caa","quantity":4,"price":399},{"productId":"0d2c9afb-41dc-496d-850a-435ce850dca5","quantity":20,"price":2500},{"productId":"bff1065b-1b2d-40f1-b3ea-6e8a4cb6ccc9","quantity":1,"price":455}]}
+[2026-01-06T16:34:50.169Z] Receiving Sync: {"offlineId":"9ad428a0-eddb-430a-bf1f-32e8ed5b4f39","cashierId":"c0425aed-b477-4505-91ad-151db55454af","totalAmount":52051,"paymentMethod":"CASH","occurredAt":"2026-01-06T23:34:49.079","items":[{"productId":"f37922c8-6011-4300-b210-1cfb87ab1caa","quantity":4,"price":399},{"productId":"0d2c9afb-41dc-496d-850a-435ce850dca5","quantity":20,"price":2500},{"productId":"bff1065b-1b2d-40f1-b3ea-6e8a4cb6ccc9","quantity":1,"price":455}]}
+[2026-01-06T16:34:50.289Z] Success: 6c6968e6-cc12-4595-8ed8-1d7703522ee2
+[2026-01-06T16:34:50.329Z] ERROR: 
+Invalid `tx.transaction.create()` invocation in
+D:\rana\server\src\controllers\transactionController.js:95:53
+
+  92 
+  93 const stockChanges = [];
+  94 const newTxn = await prisma.$transaction(async (tx) => {
+→ 95     const createdTxn = await tx.transaction.create(
+Unique constraint failed on the fields: (`tenantId`,`offlineId`) 
+Stack: PrismaClientKnownRequestError: 
+Invalid `tx.transaction.create()` invocation in
+D:\rana\server\src\controllers\transactionController.js:95:53
+
+  92 
+  93 const stockChanges = [];
+  94 const newTxn = await prisma.$transaction(async (tx) => {
+→ 95     const createdTxn = await tx.transaction.create(
+Unique constraint failed on the fields: (`tenantId`,`offlineId`)
+    at $n.handleRequestError (D:\rana\server\node_modules\@prisma\client\runtime\library.js:121:7315)
+    at $n.handleAndLogRequestError (D:\rana\server\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\rana\server\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\rana\server\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async D:\rana\server\src\controllers\transactionController.js:95:32
+    at async Proxy._transactionWithCallback (D:\rana\server\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async syncTransaction (D:\rana\server\src\controllers\transactionController.js:94:24)

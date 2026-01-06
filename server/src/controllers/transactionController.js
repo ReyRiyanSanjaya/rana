@@ -2,7 +2,7 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const { successResponse, errorResponse } = require('../utils/response');
 const AggregationService = require('../services/aggregationService');
-const { emitToTenant } = require('../socket');
+const { emitToTenant, emitToAdmin } = require('../socket');
 
 /**
  * Handle incoming sync batches from offline clients

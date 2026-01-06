@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api';
-import { CheckCircle, XCircle, ExternalLink, Calendar, CreditCard, Search, Filter, ChevronLeft, ChevronRight, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { CheckCircle, XCircle, ExternalLink, Calendar, CreditCard, Search, Filter, ChevronLeft, ChevronRight, AlertCircle, CheckCircle2, X } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { Button } from '../components/ui/button';
 import Badge from '../components/ui/Badge';
@@ -14,7 +14,9 @@ export default function SubscriptionRequests() {
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('PENDING'); // ALL, PENDING, APPROVED, REJECTED
     const [currentPage, setCurrentPage] = useState(1);
+    const [selectedProof, setSelectedProof] = useState(null);
     const itemsPerPage = 10;
+    const SERVER_URL = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : 'http://localhost:4000';
 
     useEffect(() => {
         fetchRequests();
@@ -68,6 +70,15 @@ export default function SubscriptionRequests() {
             hour: '2-digit',
             minute: '2-digit'
         });
+    };
+
+    const handleViewProof = (url) => {
+        if (!url) return;
+        if (url.startsWith('data:') || url.startsWith('http')) {
+            setSelectedProof(url);
+        } else {
+            setSelectedProof(`${SERVER_URL}${url}`);
+        }
     };
 
     // Filter and Search Logic
@@ -212,15 +223,15 @@ export default function SubscriptionRequests() {
                                         </TableCell>
                                         <TableCell>
                                             {req.proofUrl ? (
-                                                <a
-                                                    href={req.proofUrl.startsWith('http') ? req.proofUrl : `http://localhost:4000${req.proofUrl}`}
-                                                    target="_blank"
-                                                    rel="noreferrer"
-                                                    className="inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 h-auto py-1 px-2"
+                                                    onClick={() => handleViewProof(req.proofUrl)}
                                                 >
                                                     <ExternalLink size={14} className="mr-1" />
                                                     View Proof
-                                                </a>
+                                                </Button>
                                             ) : (
                                                 <span className="text-slate-400 text-sm italic">No proof attached</span>
                                             )}
@@ -282,6 +293,38 @@ export default function SubscriptionRequests() {
                     </div>
                 )}
             </div>
+
+            {/* Image Preview Modal */}
+            {selectedProof && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setSelectedProof(null)}>
+                    <div 
+                        className="relative max-w-4xl w-full max-h-[90vh] bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200" 
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="flex justify-between items-center p-4 border-b">
+                            <h3 className="font-semibold text-lg text-slate-900">Proof of Transfer</h3>
+                            <button 
+                                onClick={() => setSelectedProof(null)} 
+                                className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+                            >
+                                <X size={20} className="text-slate-500" />
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-auto p-4 flex justify-center items-center bg-slate-50">
+                            <img 
+                                src={selectedProof} 
+                                alt="Proof of Transfer" 
+                                className="max-w-full max-h-full object-contain shadow-sm rounded-lg" 
+                            />
+                        </div>
+                        <div className="p-4 border-t bg-white flex justify-end">
+                            <Button variant="outline" onClick={() => setSelectedProof(null)}>
+                                Close
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </AdminLayout>
     );
 }

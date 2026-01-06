@@ -131,4 +131,10 @@ const emitToOrder = (orderId, event, data) => {
     }
 };
 
-module.exports = { initSocket, getIo, emitToTenant, emitToOrder };
+const emitToAdmin = (event, data) => {
+    if (io) {
+        io.to('admin:super').emit(event, data);
+    }
+};
+
+module.exports = { initSocket, getIo, emitToTenant, emitToOrder, emitToAdmin };

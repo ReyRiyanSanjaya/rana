@@ -28,7 +28,7 @@ const Transactions = () => {
     const [paymentMethod, setPaymentMethod] = useState('');
     const location = useLocation();
 
-    const fetchTransactions = async () => {
+    const fetchTransactions = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
@@ -62,11 +62,28 @@ const Transactions = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [page, startDate, endDate, area, category, paymentStatus, paymentMethod]);
 
     useEffect(() => {
         fetchTransactions();
-    }, [page, startDate, endDate, area, category, paymentStatus, paymentMethod]);
+    }, [fetchTransactions]);
+
+    // Socket Listener for Auto Refresh
+    useEffect(() => {
+        const socket = getSocket();
+        if (!socket) return;
+
+        const handleNewTransaction = (data) => {
+            console.log('New transaction received, refreshing...', data);
+            fetchTransactions();
+        };
+
+        socket.on('transactions:created', handleNewTransaction);
+
+        return () => {
+            socket.off('transactions:created', handleNewTransaction);
+        };
+    }, [fetchTransactions]);
 
     useEffect(() => {
         const params = new URLSearchParams(location.search);

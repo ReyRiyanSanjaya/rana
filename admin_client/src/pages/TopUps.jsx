@@ -5,7 +5,7 @@ import { Table, Thead, Tbody, Th, Td, Tr } from '../components/ui/Table';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
-import { Check, X, Eye, Search, AlertCircle, CheckCircle2, XCircle } from 'lucide-react';
+import { Check, X, Eye, Search, AlertCircle, CheckCircle2, XCircle, RefreshCw } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 const TopUps = () => {
@@ -77,6 +77,14 @@ const TopUps = () => {
                         <h1 className="text-2xl font-semibold text-slate-900">Wallet Top Ups</h1>
                         <p className="text-slate-500 mt-1">Review and approve merchant balance top-up requests.</p>
                     </div>
+                    <Button
+                        variant="outline"
+                        icon={RefreshCw}
+                        onClick={fetchTopUps}
+                        isLoading={loading}
+                    >
+                        Refresh
+                    </Button>
                 </div>
 
                 {/* New Tabs UI */}

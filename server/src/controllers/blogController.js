@@ -1,6 +1,17 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const { successResponse, errorResponse } = require('../utils/response');
+const { getIo } = require('../socket');
+
+// Helper to safely emit socket events
+const safeEmit = (event, data) => {
+    try {
+        const io = getIo();
+        io.emit(event, data);
+    } catch (e) {
+        console.warn('Socket emit failed:', e.message);
+    }
+};
 
 // Public: Get all published posts
 const getPublicPosts = async (req, res) => {
@@ -33,9 +44,9 @@ const getPublicPosts = async (req, res) => {
                     imageUrl: true,
                     author: true,
                     tags: true,
+                    content: true, // [FIX] Include content in public posts
                     publishedAt: true,
                     createdAt: true
-                    // Exclude content for list view to save bandwidth
                 }
             }),
             prisma.blogPost.count({ where })
@@ -106,12 +117,16 @@ const createPost = async (req, res) => {
                 summary,
                 imageUrl,
                 author: author || 'Admin',
-                tags: tags || [],
+                tags: Array.isArray(tags) ? tags : (typeof tags === 'string' ? tags.split(',').map(t => t.trim()) : []),
                 status: status || 'DRAFT',
                 slug: finalSlug,
                 publishedAt: status === 'PUBLISHED' ? new Date() : null
             }
         });
+
+        if (post.status === 'PUBLISHED') {
+            safeEmit('blog_created', post);
+        }
 
         return successResponse(res, post, 'Post created successfully');
     } catch (error) {
@@ -128,6 +143,10 @@ const updatePost = async (req, res) => {
         const data = {
             title, content, summary, imageUrl, author, tags, status, slug
         };
+
+        if (tags) {
+            data.tags = Array.isArray(tags) ? tags : (typeof tags === 'string' ? tags.split(',').map(t => t.trim()) : []);
+        }
 
         if (status === 'PUBLISHED') {
             // If checking existing, we might valid if it was already published to not overwrite date?
@@ -158,11 +177,27 @@ const deletePost = async (req, res) => {
     }
 };
 
+// Admin: Upload Image
+const uploadImage = async (req, res) => {
+    try {
+        if (!req.file) {
+            return errorResponse(res, 'No file uploaded', 400);
+        }
+        // Construct public URL
+        const imageUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+        
+        return successResponse(res, { imageUrl }, 'Image uploaded successfully');
+    } catch (error) {
+        return errorResponse(res, 'Failed to upload image', 500, error);
+    }
+};
+
 module.exports = {
     getPublicPosts,
     getPostBySlug,
     getAllPostsAdmin,
     createPost,
     updatePost,
-    deletePost
+    deletePost,
+    uploadImage
 };

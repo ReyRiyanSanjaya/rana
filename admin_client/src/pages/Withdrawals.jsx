@@ -97,8 +97,8 @@ const Withdrawals = () => {
     const formatCurrency = (val) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(val);
 
     const filteredWithdrawals = withdrawals.filter(w =>
-        w.store?.name?.toLowerCase().includes(search.toLowerCase()) ||
-        w.accountNumber?.includes(search)
+        (w.store?.name?.toLowerCase() || '').includes(search.toLowerCase()) ||
+        (w.accountNumber || '').includes(search)
     );
 
     const tabs = [
@@ -115,14 +115,24 @@ const Withdrawals = () => {
                         <h1 className="text-2xl font-semibold text-slate-900">Withdrawals</h1>
                         <p className="text-slate-500 mt-1">Manage and track merchant fund transfer requests.</p>
                     </div>
-                    <Button
-                        variant="outline"
-                        icon={Download}
-                        onClick={handleExport}
-                        isLoading={exporting}
-                    >
-                        Export CSV
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button
+                            variant="outline"
+                            icon={RefreshCw}
+                            onClick={fetchWithdrawals}
+                            isLoading={loading}
+                        >
+                            Refresh
+                        </Button>
+                        <Button
+                            variant="outline"
+                            icon={Download}
+                            onClick={handleExport}
+                            isLoading={exporting}
+                        >
+                            Export CSV
+                        </Button>
+                    </div>
                 </div>
 
                 {/* New Tabs UI */}
