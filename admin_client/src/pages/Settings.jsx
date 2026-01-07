@@ -32,6 +32,20 @@ const Settings = () => {
     const [loading, setLoading] = useState(false);
     const [digiflazzApiKeyInput, setDigiflazzApiKeyInput] = useState('');
     const [digiflazzWebhookSecretInput, setDigiflazzWebhookSecretInput] = useState('');
+    const [fees, setFees] = useState({
+        buyerFee: '0',
+        buyerFeeType: 'FLAT',
+        buyerFeeCapMin: '',
+        buyerFeeCapMax: '',
+        merchantFee: '0',
+        merchantFeeType: 'FLAT',
+        merchantFeeCapMin: '',
+        merchantFeeCapMax: '',
+        wholesaleFee: '0',
+        wholesaleFeeType: 'FLAT',
+        wholesaleFeeCapMin: '',
+        wholesaleFeeCapMax: ''
+    });
 
     useEffect(() => {
         api.get('/admin/settings').then(res => {
@@ -39,6 +53,11 @@ const Settings = () => {
                 setSettings(prev => ({ ...prev, ...res.data.data }));
             }
         });
+        api.get('/admin/settings/fees').then(res => {
+            if (res.data?.data) {
+                setFees(prev => ({ ...prev, ...res.data.data }));
+            }
+        }).catch(() => {});
     }, []);
 
     const handleChange = (name, value) => {
@@ -317,6 +336,161 @@ const Settings = () => {
                             className="w-full sm:w-auto"
                         >
                             Save Bank & Fees
+                        </Button>
+                    </div>
+                </Card>
+
+                {/* Fee Settings */}
+                <Card className="p-6 h-fit">
+                    <div className="flex items-start justify-between mb-6">
+                        <div>
+                            <h3 className="font-semibold text-slate-900">Fee Settings</h3>
+                            <p className="text-sm text-slate-500 mt-1">Atur biaya untuk Buyer, Merchant, dan Wholesale.</p>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="space-y-3">
+                            <div className="font-semibold text-slate-900">Buyer Fee</div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Type</label>
+                                <select
+                                    className="w-full border rounded p-2"
+                                    value={fees.buyerFeeType}
+                                    onChange={e => setFees({ ...fees, buyerFeeType: e.target.value })}
+                                >
+                                    <option value="FLAT">Flat</option>
+                                    <option value="PERCENT">Percent</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Value</label>
+                                <Input
+                                    value={fees.buyerFee}
+                                    onChange={e => setFees({ ...fees, buyerFee: e.target.value })}
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Min Cap</label>
+                                    <Input
+                                        value={fees.buyerFeeCapMin}
+                                        onChange={e => setFees({ ...fees, buyerFeeCapMin: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Max Cap</label>
+                                    <Input
+                                        value={fees.buyerFeeCapMax}
+                                        onChange={e => setFees({ ...fees, buyerFeeCapMax: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                        <div className="space-y-3">
+                            <div className="font-semibold text-slate-900">Merchant Fee</div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Type</label>
+                                <select
+                                    className="w-full border rounded p-2"
+                                    value={fees.merchantFeeType}
+                                    onChange={e => setFees({ ...fees, merchantFeeType: e.target.value })}
+                                >
+                                    <option value="FLAT">Flat</option>
+                                    <option value="PERCENT">Percent</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Value</label>
+                                <Input
+                                    value={fees.merchantFee}
+                                    onChange={e => setFees({ ...fees, merchantFee: e.target.value })}
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Min Cap</label>
+                                    <Input
+                                        value={fees.merchantFeeCapMin}
+                                        onChange={e => setFees({ ...fees, merchantFeeCapMin: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Max Cap</label>
+                                    <Input
+                                        value={fees.merchantFeeCapMax}
+                                        onChange={e => setFees({ ...fees, merchantFeeCapMax: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                        <div className="space-y-3">
+                            <div className="font-semibold text-slate-900">Wholesale Fee</div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Type</label>
+                                <select
+                                    className="w-full border rounded p-2"
+                                    value={fees.wholesaleFeeType}
+                                    onChange={e => setFees({ ...fees, wholesaleFeeType: e.target.value })}
+                                >
+                                    <option value="FLAT">Flat</option>
+                                    <option value="PERCENT">Percent</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Value</label>
+                                <Input
+                                    value={fees.wholesaleFee}
+                                    onChange={e => setFees({ ...fees, wholesaleFee: e.target.value })}
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Min Cap</label>
+                                    <Input
+                                        value={fees.wholesaleFeeCapMin}
+                                        onChange={e => setFees({ ...fees, wholesaleFeeCapMin: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Max Cap</label>
+                                    <Input
+                                        value={fees.wholesaleFeeCapMax}
+                                        onChange={e => setFees({ ...fees, wholesaleFeeCapMax: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="pt-4 mt-2">
+                        <Button
+                            onClick={async () => {
+                                setLoading(true);
+                                try {
+                                    await api.post('/admin/settings/fees', {
+                                        buyerFee: fees.buyerFee,
+                                        buyerFeeType: fees.buyerFeeType,
+                                        buyerFeeCapMin: fees.buyerFeeCapMin,
+                                        buyerFeeCapMax: fees.buyerFeeCapMax,
+                                        merchantFee: fees.merchantFee,
+                                        merchantFeeType: fees.merchantFeeType,
+                                        merchantFeeCapMin: fees.merchantFeeCapMin,
+                                        merchantFeeCapMax: fees.merchantFeeCapMax,
+                                        wholesaleFee: fees.wholesaleFee,
+                                        wholesaleFeeType: fees.wholesaleFeeType,
+                                        wholesaleFeeCapMin: fees.wholesaleFeeCapMin,
+                                        wholesaleFeeCapMax: fees.wholesaleFeeCapMax
+                                    });
+                                    alert('Fee settings saved!');
+                                } catch (e) {
+                                    alert('Failed to save fee settings');
+                                } finally {
+                                    setLoading(false);
+                                }
+                            }}
+                            isLoading={loading}
+                            className="w-full sm:w-auto"
+                        >
+                            Save Fee Settings
                         </Button>
                     </div>
                 </Card>

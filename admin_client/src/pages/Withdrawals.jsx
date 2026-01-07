@@ -5,7 +5,7 @@ import { Table, Thead, Tbody, Th, Td, Tr } from '../components/ui/Table';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
-import { Check, X, Download, Search, AlertCircle, CheckCircle2, XCircle } from 'lucide-react';
+import { Check, X, Download, Search, AlertCircle, CheckCircle2, XCircle, RefreshCw } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 const Withdrawals = () => {
@@ -14,6 +14,7 @@ const Withdrawals = () => {
     const [filter, setFilter] = useState('PENDING'); // PENDING, APPROVED, REJECTED
     const [exporting, setExporting] = useState(false);
     const [search, setSearch] = useState('');
+    const [actionLoading, setActionLoading] = useState({});
 
     const fetchWithdrawals = async () => {
         setLoading(true);
@@ -34,10 +35,13 @@ const Withdrawals = () => {
     const handleApprove = async (id) => {
         if (!window.confirm("Are you sure you want to approve this transfer?")) return;
         try {
+            setActionLoading(prev => ({ ...prev, [id]: true }));
             await api.put(`/admin/withdrawals/${id}/approve`);
             fetchWithdrawals();
         } catch (error) {
             alert(error.response?.data?.message || "Failed to approve");
+        } finally {
+            setActionLoading(prev => ({ ...prev, [id]: false }));
         }
     };
 
@@ -45,10 +49,13 @@ const Withdrawals = () => {
         const reason = prompt("Enter rejection reason:");
         if (!reason) return;
         try {
+            setActionLoading(prev => ({ ...prev, [id]: true }));
             await api.put(`/admin/withdrawals/${id}/reject`, { reason });
             fetchWithdrawals();
         } catch (error) {
             alert(error.response?.data?.message || "Failed to reject");
+        } finally {
+            setActionLoading(prev => ({ ...prev, [id]: false }));
         }
     };
 
@@ -230,7 +237,9 @@ const Withdrawals = () => {
                                                     size="sm"
                                                     onClick={() => handleApprove(w.id)}
                                                     icon={Check}
-                                                    className="bg-green-600 hover:bg-green-700"
+                                                    className="bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    isLoading={!!actionLoading[w.id]}
+                                                    disabled={!!actionLoading[w.id]}
                                                 >
                                                     Approve
                                                 </Button>
@@ -238,7 +247,9 @@ const Withdrawals = () => {
                                                     size="sm"
                                                     variant="outline"
                                                     onClick={() => handleReject(w.id)}
-                                                    className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                                                    className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    isLoading={!!actionLoading[w.id]}
+                                                    disabled={!!actionLoading[w.id]}
                                                 >
                                                     Reject
                                                 </Button>

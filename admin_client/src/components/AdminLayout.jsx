@@ -97,6 +97,8 @@ const AdminLayout = ({ children }) => {
     }, []);
     const isAllowed = React.useCallback((path) => {
         if (!currentRole) return false;
+        // SUPER_ADMIN always allowed
+        if (currentRole === 'SUPER_ADMIN') return true;
         if (!roleAccess || !roleAccess[currentRole]) return true;
         return roleAccess[currentRole].includes(path);
     }, [roleAccess, currentRole]);

@@ -523,4 +523,19 @@ const getProfile = async (req, res) => {
     }
 };
 
-module.exports = { register, login, getProfile, updateStoreProfile };
+const updateUserProfile = async (req, res) => {
+    try {
+        const { userId } = req.user;
+        const { name } = req.body;
+        if (!name || !String(name).trim()) return errorResponse(res, "Invalid name", 400);
+        const updated = await prisma.user.update({
+            where: { id: userId },
+            data: { name: String(name).trim() }
+        });
+        successResponse(res, { id: updated.id, name: updated.name }, "Profile updated");
+    } catch (error) {
+        errorResponse(res, "Failed to update profile", 500, error);
+    }
+};
+
+module.exports = { register, login, getProfile, updateStoreProfile, updateUserProfile };

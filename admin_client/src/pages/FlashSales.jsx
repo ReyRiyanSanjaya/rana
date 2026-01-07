@@ -20,7 +20,11 @@ const FlashSales = () => {
         setLoading(true);
         setError(null);
         try {
-            const res = await api.get('/admin/flashsales');
+            const params = {};
+            if (filter === 'WAITING_APPROVAL') params.status = 'WAITING_APPROVAL';
+            else if (filter === 'ENDED') params.status = 'ENDED';
+            else if (filter === 'REJECTED') params.status = 'REJECTED';
+            const res = await api.get('/admin/flashsales', { params });
             setFlashSales(Array.isArray(res.data?.data) ? res.data.data : []);
         } catch (error) {
             console.error(error);
@@ -51,7 +55,7 @@ const FlashSales = () => {
                               (fs.store?.name?.toLowerCase() || '').includes(search.toLowerCase());
         
         let matchesStatus = false;
-        if (filter === 'WAITING_APPROVAL') matchesStatus = fs.status === 'WAITING_APPROVAL';
+        if (filter === 'WAITING_APPROVAL') matchesStatus = fs.status === 'PENDING';
         else if (filter === 'ACTIVE') matchesStatus = ['ACTIVE', 'APPROVED'].includes(fs.status);
         else if (filter === 'ENDED') matchesStatus = fs.status === 'ENDED';
         else if (filter === 'REJECTED') matchesStatus = fs.status === 'REJECTED';
@@ -179,12 +183,12 @@ const FlashSales = () => {
                                             fs.status === 'REJECTED' ? 'error' : 
                                             fs.status === 'ENDED' ? 'secondary' : 'warning'
                                         }>
-                                            {fs.status}
+                                            {fs.status === 'PENDING' ? 'WAITING_APPROVAL' : fs.status}
                                         </Badge>
                                     </Td>
                                     <Td className="text-right">
                                         <div className="flex justify-end gap-2">
-                                            {fs.status === 'WAITING_APPROVAL' && (
+                                            {fs.status === 'PENDING' && (
                                                 <>
                                                     <Button
                                                         size="sm"
@@ -261,7 +265,7 @@ const FlashSales = () => {
                                                 <div className="font-medium">{item.product?.name || 'Unknown Product'}</div>
                                             </Td>
                                             <Td>
-                                                <span className="text-slate-500 line-through">{formatCurrency(item.product?.price)}</span>
+                                                <span className="text-slate-500 line-through">{formatCurrency(item.product?.sellingPrice)}</span>
                                             </Td>
                                             <Td>
                                                 <span className="font-bold text-red-600">{formatCurrency(item.salePrice)}</span>

@@ -1246,8 +1246,11 @@ const deleteMerchantProduct = async (req, res) => {
 // [NEW] Get Subscription Requests
 const getSubscriptionRequests = async (req, res) => {
     try {
+        const { status } = req.query;
+        const where = status && status !== 'ALL' ? { status } : {};
+
         const requests = await prisma.subscriptionRequest.findMany({
-            where: { status: 'PENDING' },
+            where,
             include: {
                 tenant: {
                     select: {
@@ -1259,7 +1262,8 @@ const getSubscriptionRequests = async (req, res) => {
                             take: 1
                         }
                     }
-                }
+                },
+                package: true // [FIX] Include package details
             },
             orderBy: { createdAt: 'desc' }
         });
@@ -1277,7 +1281,10 @@ const approveSubscriptionRequest = async (req, res) => {
 
         // Transaction: Update Request -> Update Tenant Plan
         const result = await prisma.$transaction(async (tx) => {
-            const request = await tx.subscriptionRequest.findUnique({ where: { id } });
+            const request = await tx.subscriptionRequest.findUnique({ 
+                where: { id },
+                include: { package: true } // [FIX] Include package to get duration/price
+            });
             if (!request) throw new Error("Request not found");
             if (request.status !== 'PENDING') throw new Error("Request already processed");
 
@@ -1287,21 +1294,32 @@ const approveSubscriptionRequest = async (req, res) => {
                 data: { status: 'APPROVED' }
             });
 
-            // 2. Update Tenant to PREMIUM
+            // 2. Update Tenant to PREMIUM (or based on package)
+            const planName = request.package ? 'PREMIUM' : 'PREMIUM'; // Simplified mapping
+            
+            // Calculate expiry
+            let expiryDate = new Date();
+            if (request.package && request.package.durationDays) {
+                expiryDate.setDate(expiryDate.getDate() + request.package.durationDays);
+            } else {
+                expiryDate.setDate(expiryDate.getDate() + 30); // Default 30 days
+            }
+
             await tx.tenant.update({
                 where: { id: request.tenantId },
                 data: {
-                    plan: 'PREMIUM',
+                    plan: planName,
                     subscriptionStatus: 'ACTIVE',
+                    subscriptionEndsAt: expiryDate
                 }
             });
 
-            // 3. Log Revenue (Assuming Premium is 399000 for now, or fetch from Package)
-            // Ideally we should find the package price. 
-            // For MVP let's assume standard Premium price.
+            // 3. Log Revenue
+            const amount = request.package ? request.package.price : 399000;
+            
             await tx.platformRevenue.create({
                 data: {
-                    amount: 399000,
+                    amount: amount,
                     source: 'SUBSCRIPTION',
                     description: `Subscription Upgrade - Tenant ${request.tenantId.substring(0, 8)}`,
                     referenceId: request.id
@@ -1912,8 +1930,10 @@ module.exports = {
     getFlashSales: async (req, res) => {
         try {
             const { status, storeId } = req.query;
+            const statusMap = { WAITING_APPROVAL: 'PENDING' };
+            const mappedStatus = status ? (statusMap[status] || status) : undefined;
             const where = {
-                status: status || undefined,
+                status: mappedStatus,
                 storeId: storeId || undefined
             };
             const sales = await prisma.flashSale.findMany({
@@ -2026,15 +2046,24 @@ module.exports = {
     // [NEW] Get Platform Subscription (Billing)
     getPlatformSubscription: async (req, res) => {
         try {
-            // Static for now, as requested.
-            const data = {
-                plan: "Enterprise",
-                status: "ACTIVE",
-                features: ["Unlimited Merchants", "Advanced Analytics", "Priority Support", "White-label Options"],
-                nextBillingDate: "Lifetime Access",
-                paymentMethod: "Corporate Billing"
-            };
-            successResponse(res, data, "Billing info retrieved");
+            const platformTenant = await prisma.tenant.findFirst({ where: { name: 'Rana Platform' } });
+            let plan = platformTenant?.plan || 'ENTERPRISE';
+            let status = platformTenant?.subscriptionStatus || 'ACTIVE';
+            let nextBillingDate = platformTenant?.subscriptionEndsAt ? platformTenant.subscriptionEndsAt.toISOString() : 'Lifetime Access';
+
+            const paymentMethodSetting = await prisma.systemSettings.findUnique({ where: { key: 'PLATFORM_PAYMENT_METHOD' } });
+            const paymentMethod = paymentMethodSetting?.value || 'Corporate Billing';
+
+            const featuresSetting = await prisma.systemSettings.findUnique({ where: { key: 'PLATFORM_BILLING_FEATURES' } });
+            let features = ["Unlimited Merchants", "Advanced Analytics", "Priority Support", "White-label Options"];
+            if (featuresSetting?.value) {
+                try {
+                    const parsed = JSON.parse(featuresSetting.value);
+                    if (Array.isArray(parsed)) features = parsed;
+                } catch { }
+            }
+
+            successResponse(res, { plan, status, features, nextBillingDate, paymentMethod }, "Billing info retrieved");
         } catch (error) {
             errorResponse(res, "Failed to fetch billing", 500);
         }

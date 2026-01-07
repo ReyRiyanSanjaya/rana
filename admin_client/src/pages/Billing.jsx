@@ -2,6 +2,7 @@ import React from 'react';
 import api from '../api';
 import AdminLayout from '../components/AdminLayout';
 import Card from '../components/ui/Card';
+import Button from '../components/ui/Button';
 import { CreditCard, CheckCircle } from 'lucide-react';
 import Badge from '../components/ui/Badge';
 

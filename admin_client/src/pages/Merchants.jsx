@@ -159,7 +159,7 @@ const Merchants = () => {
                 subscriptionEndsAt = endDate.toISOString();
             }
 
-            await api.put(`/admin/merchants/${selectedMerchant.tenantId}/subscription`, {
+            await api.put(`/admin/merchants/${selectedMerchant?.tenant?.id}/subscription`, {
                 subscriptionStatus: subForm.status,
                 subscriptionEndsAt // End date based on package
             });

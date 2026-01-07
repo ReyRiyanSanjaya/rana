@@ -15,6 +15,7 @@ const TopUps = () => {
     const [search, setSearch] = useState('');
     const [selectedProof, setSelectedProof] = useState(null);
     const [error, setError] = useState(null);
+    const [actionLoading, setActionLoading] = useState({});
 
     const fetchTopUps = async () => {
         setLoading(true);
@@ -38,10 +39,13 @@ const TopUps = () => {
     const handleApprove = async (id) => {
         if (!window.confirm("Approve this Top Up? Balance will be added to Merchant.")) return;
         try {
+            setActionLoading(prev => ({ ...prev, [id]: true }));
             await api.put(`/admin/topups/${id}/approve`);
             fetchTopUps();
         } catch (error) {
             alert(error.response?.data?.message || "Failed to approve");
+        } finally {
+            setActionLoading(prev => ({ ...prev, [id]: false }));
         }
     };
 
@@ -49,10 +53,13 @@ const TopUps = () => {
         const reason = prompt("Rejection Reason:");
         if (!reason) return;
         try {
+            setActionLoading(prev => ({ ...prev, [id]: true }));
             await api.put(`/admin/topups/${id}/reject`, { reason });
             fetchTopUps();
         } catch (error) {
             alert(error.response?.data?.message || "Failed to reject");
+        } finally {
+            setActionLoading(prev => ({ ...prev, [id]: false }));
         }
     };
 
@@ -198,7 +205,9 @@ const TopUps = () => {
                                                 size="sm"
                                                 onClick={() => handleApprove(t.id)}
                                                 icon={Check}
-                                                className="bg-green-600 hover:bg-green-700"
+                                                className="bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                isLoading={!!actionLoading[t.id]}
+                                                disabled={!!actionLoading[t.id]}
                                             >
                                                 Approve
                                             </Button>
@@ -206,7 +215,9 @@ const TopUps = () => {
                                                 size="sm"
                                                 variant="secondary"
                                                 onClick={() => handleReject(t.id)}
-                                                className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                                                className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                isLoading={!!actionLoading[t.id]}
+                                                disabled={!!actionLoading[t.id]}
                                             >
                                                 Reject
                                             </Button>

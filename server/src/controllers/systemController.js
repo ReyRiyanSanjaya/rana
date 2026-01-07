@@ -84,23 +84,54 @@ const updatePaymentInfo = async (req, res) => {
 // GET Fee Settings (Admin)
 const getFeeSettings = async (req, res) => {
     try {
-        const keys = ['BUYER_SERVICE_FEE', 'MERCHANT_SERVICE_FEE', 'WHOLESALE_SERVICE_FEE'];
+        const keys = [
+            'BUYER_SERVICE_FEE',
+            'BUYER_SERVICE_FEE_TYPE',
+            'BUYER_FEE_CAP_MIN',
+            'BUYER_FEE_CAP_MAX',
+            'MERCHANT_SERVICE_FEE',
+            'MERCHANT_SERVICE_FEE_TYPE',
+            'MERCHANT_FEE_CAP_MIN',
+            'MERCHANT_FEE_CAP_MAX',
+            'WHOLESALE_SERVICE_FEE',
+            'WHOLESALE_SERVICE_FEE_TYPE',
+            'WHOLESALE_FEE_CAP_MIN',
+            'WHOLESALE_FEE_CAP_MAX'
+        ];
         const settings = await prisma.systemSettings.findMany({
             where: { key: { in: keys } }
         });
-        
+ 
         const feeMap = {
             buyerFee: '0',
+            buyerFeeType: 'FLAT',
+            buyerFeeCapMin: '',
+            buyerFeeCapMax: '',
             merchantFee: '0',
-            wholesaleFee: '0'
+            merchantFeeType: 'FLAT',
+            merchantFeeCapMin: '',
+            merchantFeeCapMax: '',
+            wholesaleFee: '0',
+            wholesaleFeeType: 'FLAT',
+            wholesaleFeeCapMin: '',
+            wholesaleFeeCapMax: ''
         };
-
+ 
         settings.forEach(s => {
             if (s.key === 'BUYER_SERVICE_FEE') feeMap.buyerFee = s.value;
+            if (s.key === 'BUYER_SERVICE_FEE_TYPE') feeMap.buyerFeeType = s.value || 'FLAT';
+            if (s.key === 'BUYER_FEE_CAP_MIN') feeMap.buyerFeeCapMin = s.value || '';
+            if (s.key === 'BUYER_FEE_CAP_MAX') feeMap.buyerFeeCapMax = s.value || '';
             if (s.key === 'MERCHANT_SERVICE_FEE') feeMap.merchantFee = s.value;
+            if (s.key === 'MERCHANT_SERVICE_FEE_TYPE') feeMap.merchantFeeType = s.value || 'FLAT';
+            if (s.key === 'MERCHANT_FEE_CAP_MIN') feeMap.merchantFeeCapMin = s.value || '';
+            if (s.key === 'MERCHANT_FEE_CAP_MAX') feeMap.merchantFeeCapMax = s.value || '';
             if (s.key === 'WHOLESALE_SERVICE_FEE') feeMap.wholesaleFee = s.value;
+            if (s.key === 'WHOLESALE_SERVICE_FEE_TYPE') feeMap.wholesaleFeeType = s.value || 'FLAT';
+            if (s.key === 'WHOLESALE_FEE_CAP_MIN') feeMap.wholesaleFeeCapMin = s.value || '';
+            if (s.key === 'WHOLESALE_FEE_CAP_MAX') feeMap.wholesaleFeeCapMax = s.value || '';
         });
-
+ 
         return successResponse(res, feeMap);
     } catch (error) {
         return errorResponse(res, "Failed to fetch fee settings", 500, error);
@@ -110,15 +141,39 @@ const getFeeSettings = async (req, res) => {
 // UPDATE Fee Settings (Admin)
 const updateFeeSettings = async (req, res) => {
     try {
-        const { buyerFee, merchantFee, wholesaleFee } = req.body;
+        const {
+            buyerFee,
+            buyerFeeType,
+            buyerFeeCapMin,
+            buyerFeeCapMax,
+            merchantFee,
+            merchantFeeType,
+            merchantFeeCapMin,
+            merchantFeeCapMax,
+            wholesaleFee,
+            wholesaleFeeType,
+            wholesaleFeeCapMin,
+            wholesaleFeeCapMax
+        } = req.body;
         const { id: userId, tenantId } = req.user || {};
         const { logAudit } = require('./adminController');
-
+ 
         const updates = [];
+        if (buyerFeeType !== undefined) updates.push({ key: 'BUYER_SERVICE_FEE_TYPE', value: String(buyerFeeType), description: 'Buyer Fee Type' });
         if (buyerFee !== undefined) updates.push({ key: 'BUYER_SERVICE_FEE', value: String(buyerFee), description: 'Fee charged to Buyer' });
+        if (buyerFeeCapMin !== undefined) updates.push({ key: 'BUYER_FEE_CAP_MIN', value: String(buyerFeeCapMin), description: 'Buyer Fee Min Cap' });
+        if (buyerFeeCapMax !== undefined) updates.push({ key: 'BUYER_FEE_CAP_MAX', value: String(buyerFeeCapMax), description: 'Buyer Fee Max Cap' });
+ 
+        if (merchantFeeType !== undefined) updates.push({ key: 'MERCHANT_SERVICE_FEE_TYPE', value: String(merchantFeeType), description: 'Merchant Fee Type' });
         if (merchantFee !== undefined) updates.push({ key: 'MERCHANT_SERVICE_FEE', value: String(merchantFee), description: 'Fee deducted from Merchant' });
+        if (merchantFeeCapMin !== undefined) updates.push({ key: 'MERCHANT_FEE_CAP_MIN', value: String(merchantFeeCapMin), description: 'Merchant Fee Min Cap' });
+        if (merchantFeeCapMax !== undefined) updates.push({ key: 'MERCHANT_FEE_CAP_MAX', value: String(merchantFeeCapMax), description: 'Merchant Fee Max Cap' });
+ 
+        if (wholesaleFeeType !== undefined) updates.push({ key: 'WHOLESALE_SERVICE_FEE_TYPE', value: String(wholesaleFeeType), description: 'Wholesale Fee Type' });
         if (wholesaleFee !== undefined) updates.push({ key: 'WHOLESALE_SERVICE_FEE', value: String(wholesaleFee), description: 'Fee on Wholesale Orders' });
-
+        if (wholesaleFeeCapMin !== undefined) updates.push({ key: 'WHOLESALE_FEE_CAP_MIN', value: String(wholesaleFeeCapMin), description: 'Wholesale Fee Min Cap' });
+        if (wholesaleFeeCapMax !== undefined) updates.push({ key: 'WHOLESALE_FEE_CAP_MAX', value: String(wholesaleFeeCapMax), description: 'Wholesale Fee Max Cap' });
+ 
         for (const update of updates) {
             await prisma.systemSettings.upsert({
                 where: { key: update.key },
@@ -129,7 +184,7 @@ const updateFeeSettings = async (req, res) => {
                 await logAudit(tenantId || 'SYSTEM', userId, 'UPDATE_SETTING', 'SystemSettings', update.key, { value: update.value });
             }
         }
-
+ 
         return successResponse(res, null, "Fee Settings Updated");
     } catch (error) {
         return errorResponse(res, "Failed to update fee settings", 500, error);

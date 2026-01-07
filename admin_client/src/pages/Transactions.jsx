@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import api from '../api';
 import AdminLayout from '../components/AdminLayout';
@@ -7,6 +7,7 @@ import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
 import { Download, ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
+import { getSocket } from '../lib/socket';
 
 const Transactions = () => {
     const [transactions, setTransactions] = useState([]);

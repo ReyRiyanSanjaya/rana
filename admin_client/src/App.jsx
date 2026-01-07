@@ -26,6 +26,7 @@ import AdminLayout from './components/AdminLayout';
 import FlashSales from './pages/FlashSales';
 import ReferralMonitoring from './pages/ReferralMonitoring';
 import { getToken, isTokenExpired, getUser } from './lib/auth';
+import ErrorBoundary from './components/ErrorBoundary';
 
 const ProtectedRoute = ({ children }) => {
   const token = getToken();
@@ -42,9 +43,10 @@ import Announcements from './pages/Announcements'; // [NEW]
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/login" element={<Login />} />
+    <ErrorBoundary>
+      <Router>
+        <Routes>
+          <Route path="/login" element={<Login />} />
 
         {/* Admin Layout for authenticated routes */}
         <Route path="/admin" element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>
@@ -166,8 +168,9 @@ function App() {
         <Route path="/referrals" element={
           <ProtectedRoute><ReferralMonitoring /></ProtectedRoute>
         } />
-      </Routes>
-    </Router>
+        </Routes>
+      </Router>
+    </ErrorBoundary>
   );
 }
 

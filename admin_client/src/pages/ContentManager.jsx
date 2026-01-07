@@ -38,8 +38,10 @@ const ContentManager = () => {
     const fetchSettings = async () => {
         try {
             const res = await api.get('/admin/settings');
-            const settingsMap = {};
-            res.data.data.forEach(s => settingsMap[s.key] = s.value);
+            const payload = res?.data?.data;
+            const settingsMap = Array.isArray(payload)
+                ? payload.reduce((acc, s) => { acc[s.key] = s.value; return acc; }, {})
+                : (typeof payload === 'object' && payload !== null ? payload : {});
             setSettings(prev => ({ ...prev, ...settingsMap }));
             try {
                 const cv = settingsMap.CMS_CORE_VALUES ? JSON.parse(settingsMap.CMS_CORE_VALUES) : [];
