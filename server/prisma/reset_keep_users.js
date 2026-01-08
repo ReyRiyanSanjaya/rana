@@ -4,7 +4,13 @@ const prisma = new PrismaClient();
 async function main() {
     console.log("🔥 STARTING PARTIAL RESET (Resetting Data, Keeping Users)...");
 
-    const KEEP_EMAILS = ['merchant@rana.com', 'super@rana.com'];
+    const argvEmails = process.argv.slice(2).map(e => e.toLowerCase());
+    const envAdmin = (process.env.ADMIN_EMAIL || '').toLowerCase();
+    const KEEP_EMAILS = argvEmails.length > 0
+        ? argvEmails
+        : [envAdmin].filter(Boolean).length > 0
+            ? [envAdmin]
+            : ['merchant@rana.com', 'super@rana.com'];
 
     // 1. Identify Users/Tenants to KEEP
     const keepUsers = await prisma.user.findMany({
@@ -37,6 +43,12 @@ async function main() {
     await prisma.inventoryLog.deleteMany({});
     // Fix: Clear Product Sales Summary first
     await prisma.productSalesSummary.deleteMany({});
+    // Fix: Clear Favorites/Reviews before Products
+    await prisma.favorite.deleteMany({});
+    await prisma.review.deleteMany({});
+    // Fix: Clear Flash Sales before Products
+    await prisma.flashSaleItem.deleteMany({});
+    await prisma.flashSale.deleteMany({});
     await prisma.product.deleteMany({});
     await prisma.category.deleteMany({});
 
@@ -62,6 +74,7 @@ async function main() {
     await prisma.subscriptionRequest.deleteMany({});
     await prisma.wholesaleOrderItem.deleteMany({});
     await prisma.wholesaleOrder.deleteMany({});
+    await prisma.ppobTransaction.deleteMany({}); // Fix: Digital product transactions
 
     console.log("Deleting Wallet Data...");
     await prisma.withdrawal.deleteMany({}); // Fix: Withdrawals
@@ -70,6 +83,12 @@ async function main() {
 
     // 3. Delete NON-KEPT Users/Tenants/Stores
     console.log("Deleting Non-Essential Accounts...");
+
+    // Fix: Clear Referral program data before tenants
+    await prisma.referralReward.deleteMany({});
+    await prisma.referral.deleteMany({});
+    await prisma.referralCode.deleteMany({});
+    await prisma.referralProgram.deleteMany({});
 
     await prisma.loginHistory.deleteMany({
         where: { userId: { notIn: keepUserIds } }

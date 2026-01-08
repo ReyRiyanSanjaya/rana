@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+const API_URL = 'http://localhost:4000/api';
 
 const api = axios.create({
     baseURL: API_URL
@@ -63,7 +63,11 @@ export const fetchDashboardStats = async (date) => {
     return res.data.data;
 };
 
-export const fetchProfitLoss = async (params) => {
+export const fetchProfitLoss = async (startDateOrParams, endDate) => {
+  const params =
+    typeof startDateOrParams === 'object' && startDateOrParams !== null
+      ? startDateOrParams
+      : { startDate: startDateOrParams, endDate };
   const res = await api.get('/reports/profit-loss', { params });
   return res.data.data;
 };

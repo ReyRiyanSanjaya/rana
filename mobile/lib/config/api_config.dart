@@ -24,15 +24,6 @@ class ApiConfig {
     if (_isProduction) return _prodUrl;
 
     if (kIsWeb) {
-      // Logic for web debugging on device vs localhost
-      // Note: In strict 'const' context we can't use Uri.base easily in static const.
-      // So this is a getter.
-      try {
-        final host = Uri.base.host;
-        if (host.isNotEmpty && host != 'localhost') {
-          return 'http://$host:4000/api';
-        }
-      } catch (_) {}
       return _devUrlWeb;
     }
 

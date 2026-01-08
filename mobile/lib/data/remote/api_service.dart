@@ -1039,4 +1039,20 @@ class ApiService {
       throw Exception('Failed to fetch P&L');
     }
   }
+
+  Future<Map<String, dynamic>> getAnalytics(
+      {required String startDate, required String endDate, String? storeId}) async {
+    try {
+      final response = await _dio.get('/reports/analytics',
+          queryParameters: {
+            'startDate': startDate,
+            'endDate': endDate,
+            if (storeId != null) 'storeId': storeId
+          },
+          options: Options(headers: {'Authorization': 'Bearer ${_token}'}));
+      return Map<String, dynamic>.from(response.data['data'] ?? {});
+    } catch (e) {
+      throw Exception('Failed to fetch analytics');
+    }
+  }
 }

@@ -89,7 +89,7 @@ const createProduct = async (req, res) => {
                 category: finalCategoryId ? { connect: { id: finalCategoryId } } : undefined,
                 description,
                 tenant: { connect: { id: tenantId } },
-                storeId: storeId // Associate with the creator's store
+                store: storeId ? { connect: { id: storeId } } : undefined
             }
         });
 

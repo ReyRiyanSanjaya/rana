@@ -4296,3 +4296,31 @@ Unique constraint failed on the fields: (`tenantId`,`offlineId`)
     at async D:\rana\server\src\controllers\transactionController.js:95:32
     at async Proxy._transactionWithCallback (D:\rana\server\node_modules\@prisma\client\runtime\library.js:130:8000)
     at async syncTransaction (D:\rana\server\src\controllers\transactionController.js:94:24)
+[2026-01-08T07:43:20.178Z] Receiving Sync: {"offlineId":"3000218d-880a-4d65-91cc-ecb473eeec27","cashierId":"c49ba05b-0505-45f9-bb63-a86b5fbf3f16","totalAmount":195000,"paymentMethod":"CASH","occurredAt":"2026-01-08T14:43:19.499","items":[{"productId":"fc417132-f288-4773-9773-bed03a96fc11","quantity":20,"price":8000},{"productId":"651f1314-1543-4ebe-b8e5-7b156273163f","quantity":10,"price":3500}]}
+[2026-01-08T07:43:20.238Z] Receiving Sync: {"offlineId":"3000218d-880a-4d65-91cc-ecb473eeec27","cashierId":"c49ba05b-0505-45f9-bb63-a86b5fbf3f16","totalAmount":195000,"paymentMethod":"CASH","occurredAt":"2026-01-08T14:43:19.499","items":[{"productId":"fc417132-f288-4773-9773-bed03a96fc11","quantity":20,"price":8000},{"productId":"651f1314-1543-4ebe-b8e5-7b156273163f","quantity":10,"price":3500}]}
+[2026-01-08T07:43:20.445Z] Success: 6c47fef8-1855-4af4-b119-30fba0dd7a58
+[2026-01-08T07:43:20.524Z] ERROR: 
+Invalid `tx.transaction.create()` invocation in
+C:\Data Riyan\projek\Rana\server\src\controllers\transactionController.js:95:53
+
+  92 
+  93 const stockChanges = [];
+  94 const newTxn = await prisma.$transaction(async (tx) => {
+→ 95     const createdTxn = await tx.transaction.create(
+Unique constraint failed on the fields: (`tenantId`,`offlineId`) 
+Stack: PrismaClientKnownRequestError: 
+Invalid `tx.transaction.create()` invocation in
+C:\Data Riyan\projek\Rana\server\src\controllers\transactionController.js:95:53
+
+  92 
+  93 const stockChanges = [];
+  94 const newTxn = await prisma.$transaction(async (tx) => {
+→ 95     const createdTxn = await tx.transaction.create(
+Unique constraint failed on the fields: (`tenantId`,`offlineId`)
+    at $n.handleRequestError (C:\Data Riyan\projek\Rana\server\node_modules\@prisma\client\runtime\library.js:121:7315)
+    at $n.handleAndLogRequestError (C:\Data Riyan\projek\Rana\server\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (C:\Data Riyan\projek\Rana\server\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (C:\Data Riyan\projek\Rana\server\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async C:\Data Riyan\projek\Rana\server\src\controllers\transactionController.js:95:32
+    at async Proxy._transactionWithCallback (C:\Data Riyan\projek\Rana\server\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async syncTransaction (C:\Data Riyan\projek\Rana\server\src\controllers\transactionController.js:94:24)

@@ -12,6 +12,7 @@ router.use(checkSubscription);
 router.get('/dashboard', reportController.getDashboardStats);
 router.get('/profit-loss', reportController.getProfitLoss);
 router.get('/inventory', reportController.getInventoryIntelligence);
+router.get('/analytics', reportController.getAnalytics);
 router.post('/expenses', require('../controllers/cashController').recordExpense);
 
 module.exports = router;

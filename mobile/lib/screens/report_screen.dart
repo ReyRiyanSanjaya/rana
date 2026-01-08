@@ -9,6 +9,8 @@ import 'package:rana_merchant/data/remote/api_service.dart'; // [FIX] Added impo
 import 'package:rana_merchant/screens/expense_screen.dart';
 import 'package:rana_merchant/services/sync_service.dart'; // [NEW]
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
+import 'package:rana_merchant/providers/auth_provider.dart';
 
 class ReportScreen extends StatefulWidget {
   const ReportScreen({super.key});
@@ -36,6 +38,17 @@ class _ReportScreenState extends State<ReportScreen> {
 
   final currency =
       NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+  String formatCurrency(dynamic v) {
+    num? numVal;
+    if (v is num) {
+      numVal = v;
+    } else if (v is String) {
+      numVal = num.tryParse(v);
+    }
+    final doubleVal = (numVal as num?)?.toDouble() ?? 0.0;
+    final safeVal = doubleVal.isFinite ? doubleVal : 0.0;
+    return currency.format(safeVal);
+  }
 
   @override
   void initState() {
@@ -49,6 +62,13 @@ class _ReportScreenState extends State<ReportScreen> {
     setState(() => _isLoading = true);
 
     try {
+      // Ensure API token is set from AuthProvider
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      final token = auth.token;
+      if (token != null && token.isNotEmpty) {
+        ApiService().setToken(token);
+      }
+
       final start =
           DateTime(_startDate.year, _startDate.month, _startDate.day, 0, 0, 0);
       final end =
@@ -66,12 +86,20 @@ class _ReportScreenState extends State<ReportScreen> {
           await DatabaseHelper.instance.getLowStockProducts(threshold: 5);
       final expenses =
           await DatabaseHelper.instance.getExpenses(start: start, end: end);
+      final remotePnl = await ApiService().getProfitLoss(
+          startDate: start.toIso8601String().split('T')[0],
+          endDate: end.toIso8601String().split('T')[0]);
+      final analytics = await ApiService().getAnalytics(
+          startDate: start.toIso8601String().split('T')[0],
+          endDate: end.toIso8601String().split('T')[0]);
 
       final today = DateTime.now();
       final todayStart = DateTime(today.year, today.month, today.day, 0, 0, 0);
       final todayEnd = DateTime(today.year, today.month, today.day, 23, 59, 59);
       final todaySummary = await DatabaseHelper.instance
           .getSalesReport(start: todayStart, end: todayEnd);
+      final todayRemote = await ApiService()
+          .getDashboardStats(date: todayStart.toIso8601String().split('T')[0]);
 
       // Process Expense Categories
       final expenseCatMap = <String, double>{};
@@ -88,22 +116,88 @@ class _ReportScreenState extends State<ReportScreen> {
 
       if (mounted) {
         setState(() {
+          final remotePnlData = Map<String, dynamic>.from(remotePnl['pnl'] ?? {});
+          final remoteRevenue = (remotePnlData['revenue'] as num?)?.toDouble() ?? 0.0;
+          final remoteNet = (remotePnlData['netProfit'] as num?)?.toDouble() ?? 0.0;
+          final remoteExp = (remotePnlData['totalExpenses'] as num?)?.toDouble() ?? 0.0;
+          final remoteSummary = Map<String, dynamic>.from(analytics['summary'] ?? {});
+          final remoteTrend = List<Map<String, dynamic>>.from(analytics['trend'] ?? const []);
+          final remoteTopRaw = List<Map<String, dynamic>>.from(analytics['topProducts'] ?? const []);
+          final remoteCatsRaw = List<Map<String, dynamic>>.from(analytics['categorySales'] ?? const []);
+          final remotePaysRaw = List<Map<String, dynamic>>.from(analytics['paymentMethods'] ?? const []);
+          final remoteLowRaw = List<Map<String, dynamic>>.from(analytics['lowStock'] ?? const []);
+          final remoteExpensesMap = Map<String, dynamic>.from(analytics['expenses'] ?? {});
+          final remoteExpenseCats = remoteExpensesMap.entries
+              .map((e) => {'category': e.key, 'total': (e.value as num?)?.toDouble() ?? 0.0})
+              .toList();
           _summary = {
-            'grossSales': localSummary['grossSales'],
-            'netProfit': localSummary['netProfit'],
-            'totalExpenses': localSummary['totalExpenses'],
-            'totalTransactions': localSummary['totalTransactions'],
-            'averageOrderValue': localSummary['averageOrderValue'],
-            'trend': localSummary['trend']
+            'grossSales': ((localSummary['grossSales'] as num?)?.toDouble() ?? 0.0) > 0
+                ? (localSummary['grossSales'] as num?)?.toDouble() ?? 0.0
+                : ((remoteSummary['revenue'] as num?)?.toDouble() ?? remoteRevenue),
+            'netProfit': ((localSummary['netProfit'] as num?)?.toDouble() ?? 0.0) > 0
+                ? (localSummary['netProfit'] as num?)?.toDouble() ?? 0.0
+                : ((remoteSummary['netProfit'] as num?)?.toDouble() ?? remoteNet),
+            'totalExpenses': ((localSummary['totalExpenses'] as num?)?.toDouble() ?? 0.0) > 0
+                ? (localSummary['totalExpenses'] as num?)?.toDouble() ?? 0.0
+                : ((remoteSummary['totalExpenses'] as num?)?.toDouble() ?? remoteExp),
+            'totalTransactions': localSummary['totalTransactions'] ?? remoteSummary['totalTransactions'] ?? 0,
+            'averageOrderValue': localSummary['averageOrderValue'] ?? remoteSummary['averageOrderValue'] ?? 0,
+            'trend': (localSummary['trend'] is List && (localSummary['trend'] as List).isNotEmpty)
+                ? localSummary['trend']
+                : remoteTrend
           };
 
-          _topProducts = List<Map<String, dynamic>>.from(top);
-          _categorySales = List<Map<String, dynamic>>.from(categories);
-          _paymentMethods = List<Map<String, dynamic>>.from(payments);
-          _lowStock = List<Map<String, dynamic>>.from(lowStock);
+          final remoteTop = remoteTopRaw
+              .map((e) => {
+                    'name': (e['product'] is Map
+                            ? (e['product']['name'] ?? '')
+                            : (e['name'] ?? ''))
+                        .toString(),
+                    'totalQty': (e['quantity'] as num?)?.toInt() ??
+                        (e['quantitySold'] as num?)?.toInt() ??
+                        0
+                  })
+              .toList();
+          final remoteCats = remoteCatsRaw
+              .map((e) => {
+                    'category': e['category']?.toString() ?? '',
+                    'totalSales': (e['revenue'] as num?)?.toDouble() ?? 0.0
+                  })
+              .toList();
+          final remotePays = remotePaysRaw
+              .map((e) => {
+                    'paymentMethod': e['method']?.toString() ?? 'UNKNOWN',
+                    'totalAmount': (e['total'] as num?)?.toDouble() ?? 0.0
+                  })
+              .toList();
+          final remoteLow = remoteLowRaw
+              .map((e) => {
+                    'name': (e['product'] is Map
+                            ? (e['product']['name'] ?? '')
+                            : (e['name'] ?? ''))
+                        .toString()
+                  })
+              .toList();
+          _topProducts =
+              remoteTop.isNotEmpty ? remoteTop : List<Map<String, dynamic>>.from(top);
+          _categorySales = remoteCats.isNotEmpty
+              ? remoteCats
+              : List<Map<String, dynamic>>.from(categories);
+          _paymentMethods = remotePays.isNotEmpty
+              ? remotePays
+              : List<Map<String, dynamic>>.from(payments);
+          _lowStock = remoteLow.isNotEmpty
+              ? remoteLow
+              : List<Map<String, dynamic>>.from(lowStock);
           _expenses = List<Map<String, dynamic>>.from(expenses);
-          _expenseCategories = processedExpenseCats;
-          _todaySales = (todaySummary['grossSales'] as num?)?.toDouble() ?? 0.0;
+          _expenseCategories = remoteExpenseCats.isNotEmpty ? remoteExpenseCats : processedExpenseCats;
+          final localToday =
+              (todaySummary['grossSales'] as num?)?.toDouble() ?? 0.0;
+          final remoteToday = (Map<String, dynamic>.from(
+                      todayRemote['financials'] ?? {})['totalSales'] as num?)
+                  ?.toDouble() ??
+              0.0;
+          _todaySales = localToday == 0.0 ? remoteToday : localToday;
           _isLoading = false;
         });
       }
@@ -334,7 +428,7 @@ class _ReportScreenState extends State<ReportScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      currency.format(_todaySales),
+                      formatCurrency(_todaySales),
                       style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -354,7 +448,7 @@ class _ReportScreenState extends State<ReportScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      currency.format(target),
+                      formatCurrency(target),
                       style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -422,7 +516,7 @@ class _ReportScreenState extends State<ReportScreen> {
       final label = _getCategoryLabel(topExp['category']);
       final total = (topExp['total'] as num?)?.toDouble() ?? 0.0;
       items.add(
-          'Pengeluaran terbesar ada di kategori $label (${currency.format(total)}). Cek apakah ada biaya yang bisa dipangkas.');
+          'Pengeluaran terbesar ada di kategori $label (${formatCurrency(total)}). Cek apakah ada biaya yang bisa dipangkas.');
     }
 
     if (_paymentMethods.length > 1) {
@@ -634,7 +728,7 @@ class _ReportScreenState extends State<ReportScreen> {
                         Text(_getCategoryLabel(expense['category']),
                             style: const TextStyle(
                                 fontSize: 14, color: Colors.grey)),
-                        Text(currency.format(expense['amount']),
+                        Text(formatCurrency((expense['amount'] as num?)?.toDouble() ?? 0.0),
                             style: const TextStyle(
                                 fontSize: 24,
                                 fontWeight: FontWeight.bold,
@@ -1132,7 +1226,7 @@ class _ReportScreenState extends State<ReportScreen> {
                                             style:
                                                 const TextStyle(fontSize: 14)),
                                         trailing: Text(
-                                            currency.format(e['total']),
+                                            formatCurrency((e['total'] as num?)?.toDouble() ?? 0.0),
                                             style: const TextStyle(
                                                 fontWeight: FontWeight.bold)),
                                         dense: true,
@@ -1201,16 +1295,16 @@ class _ReportScreenState extends State<ReportScreen> {
                                                           .underline)),
                                             ],
                                           ),
-                                        ),
-                                    ],
                                   ),
-                                  trailing: Text(
-                                    '- ${currency.format(e['amount'])}',
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFFE07A5F)),
-                                  ),
-                                  onTap: () => _showExpenseDetail(e),
+                                ],
+                              ),
+                              trailing: Text(
+                                '- ${formatCurrency((e['amount'] as num?)?.toDouble() ?? 0.0)}',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFFE07A5F)),
+                              ),
+                              onTap: () => _showExpenseDetail(e),
                                 );
                               }).toList(),
                             ),
@@ -1356,7 +1450,7 @@ class _ReportScreenState extends State<ReportScreen> {
                 ),
               ),
               Text(
-                currency.format(pm['totalAmount']),
+                formatCurrency((pm['totalAmount'] as num?)?.toDouble() ?? 0.0),
                 style:
                     const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
@@ -1442,7 +1536,7 @@ class _ReportScreenState extends State<ReportScreen> {
                     fontSize: 11),
                 children: [
                   TextSpan(
-                    text: '${currency.format(revenue)}\n',
+                    text: '${formatCurrency(revenue)}\n',
                     style: const TextStyle(
                         color: Colors.white70,
                         fontWeight: FontWeight.w500,
@@ -1544,9 +1638,11 @@ class _ReportScreenState extends State<ReportScreen> {
             sections: _categorySales.asMap().entries.map((entry) {
               final index = entry.key;
               final data = entry.value;
-              final value = (data['totalSales'] as num).toDouble();
+              final value = (data['totalSales'] as num?)?.toDouble() ?? 0.0;
               final isTouched = index == _touchedIndex;
               final radius = isTouched ? 60.0 : 50.0;
+              final totalGross =
+                  (_summary['grossSales'] as num?)?.toDouble() ?? 0.0;
 
               final colors = [
                 const Color(0xFFE07A5F), // Terra Cotta
@@ -1560,8 +1656,8 @@ class _ReportScreenState extends State<ReportScreen> {
                 color: colors[index % colors.length],
                 value: value,
                 title: isTouched
-                    ? currency.format(value)
-                    : '${((value / _summary['grossSales']) * 100).toStringAsFixed(0)}%',
+                    ? formatCurrency(value)
+                    : '${((value / (totalGross > 0 ? totalGross : 1.0)) * 100).toStringAsFixed(0)}%',
                 radius: radius,
                 titleStyle: TextStyle(
                     fontSize: isTouched ? 10 : 12,
@@ -1596,7 +1692,7 @@ class _ReportScreenState extends State<ReportScreen> {
     if (_expenseCategories.isEmpty)
       return const Center(child: Text('Belum ada data pengeluaran'));
 
-    final totalExp = _summary['totalExpenses'] as double? ?? 1.0;
+    final totalExp = (_summary['totalExpenses'] as num?)?.toDouble() ?? 1.0;
 
     return Stack(
       alignment: Alignment.center,
@@ -1622,7 +1718,7 @@ class _ReportScreenState extends State<ReportScreen> {
             sections: _expenseCategories.asMap().entries.map((entry) {
               final index = entry.key;
               final data = entry.value;
-              final value = (data['total'] as num).toDouble();
+              final value = (data['total'] as num?)?.toDouble() ?? 0.0;
               final isTouched = index == _touchedExpenseIndex;
               final radius = isTouched ? 60.0 : 50.0;
 
@@ -1639,8 +1735,8 @@ class _ReportScreenState extends State<ReportScreen> {
                 color: colors[index % colors.length],
                 value: value,
                 title: isTouched
-                    ? currency.format(value)
-                    : '${((value / totalExp) * 100).toStringAsFixed(0)}%',
+                    ? formatCurrency(value)
+                : '${((value / totalExp) * 100).toStringAsFixed(0)}%',
                 radius: radius,
                 titleStyle: TextStyle(
                     fontSize: isTouched ? 10 : 12,
@@ -1720,7 +1816,7 @@ class _ReportScreenState extends State<ReportScreen> {
           ),
           const SizedBox(height: 12),
           Text(
-            currency.format(value),
+            formatCurrency(value),
             style: const TextStyle(
                 color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
           ),
@@ -1738,17 +1834,17 @@ class _ReportScreenState extends State<ReportScreen> {
         return Wrap(
           spacing: 12,
           runSpacing: 12,
-          children: [
-            SizedBox(
-                width: itemWidth,
-                child: _buildGradientCard(
-                    'Omzet',
-                    _summary['grossSales'],
-                    const [Color(0xFF4F46E5), Color(0xFF818CF8)],
-                    Icons.attach_money)),
-            SizedBox(
-                width: itemWidth,
-                child: _buildGradientCard(
+        children: [
+          SizedBox(
+              width: itemWidth,
+              child: _buildGradientCard(
+                  'Omzet',
+                  (_summary['grossSales'] as num?)?.toDouble() ?? 0.0,
+                  const [Color(0xFF4F46E5), Color(0xFF818CF8)],
+                  Icons.attach_money)),
+          SizedBox(
+              width: itemWidth,
+              child: _buildGradientCard(
                     'Biaya',
                     _summary['totalExpenses'] ?? 0.0,
                     const [Color(0xFFEF4444), Color(0xFFF87171)],
@@ -1821,26 +1917,26 @@ class _ReportScreenState extends State<ReportScreen> {
                 ],
               ),
               const SizedBox(height: 12),
-              Text(currency.format(labaBersih), style: totalStyle),
+              Text(formatCurrency(labaBersih), style: totalStyle),
               const SizedBox(height: 8),
               Row(
                 children: [
                   Expanded(child: Text('Omzet', style: labelStyle)),
-                  valueText(currency.format(omzet)),
+                  valueText(formatCurrency(omzet)),
                 ],
               ),
               const SizedBox(height: 4),
               Row(
                 children: [
                   Expanded(child: Text('HPP', style: labelStyle)),
-                  valueText(currency.format(hpp)),
+                  valueText(formatCurrency(hpp)),
                 ],
               ),
               const SizedBox(height: 4),
               Row(
                 children: [
                   Expanded(child: Text('Pengeluaran', style: labelStyle)),
-                  valueText(currency.format(pengeluaran)),
+                  valueText(formatCurrency(pengeluaran)),
                 ],
               ),
             ],
@@ -1992,7 +2088,7 @@ class _ReportScreenState extends State<ReportScreen> {
               return touchedSpots.map((LineBarSpot touchedSpot) {
                 final isSales = touchedSpot.barIndex == 0;
                 return LineTooltipItem(
-                  '${isSales ? "Jual" : "Keluar"}: ${currency.format(touchedSpot.y)}',
+                  '${isSales ? "Jual" : "Keluar"}: ${formatCurrency(touchedSpot.y)}',
                   TextStyle(
                       color: isSales
                           ? const Color(0xFFC7D2FE)
