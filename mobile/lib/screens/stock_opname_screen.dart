@@ -256,7 +256,7 @@ class _StockOpnameScreenState extends State<StockOpnameScreen> {
       if (mounted)
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
             content: Text('Stok berhasil diperbarui!'),
-            backgroundColor: Color(0xFF81B29A)));
+            backgroundColor: Color(0xFFE07A5F)));
 
       // 4. Refresh List from Local DB
       await _refreshData();
@@ -473,11 +473,13 @@ class _StockOpnameScreenState extends State<StockOpnameScreen> {
                                                   child: Row(children: [
                                                     Icon(Icons.delete,
                                                         size: 20,
-                                                        color: Colors.red),
+                                                        color:
+                                                            Color(0xFFE07A5F)),
                                                     SizedBox(width: 8),
                                                     Text('Hapus Produk',
                                                         style: TextStyle(
-                                                            color: Colors.red))
+                                                            color: Color(
+                                                                0xFFE07A5F)))
                                                   ])),
                                             ])
                                   ],

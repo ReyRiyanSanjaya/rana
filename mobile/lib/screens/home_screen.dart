@@ -264,8 +264,6 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() => _isScrolled = false);
     });
 
-    
-
     _refreshNewOrdersCountFromApi();
     _refreshNotificationBadge();
     _refreshSupportBadge();
@@ -419,7 +417,7 @@ class _HomeScreenState extends State<HomeScreen> {
         return Container(
           padding: const EdgeInsets.all(24),
           decoration: const BoxDecoration(
-            color: Colors.white,
+            color: Color(0xFFFFF8F0),
             borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: SafeArea(
@@ -854,7 +852,7 @@ class _HomeScreenState extends State<HomeScreen> {
           padding: const EdgeInsets.all(32),
           decoration: const BoxDecoration(
               gradient: LinearGradient(
-                  colors: [Color(0xFF991B1B), Color(0xFFEF4444)],
+                  colors: [Color(0xFFE07A5F), Color(0xFFD8654F)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight)),
           child: Column(
@@ -865,7 +863,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 decoration: const BoxDecoration(
                     color: Colors.white, shape: BoxShape.circle),
                 child: const Icon(Icons.lock_person,
-                    size: 64, color: Color(0xFF991B1B)),
+                    size: 64, color: Color(0xFFE07A5F)),
               ),
               const SizedBox(height: 32),
               Text('Akses Terkunci',
@@ -916,7 +914,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       key: _scaffoldKey, // [FIX] Assigned Key
-      backgroundColor: const Color(0xFFFFF8F0),
+      backgroundColor: ThemeConfig.beigeBackground,
       drawer: _buildDrawer(context),
       body: LayoutBuilder(
         builder: (context, constraints) {
@@ -935,6 +933,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 return true;
               },
               child: Scaffold(
+                backgroundColor: Colors.transparent,
+                extendBody: true,
                 body: IndexedStack(
                   index: _bottomNavIndex,
                   children: [
@@ -954,31 +954,38 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
                 bottomNavigationBar: Container(
-                  height: 80,
+                  height: 70,
+                  margin: const EdgeInsets.fromLTRB(20, 0, 20, 24),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(24),
-                      topRight: Radius.circular(24),
-                    ),
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(35),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.04),
-                        blurRadius: 18,
-                        offset: const Offset(0, -6),
+                        color: Colors.black.withOpacity(0.08),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
                       ),
                     ],
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildNavItem(0, Icons.home, 'Beranda'),
-                      _buildNavItem(
-                          1, Icons.shopping_bag_outlined, 'PO Online'),
-                      _buildNavItem(2, Icons.qr_code_scanner, 'Scan'),
-                      _buildNavItem(3, Icons.bar_chart, 'Laporan'),
-                      _buildNavItem(4, Icons.person, 'Akun'),
-                    ],
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(35),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                      child: Container(
+                        color: Colors.white.withOpacity(0.85),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            _buildNavItem(0, Icons.home, 'Beranda'),
+                            _buildNavItem(
+                                1, Icons.shopping_bag_outlined, 'PO Online'),
+                            _buildNavItem(2, Icons.qr_code_scanner, 'Scan'),
+                            _buildNavItem(3, Icons.bar_chart, 'Laporan'),
+                            _buildNavItem(4, Icons.person, 'Akun'),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -1099,7 +1106,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 6),
-                  color: Colors.red[700],
+                  color: const Color(0xFFE07A5F),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -1121,7 +1128,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFF8F0),
+                      color: ThemeConfig.beigeBackground,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
                         color: const Color(0xFFE07A5F).withOpacity(0.18),
@@ -1630,8 +1637,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 m['key'] == 'FLASH_SALE' ||
                 m['route'] == '/marketing' ||
                 m['route'] == '/flashsale');
-            if (!menuItems.any(
-                (m) => m['key'] == 'PROMO' || m['route'] == '/promo')) {
+            if (!menuItems
+                .any((m) => m['key'] == 'PROMO' || m['route'] == '/promo')) {
               menuItems.insert(insertIndex,
                   {'label': 'Promosi', 'key': 'PROMO', 'route': '/promo'});
             }
@@ -1673,13 +1680,14 @@ class _HomeScreenState extends State<HomeScreen> {
               return InkWell(
                 borderRadius: BorderRadius.circular(24),
                 onTap: () {
-                  final maint =
-                      (_maintenanceMap[key] != null && _maintenanceMap[key]['active'] == true);
+                  final maint = (_maintenanceMap[key] != null &&
+                      _maintenanceMap[key]['active'] == true);
                   if (maint) {
-                    final String msg =
-                        (_maintenanceMap[key]['message'] ?? 'Fitur sedang dalam perawatan');
-                    final String? until =
-                        _maintenanceMap[key]['until'] != null ? _maintenanceMap[key]['until'] : null;
+                    final String msg = (_maintenanceMap[key]['message'] ??
+                        'Fitur sedang dalam perawatan');
+                    final String? until = _maintenanceMap[key]['until'] != null
+                        ? _maintenanceMap[key]['until']
+                        : null;
                     Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -1746,12 +1754,14 @@ class _HomeScreenState extends State<HomeScreen> {
                               ]),
                           child: Icon(icon, color: color, size: 28),
                         ),
-                        if ((_maintenanceMap[key] != null && _maintenanceMap[key]['active'] == true))
+                        if ((_maintenanceMap[key] != null &&
+                            _maintenanceMap[key]['active'] == true))
                           Positioned(
                             right: -6,
                             top: -6,
                             child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
                                   color: Colors.redAccent,
                                   borderRadius: BorderRadius.circular(999),
@@ -1771,7 +1781,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                     const SizedBox(width: 4),
                                     Text(
                                       'Maintenance',
-                                      style: GoogleFonts.poppins(color: Colors.white, fontSize: 10),
+                                      style: GoogleFonts.poppins(
+                                          color: Colors.white, fontSize: 10),
                                     ),
                                   ],
                                 )),
@@ -1854,8 +1865,6 @@ class _HomeScreenState extends State<HomeScreen> {
           );
         });
   }
-
- 
 
   // [NEW] Drawer for Mobile Navigation
   Widget _buildDrawer(BuildContext context) {
@@ -2205,10 +2214,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // Theme Colors
     Color themeColor = const Color(0xFFE07A5F);
-    if (type == 'ALERT') themeColor = Colors.redAccent;
-    if (type == 'POSITIVE') themeColor = Colors.green;
-    if (type == 'TIP') themeColor = Colors.orange;
-    if (type == 'INFO') themeColor = Colors.blueAccent;
+    if (type == 'ALERT') themeColor = const Color(0xFFE07A5F);
+    if (type == 'POSITIVE') themeColor = const Color(0xFFE07A5F);
+    if (type == 'TIP') themeColor = const Color(0xFFE07A5F);
+    if (type == 'INFO') themeColor = const Color(0xFFE07A5F);
 
     // Icon Mapping
     IconData icon = Icons.auto_awesome;

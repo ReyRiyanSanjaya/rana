@@ -170,7 +170,7 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Pilih Flash Sale terlebih dahulu'),
-          backgroundColor: Colors.orange,
+          backgroundColor: Color(0xFFE07A5F),
         ),
       );
       return;
@@ -179,7 +179,7 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Pilih produk terlebih dahulu'),
-          backgroundColor: Colors.orange,
+          backgroundColor: Color(0xFFE07A5F),
         ),
       );
       return;
@@ -189,7 +189,7 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Harga sale harus valid dan > 0'),
-          backgroundColor: Colors.red,
+          backgroundColor: Color(0xFFE07A5F),
         ),
       );
       return;
@@ -214,7 +214,7 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Item berhasil ditambahkan'),
-            backgroundColor: Colors.green,
+            backgroundColor: Color(0xFFE07A5F),
           ),
         );
       }
@@ -223,7 +223,7 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Gagal menambah item: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: const Color(0xFFE07A5F),
           ),
         );
       }
@@ -243,7 +243,8 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style:
+                TextButton.styleFrom(foregroundColor: const Color(0xFFE07A5F)),
             child: const Text('Hapus'),
           ),
         ],
@@ -259,7 +260,7 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Item berhasil dihapus'),
-            backgroundColor: Colors.green,
+            backgroundColor: Color(0xFFE07A5F),
           ),
         );
       }
@@ -268,7 +269,7 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Gagal menghapus item: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: Color(0xFFE07A5F),
           ),
         );
       }
@@ -280,7 +281,7 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Tidak ada produk tersedia'),
-          backgroundColor: Colors.orange,
+          backgroundColor: Color(0xFFE07A5F),
         ),
       );
       return;
@@ -344,12 +345,13 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? Colors.blue.shade50
+                              ? const Color(0xFFE07A5F).withOpacity(0.1)
                               : Colors.grey.shade50,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color:
-                                isSelected ? Colors.blue : Colors.grey.shade300,
+                            color: isSelected
+                                ? const Color(0xFFE07A5F)
+                                : Colors.grey.shade300,
                             width: isSelected ? 2 : 1,
                           ),
                         ),
@@ -476,7 +478,8 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style:
+                TextButton.styleFrom(foregroundColor: const Color(0xFFE07A5F)),
             child: const Text('Batalkan'),
           ),
         ],
@@ -492,7 +495,7 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Flash Sale berhasil dibatalkan'),
-            backgroundColor: Colors.green,
+            backgroundColor: Color(0xFFE07A5F),
           ),
         );
       }
@@ -501,7 +504,7 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Gagal membatalkan: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: Color(0xFFE07A5F),
           ),
         );
       }
@@ -518,11 +521,11 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
         break;
       case 'APPROVED':
       case 'ACTIVE':
-        color = Colors.green;
+        color = const Color(0xFFE07A5F);
         icon = Icons.check_circle;
         break;
       case 'REJECTED':
-        color = Colors.red;
+        color = const Color(0xFFE07A5F);
         icon = Icons.cancel;
         break;
       case 'ENDED':
@@ -606,11 +609,7 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
               // Create Flash Sale Card
               Container(
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.blue.shade50, Colors.purple.shade50],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
@@ -634,7 +633,7 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
                           ),
                           child: const Icon(
                             Icons.add_circle_outline,
-                            color: Color(0xFFFF6B6B),
+                            color: Color(0xFFE07A5F),
                             size: 28,
                           ),
                         ),
@@ -780,7 +779,7 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
                       child: ElevatedButton(
                         onPressed: _creating ? null : _createSale,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF6B6B),
+                          backgroundColor: const Color(0xFFE07A5F),
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
@@ -1034,7 +1033,7 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
                       child: ElevatedButton(
                         onPressed: _addItem,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
+                          backgroundColor: const Color(0xFFE07A5F),
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
@@ -1077,12 +1076,12 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: Colors.purple.shade50,
+                      color: const Color(0xFFFFF8F0),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(
                       Icons.list_alt,
-                      color: Colors.purple,
+                      color: Color(0xFFE07A5F),
                       size: 24,
                     ),
                   ),
@@ -1164,14 +1163,7 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
                         Container(
                           padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                Colors.orange.shade50,
-                                Colors.red.shade50,
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
+                            color: const Color(0xFFFFF8F0),
                             borderRadius: const BorderRadius.only(
                               topLeft: Radius.circular(20),
                               topRight: Radius.circular(20),
@@ -1231,7 +1223,8 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
                                             const Icon(Icons.cancel, size: 16),
                                         label: const Text('Batalkan'),
                                         style: TextButton.styleFrom(
-                                          foregroundColor: Colors.red,
+                                          foregroundColor:
+                                              const Color(0xFFE07A5F),
                                         ),
                                       ),
                                     ),
@@ -1327,8 +1320,9 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
                                                       vertical: 4,
                                                     ),
                                                     decoration: BoxDecoration(
-                                                      color:
-                                                          Colors.green.shade50,
+                                                      color: const Color(
+                                                              0xFFE07A5F)
+                                                          .withOpacity(0.1),
                                                       borderRadius:
                                                           BorderRadius.circular(
                                                               6),
@@ -1340,8 +1334,8 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
                                                         fontSize: 12,
                                                         fontWeight:
                                                             FontWeight.w600,
-                                                        color: Colors
-                                                            .green.shade700,
+                                                        color: const Color(
+                                                            0xFFE07A5F),
                                                       ),
                                                     ),
                                                   ),
@@ -1355,8 +1349,9 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
                                                         vertical: 4,
                                                       ),
                                                       decoration: BoxDecoration(
-                                                        color:
-                                                            Colors.blue.shade50,
+                                                        color: const Color(
+                                                                0xFFE07A5F)
+                                                            .withOpacity(0.1),
                                                         borderRadius:
                                                             BorderRadius
                                                                 .circular(6),
@@ -1366,8 +1361,8 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
                                                         style:
                                                             GoogleFonts.poppins(
                                                           fontSize: 12,
-                                                          color: Colors
-                                                              .blue.shade700,
+                                                          color: const Color(
+                                                              0xFFE07A5F),
                                                         ),
                                                       ),
                                                     ),
@@ -1379,8 +1374,9 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
                                                         vertical: 4,
                                                       ),
                                                       decoration: BoxDecoration(
-                                                        color: Colors
-                                                            .orange.shade50,
+                                                        color: const Color(
+                                                                0xFFE07A5F)
+                                                            .withOpacity(0.1),
                                                         borderRadius:
                                                             BorderRadius
                                                                 .circular(6),
@@ -1390,8 +1386,8 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
                                                         style:
                                                             GoogleFonts.poppins(
                                                           fontSize: 12,
-                                                          color: Colors
-                                                              .orange.shade700,
+                                                          color: const Color(
+                                                              0xFFE07A5F),
                                                         ),
                                                       ),
                                                     ),

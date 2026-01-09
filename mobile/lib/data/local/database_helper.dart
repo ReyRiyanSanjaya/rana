@@ -353,7 +353,8 @@ class DatabaseHelper {
     final db = await instance.database;
     // Join logic needed in real app, simplified here
     return await db.query('transactions',
-        where: 'status = ?', whereArgs: ['PENDING_SYNC']);
+        where:
+            'status IS NULL OR status NOT IN (\'SYNCED\', \'VOID\', \'CANCELLED\')');
   }
 
   Future<List<Map<String, dynamic>>> getItemsForTransaction(
@@ -416,6 +417,19 @@ class DatabaseHelper {
     await db.delete('expenses', where: 'id = ?', whereArgs: [id]);
   }
 
+  // [NEW] Get Pending Expenses for Sync
+  Future<List<Map<String, dynamic>>> getPendingExpenses() async {
+    final db = await instance.database;
+    return await db.query('expenses', where: 'synced = 0');
+  }
+
+  // [NEW] Mark Expense as Synced
+  Future<void> markExpenseSynced(int id) async {
+    final db = await instance.database;
+    await db.update('expenses', {'synced': 1},
+        where: 'id = ?', whereArgs: [id]);
+  }
+
   Future<List<Map<String, dynamic>>> getExpenses(
       {DateTime? start, DateTime? end}) async {
     final db = await instance.database;
@@ -449,6 +463,7 @@ class DatabaseHelper {
         SUM(totalAmount) as grossSales
       FROM transactions 
       WHERE occurredAt BETWEEN ? AND ?
+      AND (status IS NULL OR status NOT IN ('VOID', 'CANCELLED'))
     ''', [startStr, endStr]);
 
     final totalTransactions = Sqflite.firstIntValue(txnRes) ?? 0;
@@ -631,6 +646,33 @@ class DatabaseHelper {
       minStock,
       limit
     ]);
+  }
+
+  // [NEW] Get Local Today Breakdown (Synced vs Pending)
+  Future<Map<String, double>> getLocalTodayBreakdown(
+      {DateTime? start, DateTime? end}) async {
+    final db = await instance.database;
+    final startDate = start ?? DateTime.now();
+    final endDate = end ?? DateTime.now();
+
+    final syncedRes = await db.rawQuery('''
+      SELECT SUM(totalAmount) as total
+      FROM transactions
+      WHERE status = 'SYNCED'
+      AND occurredAt BETWEEN ? AND ?
+    ''', [startDate.toIso8601String(), endDate.toIso8601String()]);
+
+    final pendingRes = await db.rawQuery('''
+      SELECT SUM(totalAmount) as total
+      FROM transactions
+      WHERE (status IS NULL OR status NOT IN ('SYNCED', 'VOID', 'CANCELLED'))
+      AND occurredAt BETWEEN ? AND ?
+    ''', [startDate.toIso8601String(), endDate.toIso8601String()]);
+
+    return {
+      'synced': (syncedRes.first['total'] as num?)?.toDouble() ?? 0.0,
+      'pending': (pendingRes.first['total'] as num?)?.toDouble() ?? 0.0,
+    };
   }
 
   // [NEW] Category Breakdown

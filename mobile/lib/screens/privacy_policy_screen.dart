@@ -16,23 +16,22 @@ class PrivacyPolicyScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFFFF8F0),
       appBar: AppBar(
         title: Text('Kebijakan Privasi',
             style: GoogleFonts.outfit(
-                color: const Color(0xFF1E293B), fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
+                color: const Color(0xFFE07A5F), fontWeight: FontWeight.bold)),
+        backgroundColor: const Color(0xFFFFF8F0),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Color(0xFF1E293B)),
+          icon: const Icon(Icons.arrow_back_ios_new, color: Color(0xFFE07A5F)),
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.open_in_browser, color: Color(0xFF1E293B)),
+            icon: const Icon(Icons.open_in_browser, color: Color(0xFFE07A5F)),
             tooltip: 'Buka di Browser',
-            onPressed: () =>
-                _launchUrl('https://rana-app.com/privacy-policy'),
+            onPressed: () => _launchUrl('https://rana-app.com/privacy-policy'),
           ),
         ],
       ),
@@ -48,16 +47,14 @@ class PrivacyPolicyScreen extends StatelessWidget {
             ),
             _buildSection(
               title: '2. Informasi yang Kami Kumpulkan',
-              content:
-                  'Kami dapat mengumpulkan informasi berikut:\n'
+              content: 'Kami dapat mengumpulkan informasi berikut:\n'
                   '• Informasi Identitas: Nama, alamat email, nomor telepon, dan data toko.\n'
                   '• Data Transaksi: Riwayat penjualan, inventaris, dan laporan keuangan.\n'
                   '• Informasi Perangkat: ID perangkat, jenis perangkat, dan sistem operasi.',
             ),
             _buildSection(
               title: '3. Penggunaan Informasi',
-              content:
-                  'Informasi yang kami kumpulkan digunakan untuk:\n'
+              content: 'Informasi yang kami kumpulkan digunakan untuk:\n'
                   '• Menyediakan dan memelihara layanan Aplikasi.\n'
                   '• Memproses transaksi dan mengelola akun Anda.\n'
                   '• Meningkatkan fitur dan pengalaman pengguna.\n'

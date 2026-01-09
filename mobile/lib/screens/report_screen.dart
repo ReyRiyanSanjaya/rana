@@ -1,13 +1,15 @@
 import 'dart:async'; // [NEW]
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:rana_merchant/data/local/database_helper.dart';
-import 'package:rana_merchant/data/remote/api_service.dart'; // [FIX] Added import
+import 'package:rana_merchant/data/remote/api_service.dart';
 import 'package:rana_merchant/screens/expense_screen.dart';
-import 'package:rana_merchant/services/sync_service.dart'; // [NEW]
+import 'package:rana_merchant/services/sync_service.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
 import 'package:rana_merchant/providers/auth_provider.dart';
@@ -31,6 +33,9 @@ class _ReportScreenState extends State<ReportScreen> {
   List<Map<String, dynamic>> _lowStock = [];
   List<Map<String, dynamic>> _expenses = []; // [NEW]
   List<Map<String, dynamic>> _expenseCategories = []; // [NEW]
+  List<Map<String, dynamic>> _hourlyStats = []; // [NEW]
+  Map<String, dynamic> _growth = {}; // [NEW] Growth Metrics
+  List<Map<String, dynamic>> _aiInsights = []; // [NEW] AI Insights
   int _touchedIndex = -1; // [NEW] For Pie Chart interaction
   int _touchedExpenseIndex = -1; // [NEW] For Expense Pie Chart interaction
   int? _dailyTarget;
@@ -67,6 +72,13 @@ class _ReportScreenState extends State<ReportScreen> {
       final token = auth.token;
       if (token != null && token.isNotEmpty) {
         ApiService().setToken(token);
+      }
+
+      // Try to sync pending transactions first to ensure report is up-to-date
+      try {
+        await SyncService().syncTransactions();
+      } catch (e) {
+        debugPrint('Auto-sync before report failed: $e');
       }
 
       final start =
@@ -114,37 +126,69 @@ class _ReportScreenState extends State<ReportScreen> {
       processedExpenseCats.sort(
           (a, b) => (b['total'] as double).compareTo(a['total'] as double));
 
+      // Calculate Today Sales Logic (Moved out of setState)
+      final todayBreakdown = await DatabaseHelper.instance
+          .getLocalTodayBreakdown(start: todayStart, end: todayEnd);
+
+      final localSynced = todayBreakdown['synced'] ?? 0.0;
+      final localPending = todayBreakdown['pending'] ?? 0.0;
+      final remoteTodayVal = (Map<String, dynamic>.from(
+                  todayRemote['financials'] ?? {})['totalSales'] as num?)
+              ?.toDouble() ??
+          0.0;
+      final calculatedTodaySales =
+          math.max(localSynced, remoteTodayVal) + localPending;
+
       if (mounted) {
         setState(() {
-          final remotePnlData = Map<String, dynamic>.from(remotePnl['pnl'] ?? {});
-          final remoteRevenue = (remotePnlData['revenue'] as num?)?.toDouble() ?? 0.0;
-          final remoteNet = (remotePnlData['netProfit'] as num?)?.toDouble() ?? 0.0;
-          final remoteExp = (remotePnlData['totalExpenses'] as num?)?.toDouble() ?? 0.0;
-          final remoteSummary = Map<String, dynamic>.from(analytics['summary'] ?? {});
-          final remoteTrend = List<Map<String, dynamic>>.from(analytics['trend'] ?? const []);
-          final remoteTopRaw = List<Map<String, dynamic>>.from(analytics['topProducts'] ?? const []);
-          final remoteCatsRaw = List<Map<String, dynamic>>.from(analytics['categorySales'] ?? const []);
-          final remotePaysRaw = List<Map<String, dynamic>>.from(analytics['paymentMethods'] ?? const []);
-          final remoteLowRaw = List<Map<String, dynamic>>.from(analytics['lowStock'] ?? const []);
-          final remoteExpensesMap = Map<String, dynamic>.from(analytics['expenses'] ?? {});
+          final remotePnlData =
+              Map<String, dynamic>.from(remotePnl['pnl'] ?? {});
+          final remoteRevenue =
+              (remotePnlData['revenue'] as num?)?.toDouble() ?? 0.0;
+          final remoteNet =
+              (remotePnlData['netProfit'] as num?)?.toDouble() ?? 0.0;
+          final remoteExp =
+              (remotePnlData['totalExpenses'] as num?)?.toDouble() ?? 0.0;
+          final remoteSummary =
+              Map<String, dynamic>.from(analytics['summary'] ?? {});
+          final remoteTrend =
+              List<Map<String, dynamic>>.from(analytics['trend'] ?? const []);
+          final remoteTopRaw = List<Map<String, dynamic>>.from(
+              analytics['topProducts'] ?? const []);
+          final remoteCatsRaw = List<Map<String, dynamic>>.from(
+              analytics['categorySales'] ?? const []);
+          final remotePaysRaw = List<Map<String, dynamic>>.from(
+              analytics['paymentMethods'] ?? const []);
+          final remoteLowRaw = List<Map<String, dynamic>>.from(
+              analytics['lowStock'] ?? const []);
+          final remoteExpensesMap =
+              Map<String, dynamic>.from(analytics['expenses'] ?? {});
           final remoteExpenseCats = remoteExpensesMap.entries
-              .map((e) => {'category': e.key, 'total': (e.value as num?)?.toDouble() ?? 0.0})
+              .map((e) => {
+                    'category': e.key,
+                    'total': (e.value as num?)?.toDouble() ?? 0.0
+                  })
               .toList();
+
+          _growth = Map<String, dynamic>.from(analytics['growth'] ?? {});
+          _hourlyStats =
+              List<Map<String, dynamic>>.from(analytics['hourlyStats'] ?? []);
+          _aiInsights = List<Map<String, dynamic>>.from(
+              analytics['insights'] ?? []); // [NEW]
+
           _summary = {
-            'grossSales': ((localSummary['grossSales'] as num?)?.toDouble() ?? 0.0) > 0
-                ? (localSummary['grossSales'] as num?)?.toDouble() ?? 0.0
-                : ((remoteSummary['revenue'] as num?)?.toDouble() ?? remoteRevenue),
-            'netProfit': ((localSummary['netProfit'] as num?)?.toDouble() ?? 0.0) > 0
-                ? (localSummary['netProfit'] as num?)?.toDouble() ?? 0.0
-                : ((remoteSummary['netProfit'] as num?)?.toDouble() ?? remoteNet),
-            'totalExpenses': ((localSummary['totalExpenses'] as num?)?.toDouble() ?? 0.0) > 0
-                ? (localSummary['totalExpenses'] as num?)?.toDouble() ?? 0.0
-                : ((remoteSummary['totalExpenses'] as num?)?.toDouble() ?? remoteExp),
-            'totalTransactions': localSummary['totalTransactions'] ?? remoteSummary['totalTransactions'] ?? 0,
-            'averageOrderValue': localSummary['averageOrderValue'] ?? remoteSummary['averageOrderValue'] ?? 0,
-            'trend': (localSummary['trend'] is List && (localSummary['trend'] as List).isNotEmpty)
-                ? localSummary['trend']
-                : remoteTrend
+            'grossSales': ((remoteSummary['revenue'] as num?)?.toDouble() ??
+                remoteRevenue),
+            'netProfit':
+                ((remoteSummary['netProfit'] as num?)?.toDouble() ?? remoteNet),
+            'totalExpenses':
+                ((remoteSummary['totalExpenses'] as num?)?.toDouble() ??
+                    remoteExp),
+            'totalTransactions': remoteSummary['totalTransactions'] ?? 0,
+            'averageOrderValue': remoteSummary['averageOrderValue'] ?? 0,
+            'trend': remoteTrend.isNotEmpty
+                ? remoteTrend
+                : (localSummary['trend'] is List ? localSummary['trend'] : [])
           };
 
           final remoteTop = remoteTopRaw
@@ -155,7 +199,10 @@ class _ReportScreenState extends State<ReportScreen> {
                         .toString(),
                     'totalQty': (e['quantity'] as num?)?.toInt() ??
                         (e['quantitySold'] as num?)?.toInt() ??
-                        0
+                        0,
+                    'totalRevenue': (e['totalRevenue'] as num?)?.toDouble() ??
+                        (e['revenue'] as num?)?.toDouble() ??
+                        0.0
                   })
               .toList();
           final remoteCats = remoteCatsRaw
@@ -178,8 +225,9 @@ class _ReportScreenState extends State<ReportScreen> {
                         .toString()
                   })
               .toList();
-          _topProducts =
-              remoteTop.isNotEmpty ? remoteTop : List<Map<String, dynamic>>.from(top);
+          _topProducts = remoteTop.isNotEmpty
+              ? remoteTop
+              : List<Map<String, dynamic>>.from(top);
           _categorySales = remoteCats.isNotEmpty
               ? remoteCats
               : List<Map<String, dynamic>>.from(categories);
@@ -190,21 +238,18 @@ class _ReportScreenState extends State<ReportScreen> {
               ? remoteLow
               : List<Map<String, dynamic>>.from(lowStock);
           _expenses = List<Map<String, dynamic>>.from(expenses);
-          _expenseCategories = remoteExpenseCats.isNotEmpty ? remoteExpenseCats : processedExpenseCats;
-          final localToday =
-              (todaySummary['grossSales'] as num?)?.toDouble() ?? 0.0;
-          final remoteToday = (Map<String, dynamic>.from(
-                      todayRemote['financials'] ?? {})['totalSales'] as num?)
-                  ?.toDouble() ??
-              0.0;
-          _todaySales = localToday == 0.0 ? remoteToday : localToday;
+          _expenseCategories = remoteExpenseCats.isNotEmpty
+              ? remoteExpenseCats
+              : processedExpenseCats;
+
+          _todaySales = calculatedTodaySales;
           _isLoading = false;
         });
       }
     } catch (e) {
       debugPrint('Error fetching report data: $e');
       if (mounted) {
-        setState(() => _isLoading = false);
+        await _fetchLocalOnly();
       }
     }
   }
@@ -479,6 +524,31 @@ class _ReportScreenState extends State<ReportScreen> {
                     fontWeight: FontWeight.w500),
               ),
             ),
+            if (progress >= 1.0)
+              Container(
+                margin: const EdgeInsets.only(top: 8),
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE07A5F).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: const [
+                    Icon(Icons.check_circle,
+                        color: Color(0xFFE07A5F), size: 16),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Target tercapai! Kerja bagus.',
+                        style: TextStyle(
+                            color: Color(0xFFE07A5F),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
           ],
         ],
       ),
@@ -546,6 +616,12 @@ class _ReportScreenState extends State<ReportScreen> {
         items.add(
             'Stok menipis untuk: ${names.join(', ')}. Segera lakukan pembelian ulang agar tidak kehabisan saat permintaan naik.');
       }
+    }
+
+    // [NEW] Add Server AI Insights
+    for (var insight in _aiInsights) {
+      final msg = insight['message'] as String? ?? '';
+      if (msg.isNotEmpty) items.add(msg);
     }
 
     if (items.isEmpty) {
@@ -728,7 +804,9 @@ class _ReportScreenState extends State<ReportScreen> {
                         Text(_getCategoryLabel(expense['category']),
                             style: const TextStyle(
                                 fontSize: 14, color: Colors.grey)),
-                        Text(formatCurrency((expense['amount'] as num?)?.toDouble() ?? 0.0),
+                        Text(
+                            formatCurrency(
+                                (expense['amount'] as num?)?.toDouble() ?? 0.0),
                             style: const TextStyle(
                                 fontSize: 24,
                                 fontWeight: FontWeight.bold,
@@ -771,8 +849,8 @@ class _ReportScreenState extends State<ReportScreen> {
                       onPressed: () => _confirmDeleteExpense(expense['id']),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        side: BorderSide(color: Colors.red.shade200),
-                        foregroundColor: Colors.red,
+                        side: const BorderSide(color: Color(0xFFE07A5F)),
+                        foregroundColor: const Color(0xFFE07A5F),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12)),
                       ),
@@ -836,7 +914,8 @@ class _ReportScreenState extends State<ReportScreen> {
               child: const Text('Batal')),
           TextButton(
               onPressed: () => Navigator.pop(context, true),
-              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFFE07A5F)),
               child: const Text('Hapus')),
         ],
       ),
@@ -849,7 +928,7 @@ class _ReportScreenState extends State<ReportScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
             content: Text('Pengeluaran dihapus'),
-            backgroundColor: Colors.redAccent));
+            backgroundColor: Color(0xFFE07A5F)));
       }
       _fetchData();
     }
@@ -874,6 +953,115 @@ class _ReportScreenState extends State<ReportScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  // [NEW] Export Feature
+  Future<void> _exportReport() async {
+    final s = _summary;
+    final sb = StringBuffer();
+    sb.writeln('=== Laporan Rana Merchant ===');
+    sb.writeln(
+        'Periode: ${DateFormat('dd MMM yyyy').format(_startDate)} - ${DateFormat('dd MMM yyyy').format(_endDate)}');
+    sb.writeln('\n-- Ringkasan --');
+    sb.writeln('Omzet: ${formatCurrency(s['grossSales'])}');
+    sb.writeln('Laba Bersih: ${formatCurrency(s['netProfit'])}');
+    sb.writeln('Pengeluaran: ${formatCurrency(s['totalExpenses'])}');
+    sb.writeln('Transaksi: ${s['totalTransactions']}');
+    sb.writeln('Rata-rata Order: ${formatCurrency(s['averageOrderValue'])}');
+    sb.writeln('\n-- Produk Terlaris --');
+    for (var p in _topProducts) {
+      sb.writeln(
+          '- ${p['name']} (${p['totalQty']}x): ${formatCurrency(p['totalRevenue'])}');
+    }
+    sb.writeln('\n-- Pengeluaran --');
+    for (var e in _expenseCategories) {
+      sb.writeln(
+          '- ${_getCategoryLabel(e['category'])}: ${formatCurrency(e['total'])}');
+    }
+    sb.writeln('\nDicetak dari Aplikasi Rana Merchant');
+
+    // Use Share Plus to share text
+    // Note: Assuming share_plus is imported or available via similar method.
+    // Since we saw it in pubspec, we should import it if not present.
+    // But wait, the file imports share_plus? No, I need to check imports.
+    // If not imported, I cannot use it.
+    // Let's check imports in next step or assume user can add it.
+    // Actually, I can use a simple dialog with copyable text if share_plus is missing.
+    // But I will add the import if needed.
+
+    showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+              title: const Text('Ekspor Laporan'),
+              content: SingleChildScrollView(
+                child: SelectableText(sb.toString()),
+              ),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('Tutup')),
+                TextButton(
+                    onPressed: () {
+                      Share.share(sb.toString(),
+                          subject: 'Laporan Rana Merchant');
+                      Navigator.pop(ctx);
+                    },
+                    child: const Text('Bagikan'))
+              ],
+            ));
+  }
+
+  void _setDatePreset(int days) {
+    final now = DateTime.now();
+    setState(() {
+      if (days == 0) {
+        // Hari Ini
+        _startDate = now;
+        _endDate = now;
+      } else if (days == 1) {
+        // Kemarin
+        _startDate = now.subtract(const Duration(days: 1));
+        _endDate = now.subtract(const Duration(days: 1));
+      } else {
+        // Last N days
+        _startDate = now.subtract(Duration(days: days - 1));
+        _endDate = now;
+      }
+    });
+    _fetchData();
+  }
+
+  Widget _buildDatePresets() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          _presetButton('Hari Ini', 0),
+          const SizedBox(width: 8),
+          _presetButton('Kemarin', 1),
+          const SizedBox(width: 8),
+          _presetButton('7 Hari', 7),
+          const SizedBox(width: 8),
+          _presetButton('30 Hari', 30),
+        ],
+      ),
+    );
+  }
+
+  Widget _presetButton(String label, int days) {
+    // Simple check if current range matches preset
+    // Note: exact match might be tricky due to time components, but good enough for UI state
+    // Let's just make them action buttons
+    return OutlinedButton(
+      onPressed: () => _setDatePreset(days),
+      style: OutlinedButton.styleFrom(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+        visualDensity: VisualDensity.compact,
+      ),
+      child: Text(label),
     );
   }
 
@@ -902,7 +1090,6 @@ class _ReportScreenState extends State<ReportScreen> {
           : RefreshIndicator(
               onRefresh: _fetchData,
               child: CustomScrollView(
-                // [FIX] Switch to CustomScrollView for SliverAppBar
                 slivers: [
                   SliverAppBar(
                     pinned: true,
@@ -913,6 +1100,11 @@ class _ReportScreenState extends State<ReportScreen> {
                             fontWeight: FontWeight.bold,
                             color: Color(0xFFE07A5F))),
                     actions: [
+                      IconButton(
+                        icon: const Icon(Icons.share_outlined),
+                        onPressed: _exportReport,
+                        tooltip: 'Ekspor Laporan',
+                      ),
                       IconButton(
                         icon: const Icon(Icons.calendar_today_outlined),
                         onPressed: _pickDateRange,
@@ -935,7 +1127,7 @@ class _ReportScreenState extends State<ReportScreen> {
                           } catch (e) {
                             ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                                 content: Text('Gagal sinkronisasi: $e'),
-                                backgroundColor: Colors.red));
+                                backgroundColor: const Color(0xFFE07A5F)));
                           }
                         },
                       ),
@@ -962,6 +1154,10 @@ class _ReportScreenState extends State<ReportScreen> {
                     padding: const EdgeInsets.all(20),
                     sliver: SliverList(
                       delegate: SliverChildListDelegate([
+                        // [NEW] Date Presets
+                        _buildDatePresets(),
+                        const SizedBox(height: 16),
+
                         _buildDailyTargetCard()
                             .animate()
                             .fadeIn(duration: 500.ms)
@@ -976,12 +1172,59 @@ class _ReportScreenState extends State<ReportScreen> {
 
                         const SizedBox(height: 16),
 
-                        const SizedBox(height: 16),
-
                         _buildInsightsCard()
                             .animate()
                             .fadeIn(delay: 150.ms)
                             .slideY(begin: 0.2, end: 0),
+
+                        const SizedBox(height: 24),
+
+                        // [FIXED] Chart Section with Header & Legend
+                        const Text(
+                          'Tren Pemasukan & Pengeluaran',
+                          style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87),
+                        ),
+                        const SizedBox(height: 16),
+                        Container(
+                          height: 340,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                  color: Colors.black.withOpacity(0.05),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4))
+                            ],
+                          ),
+                          child: Column(
+                            children: [
+                              // Legend
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  _buildChartLegend(
+                                      'Penjualan', const Color(0xFFE07A5F)),
+                                  const SizedBox(width: 16),
+                                  _buildChartLegend(
+                                      'Pengeluaran', const Color(0xFF9A3412)),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              Expanded(
+                                child: _buildSalesChart(
+                                    _summary['trend'] is List
+                                        ? List<Map<String, dynamic>>.from(
+                                            _summary['trend'])
+                                        : []),
+                              ),
+                            ],
+                          ),
+                        ).animate().fadeIn(delay: 400.ms).scale(),
 
                         const SizedBox(height: 24),
 
@@ -996,8 +1239,8 @@ class _ReportScreenState extends State<ReportScreen> {
                             Expanded(
                                 child: _buildStatTile(
                                     'Rata-rata Order',
-                                    currency
-                                        .format(_summary['averageOrderValue']),
+                                    formatCurrency(
+                                        _summary['averageOrderValue']),
                                     Icons.shopping_basket_outlined)),
                           ],
                         )
@@ -1007,27 +1250,56 @@ class _ReportScreenState extends State<ReportScreen> {
 
                         const SizedBox(height: 32),
 
+                        // [NEW] Hourly Stats
+                        if (_hourlyStats.isNotEmpty) ...[
+                          const Text(
+                            'Waktu Tersibuk',
+                            style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87),
+                          ),
+                          const SizedBox(height: 16),
+                          Container(
+                            height: 250,
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                    color: Colors.black.withOpacity(0.05),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4))
+                              ],
+                            ),
+                            child: _buildHourlyChart(),
+                          ).animate().fadeIn(delay: 250.ms).slideX(),
+                          const SizedBox(height: 32),
+                        ],
+
                         // [NEW] Low Stock Alert
                         if (_lowStock.isNotEmpty) ...[
                           Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFFEF2F2),
+                              color: const Color(0xFFE07A5F).withOpacity(0.1),
                               borderRadius: BorderRadius.circular(16),
-                              border:
-                                  Border.all(color: const Color(0xFFFCA5A5)),
+                              border: Border.all(
+                                  color:
+                                      const Color(0xFFE07A5F).withOpacity(0.3)),
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Row(
+                                Row(
                                   children: [
-                                    Icon(Icons.warning_amber_rounded,
-                                        color: Color(0xFFDC2626)),
-                                    SizedBox(width: 8),
-                                    Text('Stok Menipis!',
+                                    const Icon(Icons.warning_amber_rounded,
+                                        color: Color(0xFFE07A5F)),
+                                    const SizedBox(width: 8),
+                                    const Text('Stok Menipis!',
                                         style: TextStyle(
-                                            color: Color(0xFFDC2626),
+                                            color: Color(0xFFE07A5F),
                                             fontWeight: FontWeight.bold,
                                             fontSize: 16)),
                                   ],
@@ -1047,7 +1319,7 @@ class _ReportScreenState extends State<ReportScreen> {
                                                           FontWeight.w500)),
                                               Text('${e['stock']} tersisa',
                                                   style: const TextStyle(
-                                                      color: Color(0xFFDC2626),
+                                                      color: Color(0xFFE07A5F),
                                                       fontWeight:
                                                           FontWeight.bold)),
                                             ],
@@ -1059,50 +1331,6 @@ class _ReportScreenState extends State<ReportScreen> {
                           ).animate().fadeIn(delay: 300.ms).shake(),
                           const SizedBox(height: 32),
                         ],
-
-                        // 2. Main Chart Section
-                        const Text('Tren Pemasukan & Pengeluaran',
-                            style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black87)),
-                        const SizedBox(height: 16),
-                        Container(
-                          height: 340, // Increased height for legend
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                  color: Colors.black.withOpacity(0.05),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4))
-                            ],
-                          ),
-                          child: Column(
-                            children: [
-                              // Legend
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  _buildChartLegend(
-                                      'Penjualan', const Color(0xFF4F46E5)),
-                                  const SizedBox(width: 16),
-                                  _buildChartLegend(
-                                      'Pengeluaran', const Color(0xFFEF4444)),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-                              Expanded(
-                                child: _buildSalesChart(_summary['trend']
-                                    as List<Map<String, dynamic>>),
-                              ),
-                            ],
-                          ),
-                        ).animate().fadeIn(delay: 400.ms).scale(),
-
-                        const SizedBox(height: 32),
 
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1226,7 +1454,9 @@ class _ReportScreenState extends State<ReportScreen> {
                                             style:
                                                 const TextStyle(fontSize: 14)),
                                         trailing: Text(
-                                            formatCurrency((e['total'] as num?)?.toDouble() ?? 0.0),
+                                            formatCurrency((e['total'] as num?)
+                                                    ?.toDouble() ??
+                                                0.0),
                                             style: const TextStyle(
                                                 fontWeight: FontWeight.bold)),
                                         dense: true,
@@ -1295,16 +1525,16 @@ class _ReportScreenState extends State<ReportScreen> {
                                                           .underline)),
                                             ],
                                           ),
+                                        ),
+                                    ],
                                   ),
-                                ],
-                              ),
-                              trailing: Text(
-                                '- ${formatCurrency((e['amount'] as num?)?.toDouble() ?? 0.0)}',
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFFE07A5F)),
-                              ),
-                              onTap: () => _showExpenseDetail(e),
+                                  trailing: Text(
+                                    '- ${formatCurrency((e['amount'] as num?)?.toDouble() ?? 0.0)}',
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFFE07A5F)),
+                                  ),
+                                  onTap: () => _showExpenseDetail(e),
                                 );
                               }).toList(),
                             ),
@@ -1385,8 +1615,8 @@ class _ReportScreenState extends State<ReportScreen> {
                                               ),
                                             ),
                                             trailing: Text(
-                                              currency
-                                                  .format(item['totalRevenue']),
+                                              formatCurrency(
+                                                  item['totalRevenue']),
                                               style: const TextStyle(
                                                 fontWeight: FontWeight.bold,
                                                 color: Color(0xFF3D405B),
@@ -1428,13 +1658,11 @@ class _ReportScreenState extends State<ReportScreen> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                    color: isCash
-                        ? Colors.green.withOpacity(0.1)
-                        : Colors.blue.withOpacity(0.1),
+                    color: const Color(0xFFE07A5F).withOpacity(0.1),
                     shape: BoxShape.circle),
                 child: Icon(
                     isCash ? Icons.payments_outlined : Icons.qr_code_scanner,
-                    color: isCash ? Colors.green : Colors.blue),
+                    color: const Color(0xFFE07A5F)),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -1610,6 +1838,109 @@ class _ReportScreenState extends State<ReportScreen> {
     );
   }
 
+  Widget _buildHourlyChart() {
+    if (_hourlyStats.isEmpty) {
+      return const Center(child: Text('Belum ada data jam sibuk'));
+    }
+
+    // Find max revenue for Y axis scaling
+    double maxRev = 0;
+    for (var s in _hourlyStats) {
+      final r = (s['revenue'] as num?)?.toDouble() ?? 0.0;
+      if (r > maxRev) maxRev = r;
+    }
+    if (maxRev == 0) maxRev = 100000;
+
+    return BarChart(
+      BarChartData(
+        alignment: BarChartAlignment.spaceAround,
+        maxY: maxRev * 1.2,
+        barTouchData: BarTouchData(
+          touchTooltipData: BarTouchTooltipData(
+            getTooltipItem: (group, groupIndex, rod, rodIndex) {
+              final hour = _hourlyStats[group.x.toInt()]['hour'];
+              return BarTooltipItem(
+                '$hour\n',
+                const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+                children: <TextSpan>[
+                  TextSpan(
+                    text: formatCurrency(rod.toY),
+                    style: const TextStyle(
+                      color: Colors.yellow,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+        titlesData: FlTitlesData(
+          show: true,
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 30,
+              getTitlesWidget: (value, meta) {
+                final idx = value.toInt();
+                if (idx < 0 || idx >= _hourlyStats.length) {
+                  return const SizedBox.shrink();
+                }
+                // Show label every 4 hours to avoid clutter
+                if (idx % 4 == 0) {
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: Text(
+                      _hourlyStats[idx]['hour'].toString().substring(0, 2),
+                      style: const TextStyle(
+                          color: Colors.grey,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12),
+                    ),
+                  );
+                }
+                return const SizedBox.shrink();
+              },
+            ),
+          ),
+          leftTitles:
+              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles:
+              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles:
+              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        ),
+        gridData: const FlGridData(show: false),
+        borderData: FlBorderData(show: false),
+        barGroups: _hourlyStats.asMap().entries.map((e) {
+          final idx = e.key;
+          final val = (e.value['revenue'] as num?)?.toDouble() ?? 0.0;
+          return BarChartGroupData(
+            x: idx,
+            barRods: [
+              BarChartRodData(
+                toY: val,
+                color: const Color(0xFFE07A5F),
+                width: 8,
+                borderRadius: BorderRadius.circular(4),
+                backDrawRodData: BackgroundBarChartRodData(
+                  show: true,
+                  toY: maxRev * 1.2,
+                  color: const Color(0xFFFFF8F0),
+                ),
+              ),
+            ],
+          );
+        }).toList(),
+      ),
+    );
+  }
+
   Widget _buildCategoryPieChart() {
     if (_categorySales.isEmpty)
       return const Center(child: Text('Belum ada data'));
@@ -1736,7 +2067,7 @@ class _ReportScreenState extends State<ReportScreen> {
                 value: value,
                 title: isTouched
                     ? formatCurrency(value)
-                : '${((value / totalExp) * 100).toStringAsFixed(0)}%',
+                    : '${((value / totalExp) * 100).toStringAsFixed(0)}%',
                 radius: radius,
                 titleStyle: TextStyle(
                     fontSize: isTouched ? 10 : 12,
@@ -1784,8 +2115,8 @@ class _ReportScreenState extends State<ReportScreen> {
     );
   }
 
-  Widget _buildGradientCard(
-      String title, double value, List<Color> colors, IconData icon) {
+  Widget _buildGradientCard(String title, double value, List<Color> colors,
+      IconData icon, double? growth) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -1820,6 +2151,34 @@ class _ReportScreenState extends State<ReportScreen> {
             style: const TextStyle(
                 color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
           ),
+          if (growth != null) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8)),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                      growth >= 0
+                          ? Icons.arrow_upward_rounded
+                          : Icons.arrow_downward_rounded,
+                      color: Colors.white,
+                      size: 12),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${growth.abs().toStringAsFixed(1)}%',
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+            )
+          ]
         ],
       ),
     );
@@ -1834,21 +2193,23 @@ class _ReportScreenState extends State<ReportScreen> {
         return Wrap(
           spacing: 12,
           runSpacing: 12,
-        children: [
-          SizedBox(
-              width: itemWidth,
-              child: _buildGradientCard(
-                  'Omzet',
-                  (_summary['grossSales'] as num?)?.toDouble() ?? 0.0,
-                  const [Color(0xFF4F46E5), Color(0xFF818CF8)],
-                  Icons.attach_money)),
-          SizedBox(
-              width: itemWidth,
-              child: _buildGradientCard(
+          children: [
+            SizedBox(
+                width: itemWidth,
+                child: _buildGradientCard(
+                    'Omzet',
+                    (_summary['grossSales'] as num?)?.toDouble() ?? 0.0,
+                    const [Color(0xFF4F46E5), Color(0xFF818CF8)],
+                    Icons.attach_money,
+                    (_growth['revenue'] as num?)?.toDouble())),
+            SizedBox(
+                width: itemWidth,
+                child: _buildGradientCard(
                     'Biaya',
                     _summary['totalExpenses'] ?? 0.0,
-                    const [Color(0xFFEF4444), Color(0xFFF87171)],
-                    Icons.money_off)),
+                    const [Color(0xFFE07A5F), Color(0xFFF2A693)],
+                    Icons.money_off,
+                    (_growth['expenses'] as num?)?.toDouble())),
             SizedBox(width: itemWidth, child: _buildProfitCard()),
           ],
         );
@@ -1995,20 +2356,30 @@ class _ReportScreenState extends State<ReportScreen> {
     // Map dates to 0..N indices for X axis
     List<FlSpot> salesSpots = [];
     List<FlSpot> expenseSpots = [];
+    double maxVal = 0;
 
     for (int i = 0; i < trendData.length; i++) {
-      salesSpots.add(FlSpot(
-          i.toDouble(), (trendData[i]['sales'] as num? ?? 0).toDouble()));
-      expenseSpots.add(FlSpot(
-          i.toDouble(), (trendData[i]['expenses'] as num? ?? 0).toDouble()));
+      final s = (trendData[i]['sales'] as num? ?? 0).toDouble();
+      final e = (trendData[i]['expenses'] as num? ?? 0).toDouble();
+      if (s > maxVal) maxVal = s;
+      if (e > maxVal) maxVal = e;
+
+      salesSpots.add(FlSpot(i.toDouble(), s));
+      expenseSpots.add(FlSpot(i.toDouble(), e));
     }
+
+    // Safety for maxVal
+    if (maxVal <= 0) maxVal = 100000;
+    final interval = maxVal / 4;
 
     return LineChart(
       LineChartData(
+        minY: 0,
+        maxY: maxVal * 1.2,
         gridData: FlGridData(
           show: true,
           drawVerticalLine: false,
-          horizontalInterval: 100000,
+          horizontalInterval: interval,
           getDrawingHorizontalLine: (value) =>
               const FlLine(color: Color(0xFFF3F4F6), strokeWidth: 1),
         ),

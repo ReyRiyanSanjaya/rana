@@ -27,17 +27,16 @@ class SyncService {
 
   Future<void> syncTransactions() async {
     if (_isSyncing) return;
-
-    // [NEW] Check connectivity first
-    final hasInternet = await ConnectivityService().hasInternetConnection();
-    if (!hasInternet) {
-      if (kDebugMode) debugPrint('No internet connection. Skipping sync.');
-      return;
-    }
-
-    _isSyncing = true;
+    _isSyncing = true; // [FIX] Lock immediately to prevent race conditions
 
     try {
+      // [NEW] Check connectivity first
+      final hasInternet = await ConnectivityService().hasInternetConnection();
+      if (!hasInternet) {
+        if (kDebugMode) debugPrint('No internet connection. Skipping sync.');
+        return;
+      }
+
       final db = DatabaseHelper.instance;
       final pendingTxns = await db.getPendingTransactions();
 
@@ -76,16 +75,68 @@ class SyncService {
       // After all transactions are synced, refresh products from server
       await api.fetchAndSaveProducts();
 
+      // [NEW] Sync Pending Expenses
+      Future<void> syncExpenses() async {
+        try {
+          final db = DatabaseHelper.instance;
+          final pendingExpenses = await db.getPendingExpenses();
+
+          if (pendingExpenses.isEmpty) return;
+
+          final api = ApiService();
+
+          for (var expense in pendingExpenses) {
+            String category = expense['category'];
+            String description = expense['description'] ?? '';
+
+            final Map<String, String> categoryMapping = {
+              'EXPENSE_SALARY': 'EXPENSE_OPERATIONAL',
+              'EXPENSE_MARKETING': 'EXPENSE_OPERATIONAL',
+              'EXPENSE_RENT': 'EXPENSE_OPERATIONAL',
+              'EXPENSE_MAINTENANCE': 'EXPENSE_OPERATIONAL',
+              'EXPENSE_OTHER': 'OTHER',
+            };
+
+            if (categoryMapping.containsKey(category)) {
+              // Prepend original category if not already there (simple check)
+              if (!description.contains('[')) {
+                description = '[${expense['category']}] $description';
+              }
+              category = categoryMapping[category]!;
+            }
+
+            // Prepare payload
+            final payload = {
+              'storeId':
+                  expense['storeId'], // Ensure this is set or handled by server
+              'amount': expense['amount'],
+              'category': category,
+              'description': description,
+              'date': expense['date'],
+              // Image handling is complex (multipart), for now let's sync text data
+              // If server supports image, we need to upload it.
+              // Assuming uploadExpense handles JSON for now.
+            };
+
+            await api.uploadExpense(payload);
+            await db.markExpenseSynced(expense['id']);
+          }
+        } catch (e) {
+          if (kDebugMode) debugPrint('Expense Sync Error: $e');
+          // Don't rethrow to avoid blocking transaction sync
+        }
+      }
+
+      await syncExpenses();
+
       // [NEW] Sync Transaction History from server to local for reporting
       await syncTransactionHistory();
 
       // [NEW] Notify listeners
       _dataChangeController.add(null);
       _lastSyncAt = DateTime.now();
-      _statusController.add({
-        'online': _online,
-        'lastSyncAt': _lastSyncAt?.toIso8601String()
-      });
+      _statusController.add(
+          {'online': _online, 'lastSyncAt': _lastSyncAt?.toIso8601String()});
     } catch (e) {
       if (kDebugMode) debugPrint('Sync Error: $e');
       rethrow;
@@ -115,7 +166,11 @@ class SyncService {
               (txnData['status'] == 'VOID' || txnData['status'] == 'CANCELLED')
                   ? 'VOID'
                   : 'SYNCED',
-          'occurredAt': txnData['occurredAt'] ?? txnData['createdAt'],
+          'occurredAt': (txnData['occurredAt'] ?? txnData['createdAt']) != null
+              ? DateTime.parse(txnData['occurredAt'] ?? txnData['createdAt'])
+                  .toLocal()
+                  .toIso8601String()
+              : DateTime.now().toIso8601String(),
           'syncedAt': DateTime.now().toIso8601String(),
         };
 
@@ -159,10 +214,8 @@ class SyncService {
     _connSub?.cancel();
     _connSub = ConnectivityService().onStatusChanged.listen((online) async {
       _online = online;
-      _statusController.add({
-        'online': _online,
-        'lastSyncAt': _lastSyncAt?.toIso8601String()
-      });
+      _statusController.add(
+          {'online': _online, 'lastSyncAt': _lastSyncAt?.toIso8601String()});
       if (online) {
         try {
           await syncTransactions();
@@ -173,10 +226,8 @@ class SyncService {
     _autoTimer = Timer.periodic(interval, (_) async {
       final online = await ConnectivityService().hasInternetConnection();
       _online = online;
-      _statusController.add({
-        'online': _online,
-        'lastSyncAt': _lastSyncAt?.toIso8601String()
-      });
+      _statusController.add(
+          {'online': _online, 'lastSyncAt': _lastSyncAt?.toIso8601String()});
       if (!online) return;
       try {
         await syncTransactions();
@@ -190,9 +241,7 @@ class SyncService {
     _autoTimer = null;
     _connSub?.cancel();
     _connSub = null;
-    _statusController.add({
-      'online': _online,
-      'lastSyncAt': _lastSyncAt?.toIso8601String()
-    });
+    _statusController
+        .add({'online': _online, 'lastSyncAt': _lastSyncAt?.toIso8601String()});
   }
 }

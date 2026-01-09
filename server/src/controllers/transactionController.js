@@ -30,6 +30,16 @@ const syncTransaction = async (req, res) => {
         }
 
         let storeId = transactionData.storeId || req.user.storeId;
+        
+        // [FIX] Validate storeId exists and belongs to tenant
+        if (storeId) {
+             const validStore = await prisma.store.findFirst({ 
+                where: { id: storeId, tenantId },
+                select: { id: true }
+            });
+            if (!validStore) storeId = null; // Invalid storeId provided
+        }
+
         if (!storeId) {
             const store = await prisma.store.findFirst({ where: { tenantId }, select: { id: true } });
             storeId = store?.id;
@@ -168,6 +178,29 @@ const syncTransaction = async (req, res) => {
         return successResponse(res, { id: newTxn.id, status: 'SYNCED' }, "Sync successful");
 
     } catch (error) {
+        // [FIX] Handle Race Condition (Unique Constraint)
+        if (error.code === 'P2002') {
+            const targets = error.meta?.target || [];
+            if (Array.isArray(targets) && targets.includes('tenantId') && targets.includes('offlineId')) {
+                 logSync(`Already Synced (Race Condition)`);
+                 // Fetch the existing one to return success
+                 // We need tenantId and offlineId here. 
+                 // Assuming they are valid from req.
+                 try {
+                     const tenantId = req.user.tenantId;
+                     const offlineId = req.body.offlineId;
+                     const existing = await prisma.transaction.findUnique({
+                        where: { tenantId_offlineId: { tenantId, offlineId } }
+                     });
+                     if (existing) {
+                         return successResponse(res, { id: existing.id, status: 'ALREADY_SYNCED' }, "Transaction already exists");
+                     }
+                 } catch (innerError) {
+                     // Fallback to error response if something else fails
+                 }
+            }
+        }
+
         logSync(`ERROR: ${error.message} \nStack: ${error.stack}`);
         console.error(error); // Keep console log
         return errorResponse(res, "Sync failed", 500, error);
@@ -192,7 +225,7 @@ const getTransactionHistory = async (req, res) => {
             include: {
                 transactionItems: {
                     include: {
-                        product: { select: { basePrice: true, costPrice: true, name: true } }
+                        product: { select: { basePrice: true, name: true } }
                     }
                 }
             },
@@ -215,7 +248,7 @@ const getTransactionHistory = async (req, res) => {
                 productId: ti.productId,
                 quantity: ti.quantity,
                 price: ti.price,
-                costPrice: ti.product?.basePrice ?? ti.product?.costPrice ?? 0,
+                costPrice: ti.product?.basePrice ?? 0,
                 name: ti.product?.name
             }))
         }));

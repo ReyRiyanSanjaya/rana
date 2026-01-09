@@ -254,8 +254,14 @@ class _PromoHubScreenState extends State<PromoHubScreen> {
         GoogleFonts.poppins(fontSize: 12, color: Colors.grey[600]);
 
     return Scaffold(
+      backgroundColor: const Color(0xFFFFF8F0),
       appBar: AppBar(
-        title: const Text('Promosi'),
+        title: Text('Promosi',
+            style: GoogleFonts.poppins(
+                color: const Color(0xFFE07A5F), fontWeight: FontWeight.bold)),
+        backgroundColor: const Color(0xFFFFF8F0),
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Color(0xFFE07A5F)),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -318,8 +324,8 @@ class _PromoHubScreenState extends State<PromoHubScreen> {
           const SizedBox(height: 10),
           _PromoCard(
             icon: Icons.flash_on,
-            iconBg: const Color(0xFFFFF7ED),
-            iconColor: const Color(0xFFF97316),
+            iconBg: const Color(0xFFE07A5F).withOpacity(0.1),
+            iconColor: const Color(0xFFE07A5F),
             title: 'Flash Sale',
             subtitle: 'Naikkan urgency dengan promo waktu terbatas',
             titleStyle: titleStyle,
@@ -329,8 +335,8 @@ class _PromoHubScreenState extends State<PromoHubScreen> {
           ),
           _PromoCard(
             icon: Icons.campaign,
-            iconBg: const Color(0xFFEFF6FF),
-            iconColor: const Color(0xFF3B82F6),
+            iconBg: const Color(0xFFE07A5F).withOpacity(0.1),
+            iconColor: const Color(0xFFE07A5F),
             title: 'Iklan (Marketing Studio)',
             subtitle: 'Buat poster, caption, dan terapkan diskon ke produk',
             titleStyle: titleStyle,
@@ -462,7 +468,7 @@ class _PromoStatsCard extends StatelessWidget {
                     label: 'Streak',
                     value: '$streak hari',
                     icon: Icons.local_fire_department_outlined,
-                    color: const Color(0xFFF97316),
+                    color: const Color(0xFFE07A5F),
                   ),
                 ),
               ],
@@ -616,13 +622,13 @@ class _PromoQuickActions extends StatelessWidget {
         _QuickActionChip(
           icon: Icons.flash_on,
           label: 'Flash Sale',
-          color: const Color(0xFFF97316),
+          color: const Color(0xFFE07A5F),
           onTap: onOpenFlashSale,
         ),
         _QuickActionChip(
           icon: Icons.campaign,
           label: 'Poster & Diskon',
-          color: const Color(0xFF3B82F6),
+          color: const Color(0xFFE07A5F),
           onTap: onOpenMarketing,
         ),
         _QuickActionChip(

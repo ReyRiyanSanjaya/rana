@@ -11,7 +11,7 @@ class BlogDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFFFF8F0),
       body: CustomScrollView(
         slivers: [
           _buildSliverAppBar(context),
@@ -26,20 +26,21 @@ class BlogDetailScreen extends StatelessWidget {
                   Text(
                     post['title'] ?? 'Untitled',
                     style: GoogleFonts.poppins(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF1E293B),
-                      height: 1.3
-                    ),
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF1E293B),
+                        height: 1.3),
                   ).animate().fadeIn().slideY(begin: 0.2, end: 0),
                   const SizedBox(height: 24),
                   Text(
-                    post['content'] ?? post['summary'] ?? 'No content available.',
-                    style: GoogleFonts.sourceSerif4( // Detailed reading font
-                      fontSize: 18,
-                      color: const Color(0xFF334155),
-                      height: 1.8
-                    ),
+                    post['content'] ??
+                        post['summary'] ??
+                        'No content available.',
+                    style: GoogleFonts.sourceSerif4(
+                        // Detailed reading font
+                        fontSize: 18,
+                        color: const Color(0xFF334155),
+                        height: 1.8),
                   ).animate().fadeIn(delay: 200.ms),
                 ],
               ),
@@ -54,29 +55,39 @@ class BlogDetailScreen extends StatelessWidget {
     return SliverAppBar(
       expandedHeight: 300,
       pinned: true,
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFFFF8F0),
       flexibleSpace: FlexibleSpaceBar(
         background: Stack(
           fit: StackFit.expand,
           children: [
             if (post['imageUrl'] != null && post['imageUrl'] != '')
               Image.network(
-                post['imageUrl'], 
+                post['imageUrl'],
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(color: Colors.indigo.shade50, child: Icon(Icons.broken_image, size: 60, color: Colors.indigo.shade200)),
+                errorBuilder: (context, error, stackTrace) => Container(
+                    color: const Color(0xFFE07A5F).withOpacity(0.1),
+                    child: Icon(Icons.broken_image,
+                        size: 60,
+                        color: const Color(0xFFE07A5F).withOpacity(0.4))),
               )
             else
-              Container(color: Colors.indigo.shade50, child: Icon(Icons.article, size: 80, color: Colors.indigo.shade200)),
-            
+              Container(
+                  color: const Color(0xFFE07A5F).withOpacity(0.1),
+                  child: Icon(Icons.article,
+                      size: 80,
+                      color: const Color(0xFFE07A5F).withOpacity(0.4))),
+
             // Gradient Overlay for text readability if needed, or just style
             Container(
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Colors.black.withOpacity(0.3), Colors.transparent, Colors.black.withOpacity(0.05)]
-                )
-              ),
+                  gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                    Colors.black.withOpacity(0.3),
+                    Colors.transparent,
+                    Colors.black.withOpacity(0.05)
+                  ])),
             )
           ],
         ),
@@ -96,11 +107,11 @@ class BlogDetailScreen extends StatelessWidget {
   }
 
   Widget _buildMetaInfo() {
-    final date = post['createdAt'] != null 
-        ? DateFormat('dd MMM yyyy').format(DateTime.parse(post['createdAt'])) 
+    final date = post['createdAt'] != null
+        ? DateFormat('dd MMM yyyy').format(DateTime.parse(post['createdAt']))
         : 'Unknown Date';
-    final tag = (post['tags'] != null && (post['tags'] as List).isNotEmpty) 
-        ? post['tags'][0] 
+    final tag = (post['tags'] != null && (post['tags'] as List).isNotEmpty)
+        ? post['tags'][0]
         : 'General';
 
     return Row(
@@ -108,13 +119,16 @@ class BlogDetailScreen extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: const Color(0xFFEFF6FF), // Blue 50
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xFFBFDBFE)) // Blue 200
-          ),
+              color: const Color(0xFFE07A5F).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(20),
+              border:
+                  Border.all(color: const Color(0xFFE07A5F).withOpacity(0.3))),
           child: Text(
             tag.toUpperCase(),
-            style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF2563EB)),
+            style: GoogleFonts.inter(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFFE07A5F)),
           ),
         ),
         const SizedBox(width: 16),
@@ -122,7 +136,10 @@ class BlogDetailScreen extends StatelessWidget {
         const SizedBox(width: 6),
         Text(
           date,
-          style: GoogleFonts.inter(fontSize: 13, color: Colors.grey[500], fontWeight: FontWeight.w500),
+          style: GoogleFonts.inter(
+              fontSize: 13,
+              color: Colors.grey[500],
+              fontWeight: FontWeight.w500),
         )
       ],
     ).animate().fadeIn().slideX();

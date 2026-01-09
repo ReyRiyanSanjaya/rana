@@ -316,7 +316,8 @@ class ApiService {
 
       if (fileBytes != null) {
         formData = FormData.fromMap({
-          'file': MultipartFile.fromBytes(fileBytes, filename: name, contentType: MediaType('image', mime)),
+          'file': MultipartFile.fromBytes(fileBytes,
+              filename: name, contentType: MediaType('image', mime)),
         });
       } else {
         formData = FormData.fromMap({
@@ -343,7 +344,8 @@ class ApiService {
         url = body.trim();
       }
       if (url == null || url.isEmpty) {
-        throw Exception(_messageFromApiBody(body, fallback: 'Upload response invalid'));
+        throw Exception(
+            _messageFromApiBody(body, fallback: 'Upload response invalid'));
       }
       return url;
     } catch (e) {
@@ -579,6 +581,24 @@ class ApiService {
       }
     } catch (e) {
       throw Exception('Upload Transaction Failed: $e');
+    }
+  }
+
+  // [NEW] Upload Expense for Sync
+  Future<void> uploadExpense(Map<String, dynamic> payload) async {
+    try {
+      // POST /reports/expenses
+      final response = await _dio.post(
+        '/reports/expenses',
+        data: payload,
+        options: Options(headers: {'Authorization': 'Bearer ${_token}'}),
+      );
+
+      if (!_isSuccess(response.data)) {
+        throw Exception(response.data['message'] ?? 'Failed to upload expense');
+      }
+    } catch (e) {
+      throw Exception('Upload Expense Failed: $e');
     }
   }
 
@@ -903,6 +923,7 @@ class ApiService {
       return [];
     }
   }
+
   Future<Map<String, dynamic>> fetchMenuMaintenance() async {
     try {
       final response = await _dio.get('/system/app-menus/maintenance');
@@ -1040,8 +1061,17 @@ class ApiService {
     }
   }
 
+  /// Get Detailed Analytics
+  /// Returns:
+  /// - summary: { revenue, totalExpenses, netProfit, growth: { revenue, expenses, netProfit } }
+  /// - hourlyStats: List<{ hour: "HH:00", count, revenue }>
+  /// - trend: List<{ date, sales, expenses }>
+  /// - topProducts, categorySales, paymentMethods
+  /// - lowStock: List<{ product: { name }, quantity }>
   Future<Map<String, dynamic>> getAnalytics(
-      {required String startDate, required String endDate, String? storeId}) async {
+      {required String startDate,
+      required String endDate,
+      String? storeId}) async {
     try {
       final response = await _dio.get('/reports/analytics',
           queryParameters: {

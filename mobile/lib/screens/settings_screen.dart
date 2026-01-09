@@ -53,7 +53,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC), // Light Slate Background
+      backgroundColor: const Color(0xFFFFF8F0), // Soft Beige Background
       body: Consumer<AuthProvider>(
         builder: (context, auth, _) {
           final user = auth.currentUser;
@@ -67,19 +67,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
               // 1. Professional App Bar
               SliverAppBar(
                 pinned: true,
-                backgroundColor: Colors.white,
+                backgroundColor: const Color(0xFFFFF8F0),
                 elevation: 0,
                 centerTitle: true,
                 title: Text(
                   'Pengaturan',
                   style: GoogleFonts.outfit(
-                      color: const Color(0xFF1E293B),
+                      color: const Color(0xFFE07A5F),
                       fontWeight: FontWeight.bold),
                 ),
                 actions: [
                   IconButton(
                     icon: const Icon(Icons.logout_rounded,
-                        color: Colors.redAccent),
+                        color: Color(0xFFE07A5F)),
                     tooltip: 'Keluar',
                     onPressed: () => _confirmLogout(context),
                   )
@@ -217,18 +217,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           MaterialPageRoute(
                               builder: (_) => const PrivacyPolicyScreen())),
                     ),
-                  _buildDivider(),
-                  _buildSettingsItem(
-                    icon: Icons.support_agent_rounded,
-                    title: 'Hubungi Bantuan',
-                    subtitle: 'Pusat Bantuan & Chat Admin',
-                    badgeCount: _unreadSupportCount,
-                    onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) => const SupportScreen()))
-                        .then((_) => _refreshSupportBadge()),
-                  ),
+                    _buildDivider(),
+                    _buildSettingsItem(
+                      icon: Icons.support_agent_rounded,
+                      title: 'Hubungi Bantuan',
+                      subtitle: 'Pusat Bantuan & Chat Admin',
+                      badgeCount: _unreadSupportCount,
+                      onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => const SupportScreen()))
+                          .then((_) => _refreshSupportBadge()),
+                    ),
                     _buildDivider(),
                     _buildSettingsItem(
                       icon: Icons.info_outline_rounded,
@@ -323,10 +323,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
         final data = snapshot.data ?? {};
         final code = (data['code'] ?? '').toString();
-        final program =
-            data['program'] is Map<String, dynamic> ? data['program'] as Map<String, dynamic> : <String, dynamic>{};
-        final stats =
-            data['stats'] is Map<String, dynamic> ? data['stats'] as Map<String, dynamic> : <String, dynamic>{};
+        final program = data['program'] is Map<String, dynamic>
+            ? data['program'] as Map<String, dynamic>
+            : <String, dynamic>{};
+        final stats = data['stats'] is Map<String, dynamic>
+            ? data['stats'] as Map<String, dynamic>
+            : <String, dynamic>{};
 
         if (code.isEmpty) {
           return Padding(
@@ -360,11 +362,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           );
         }
 
-        final totalReferrals =
-            (stats['totalReferrals'] ?? 0).toString();
-        final totalReleased = double.tryParse(
-                (stats['totalRewardReleased'] ?? 0).toString()) ??
-            0;
+        final totalReferrals = (stats['totalReferrals'] ?? 0).toString();
+        final totalReleased =
+            double.tryParse((stats['totalRewardReleased'] ?? 0).toString()) ??
+                0;
         final programName = program['name']?.toString() ?? '';
         final shareText =
             'Daftar Rana POS pakai kode referral $code untuk dapat saldo wallet.';
@@ -512,14 +513,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               right: -4,
               top: -4,
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.red,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                constraints:
-                    const BoxConstraints(minWidth: 18, minHeight: 18),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE07A5F),
+                borderRadius: BorderRadius.circular(999),
+              ),
+                constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
                 child: Center(
                   child: Text(
                     badgeCount > 99 ? '99+' : badgeCount.toString(),

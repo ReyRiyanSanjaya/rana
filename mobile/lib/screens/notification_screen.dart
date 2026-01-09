@@ -91,10 +91,12 @@ class _NotificationScreenState extends State<NotificationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFFFF8F0),
       appBar: AppBar(
-        title: Text('Notifikasi', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.black)),
-        backgroundColor: Colors.white,
+        title: Text('Notifikasi',
+            style: GoogleFonts.outfit(
+                fontWeight: FontWeight.bold, color: Colors.black)),
+        backgroundColor: const Color(0xFFFFF8F0),
         elevation: 0,
         centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.black),
@@ -112,9 +114,11 @@ class _NotificationScreenState extends State<NotificationScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.notifications_off_outlined, size: 60, color: Colors.grey[300]),
+                            Icon(Icons.notifications_off_outlined,
+                                size: 60, color: Colors.grey[300]),
                             const SizedBox(height: 16),
-                            Text('Belum ada notifikasi', style: GoogleFonts.outfit(color: Colors.grey)),
+                            Text('Belum ada notifikasi',
+                                style: GoogleFonts.outfit(color: Colors.grey)),
                           ],
                         ),
                       ),
@@ -144,24 +148,31 @@ class _NotificationScreenState extends State<NotificationScreen> {
                           Container(
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
-                              color: Colors.indigo[50],
+                              color: const Color(0xFFE07A5F).withOpacity(0.1),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(Icons.notifications_none_rounded, color: Colors.indigo),
+                            child: const Icon(Icons.notifications_none_rounded,
+                                color: Color(0xFFE07A5F)),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(n['title']?.toString() ?? 'Info', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16)),
+                                Text(n['title']?.toString() ?? 'Info',
+                                    style: GoogleFonts.outfit(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16)),
                                 const SizedBox(height: 4),
-                                Text(n['body']?.toString() ?? '', style: GoogleFonts.outfit(color: Colors.grey[600], fontSize: 14)),
+                                Text(n['body']?.toString() ?? '',
+                                    style: GoogleFonts.outfit(
+                                        color: Colors.grey[600], fontSize: 14)),
                                 const SizedBox(height: 8),
                                 if (timeLabel.isNotEmpty)
                                   Text(
                                     timeLabel,
-                                    style: GoogleFonts.outfit(fontSize: 10, color: Colors.grey[400]),
+                                    style: GoogleFonts.outfit(
+                                        fontSize: 10, color: Colors.grey[400]),
                                   ),
                               ],
                             ),

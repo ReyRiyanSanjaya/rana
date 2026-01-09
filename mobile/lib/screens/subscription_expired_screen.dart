@@ -24,8 +24,8 @@ class SubscriptionExpiredScreen extends StatelessWidget {
                 color: Colors.white,
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.lock_outline_rounded,
-                  size: 64, color: Colors.red.shade700),
+              child: const Icon(Icons.lock_outline_rounded,
+                  size: 64, color: Color(0xFFE07A5F)),
             ),
             const SizedBox(height: 32),
             Text(
@@ -33,7 +33,7 @@ class SubscriptionExpiredScreen extends StatelessWidget {
               style: GoogleFonts.poppins(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: Colors.red.shade900,
+                color: const Color(0xFFE07A5F),
               ),
               textAlign: TextAlign.center,
             ),
@@ -43,7 +43,7 @@ class SubscriptionExpiredScreen extends StatelessWidget {
               textAlign: TextAlign.center,
               style: GoogleFonts.poppins(
                 fontSize: 16,
-                color: Colors.red.shade800,
+                color: Colors.black87,
               ),
             ),
             const SizedBox(height: 48),
@@ -56,7 +56,7 @@ class SubscriptionExpiredScreen extends StatelessWidget {
                   MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
                 ),
                 style: FilledButton.styleFrom(
-                  backgroundColor: Colors.red.shade700,
+                  backgroundColor: const Color(0xFFE07A5F),
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16)),
@@ -77,13 +77,13 @@ class SubscriptionExpiredScreen extends StatelessWidget {
                           ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                   content: Text('Status berhasil diperbarui!'),
-                                  backgroundColor: Colors.green));
+                                  backgroundColor: Color(0xFFE07A5F)));
                         }
                       } catch (e) {
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                               content: Text('Gagal memuat status: $e'),
-                              backgroundColor: Colors.red));
+                              backgroundColor: const Color(0xFFE07A5F)));
                         }
                       }
                     },
@@ -92,10 +92,10 @@ class SubscriptionExpiredScreen extends StatelessWidget {
                       width: 16,
                       height: 16,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.red))
-                  : Icon(Icons.refresh, color: Colors.red.shade900),
+                          strokeWidth: 2, color: Color(0xFFE07A5F)))
+                  : const Icon(Icons.refresh, color: Color(0xFFE07A5F)),
               label: Text(sub.isLoading ? 'Memuat...' : 'Refresh Status',
-                  style: GoogleFonts.poppins(color: Colors.red.shade900)),
+                  style: GoogleFonts.poppins(color: const Color(0xFFE07A5F))),
             )
           ],
         ),

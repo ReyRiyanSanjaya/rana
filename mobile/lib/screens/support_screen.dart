@@ -114,7 +114,8 @@ class _SupportScreenState extends State<SupportScreen> {
               color: Colors.white,
               borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
             ),
-            padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + media.viewInsets.bottom),
+            padding:
+                EdgeInsets.fromLTRB(16, 16, 16, 16 + media.viewInsets.bottom),
             child: SafeArea(
               top: false,
               child: SingleChildScrollView(
@@ -135,22 +136,22 @@ class _SupportScreenState extends State<SupportScreen> {
                     const SizedBox(height: 12),
                     TextField(
                         controller: titleController,
-                        decoration:
-                            const InputDecoration(labelText: 'Judul keluhan/pertanyaan')),
+                        decoration: const InputDecoration(
+                            labelText: 'Judul keluhan/pertanyaan')),
                     const SizedBox(height: 8),
                     TextField(
                         controller: messageController,
-                        decoration:
-                            const InputDecoration(labelText: 'Ceritakan kendalamu di sini'),
+                        decoration: const InputDecoration(
+                            labelText: 'Ceritakan kendalamu di sini'),
                         maxLines: 4),
                     const SizedBox(height: 12),
                     Align(
                         alignment: Alignment.centerLeft,
                         child: Text('Gunakan Template',
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelLarge
-                                ?.copyWith(fontWeight: FontWeight.w600))),
+                            style: TextStyle(
+                                color: Color(0xFFE07A5F),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600))),
                     const SizedBox(height: 8),
                     SizedBox(
                       height: 100,
@@ -172,14 +173,16 @@ class _SupportScreenState extends State<SupportScreen> {
                               decoration: BoxDecoration(
                                   color: Colors.grey.shade100,
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.grey.shade300)),
+                                  border:
+                                      Border.all(color: Colors.grey.shade300)),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(t['subject'] ?? '',
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(fontWeight: FontWeight.w600)),
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w600)),
                                   const SizedBox(height: 6),
                                   Text(t['message'] ?? '',
                                       maxLines: 2,
@@ -209,12 +212,15 @@ class _SupportScreenState extends State<SupportScreen> {
                                   setState(() => isLoading = true);
                                   try {
                                     await ApiService().createTicket(
-                                        titleController.text, messageController.text);
+                                        titleController.text,
+                                        messageController.text);
                                     await _fetch();
                                   } catch (e) {
                                     if (mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                          content: Text('Gagal membuat tiket: $e')));
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(SnackBar(
+                                              content: Text(
+                                                  'Gagal membuat tiket: $e')));
                                     }
                                     setState(() => isLoading = false);
                                   }
@@ -253,7 +259,7 @@ class _SupportScreenState extends State<SupportScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFFFF8F0),
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: const Color(0xFFFFF8F0),
         elevation: 0,
         centerTitle: true,
         title: Text('Bantuan & Support',
@@ -336,13 +342,11 @@ class _SupportScreenState extends State<SupportScreen> {
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(20),
-                          gradient: const LinearGradient(
-                              colors: [Color(0xFF20C65A), Color(0xFF2AD66A)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight),
+                          color: const Color(0xFFE07A5F),
                           boxShadow: [
                             BoxShadow(
-                                color: const Color(0xFF20C65A).withOpacity(0.25),
+                                color:
+                                    const Color(0xFFE07A5F).withOpacity(0.25),
                                 blurRadius: 16,
                                 offset: const Offset(0, 8))
                           ],
@@ -425,10 +429,11 @@ class _SupportScreenState extends State<SupportScreen> {
                                 borderRadius: BorderRadius.circular(16),
                                 onTap: () {
                                   Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                          builder: (_) => TicketDetailScreen(
-                                              ticketId: ticket['id'])))
+                                          context,
+                                          MaterialPageRoute(
+                                              builder: (_) =>
+                                                  TicketDetailScreen(
+                                                      ticketId: ticket['id'])))
                                       .then((_) => _computeUnread());
                                 },
                                 child: Row(
@@ -436,12 +441,12 @@ class _SupportScreenState extends State<SupportScreen> {
                                     Container(
                                       padding: const EdgeInsets.all(10),
                                       decoration: BoxDecoration(
-                                          color: const Color(0xFF3B82F6)
+                                          color: const Color(0xFFE07A5F)
                                               .withOpacity(0.1),
                                           shape: BoxShape.circle),
                                       child: const Icon(
                                           Icons.confirmation_number,
-                                          color: Color(0xFF3B82F6)),
+                                          color: Color(0xFFE07A5F)),
                                     ),
                                     const SizedBox(width: 12),
                                     Expanded(
@@ -454,8 +459,7 @@ class _SupportScreenState extends State<SupportScreen> {
                                             style: GoogleFonts.poppins(
                                                 fontWeight: FontWeight.w600,
                                                 fontSize: 14,
-                                                color:
-                                                    const Color(0xFF1E293B)),
+                                                color: const Color(0xFF1E293B)),
                                           ),
                                           const SizedBox(height: 6),
                                           Row(
@@ -467,11 +471,13 @@ class _SupportScreenState extends State<SupportScreen> {
                                                         vertical: 2),
                                                 decoration: BoxDecoration(
                                                     color: status == 'OPEN'
-                                                        ? Colors.green
+                                                        ? const Color(
+                                                                0xFFE07A5F)
                                                             .withOpacity(0.1)
                                                         : status ==
                                                                 'IN_PROGRESS'
-                                                            ? Colors.orange
+                                                            ? const Color(
+                                                                    0xFFE07A5F)
                                                                 .withOpacity(
                                                                     0.1)
                                                             : Colors.grey
@@ -485,10 +491,12 @@ class _SupportScreenState extends State<SupportScreen> {
                                                   style: GoogleFonts.poppins(
                                                       fontSize: 11,
                                                       color: status == 'OPEN'
-                                                          ? Colors.green
+                                                          ? const Color(
+                                                              0xFFE07A5F)
                                                           : status ==
                                                                   'IN_PROGRESS'
-                                                              ? Colors.orange
+                                                              ? const Color(
+                                                                  0xFFE07A5F)
                                                               : Colors.grey),
                                                 ),
                                               ),
@@ -508,7 +516,7 @@ class _SupportScreenState extends State<SupportScreen> {
                                             width: 8,
                                             height: 8,
                                             decoration: const BoxDecoration(
-                                                color: Colors.red,
+                                                color: Color(0xFFE07A5F),
                                                 shape: BoxShape.circle),
                                           )
                                         : Container(

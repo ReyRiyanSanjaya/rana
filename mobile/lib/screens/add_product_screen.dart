@@ -145,7 +145,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
       
     } on DioException catch (e) {
       final msg = e.response?.data['message'] ?? e.message ?? 'Terjadi Kesalahan Server';
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal: $msg'), backgroundColor: Colors.red));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal: $msg'), backgroundColor: const Color(0xFFE07A5F)));
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal: $e'), backgroundColor: Colors.red));
     } finally {
@@ -163,7 +163,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
             : '${AppConstants.baseUrl}${existingImage.toString()}');
 
     return Scaffold(
-      appBar: AppBar(title: Text(widget.product == null ? 'Tambah Produk Baru' : 'Edit Produk')),
+      backgroundColor: const Color(0xFFFFF8F0),
+      appBar: AppBar(
+        title: Text(widget.product == null ? 'Tambah Produk Baru' : 'Edit Produk'),
+        backgroundColor: const Color(0xFFFFF8F0),
+        elevation: 0,
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -201,6 +206,10 @@ class _AddProductScreenState extends State<AddProductScreen> {
                             onPressed: _isLoading ? null : _pickImage,
                             icon: const Icon(Icons.photo_library),
                             label: Text(widget.product == null ? 'Pilih Gambar Produk' : 'Ganti Gambar Produk'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFFE07A5F),
+                              side: const BorderSide(color: Color(0xFFE07A5F)),
+                            ),
                           ),
                         ),
                         if (_pickedImageBytes != null) ...[

@@ -57,6 +57,7 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
     bool isConnected = _printerService.isConnected;
 
     return Scaffold(
+      backgroundColor: const Color(0xFFFFF8F0),
       appBar: AppBar(
         title: Text('Perangkat & Printer',
             style: GoogleFonts.poppins(color: const Color(0xFFE07A5F))),

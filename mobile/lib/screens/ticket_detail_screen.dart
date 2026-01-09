@@ -28,9 +28,36 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
   final ScrollController _chatScrollController = ScrollController();
   bool _connected = false;
   final List<String> _emojis = [
-    '😀','😁','😂','🤣','😊','😍','😘','😎','😇','😉',
-    '🙌','👍','👏','🙏','💪','🔥','✨','🎉','✅','❌',
-    '😢','😭','😤','😡','😱','🤔','🤨','😴','😅','🤝'
+    '😀',
+    '😁',
+    '😂',
+    '🤣',
+    '😊',
+    '😍',
+    '😘',
+    '😎',
+    '😇',
+    '😉',
+    '🙌',
+    '👍',
+    '👏',
+    '🙏',
+    '💪',
+    '🔥',
+    '✨',
+    '🎉',
+    '✅',
+    '❌',
+    '😢',
+    '😭',
+    '😤',
+    '😡',
+    '😱',
+    '🤔',
+    '🤨',
+    '😴',
+    '😅',
+    '🤝'
   ];
   final List<String> _quickReplies = [
     'Terima kasih',
@@ -236,9 +263,8 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
           content: Text('Mengunggah lampiran...'),
           duration: Duration(milliseconds: 800)));
       final bytes = await file.readAsBytes();
-      final url =
-          await ApiService()
-          .uploadTransferProof(file.path, fileBytes: bytes, fileName: file.name);
+      final url = await ApiService().uploadTransferProof(file.path,
+          fileBytes: bytes, fileName: file.name);
       final resolved = ApiService().resolveFileUrl(url);
       if (resolved.isEmpty) {
         throw Exception('URL kosong dari server');
@@ -258,7 +284,15 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(ticket?['subject'] ?? 'Chat')),
+      backgroundColor: const Color(0xFFFFF8F0),
+      appBar: AppBar(
+        title: Text(ticket?['subject'] ?? 'Chat',
+            style: const TextStyle(
+                color: Color(0xFFE07A5F), fontWeight: FontWeight.bold)),
+        backgroundColor: const Color(0xFFFFF8F0),
+        iconTheme: const IconThemeData(color: Color(0xFFE07A5F)),
+        elevation: 0,
+      ),
       body: Column(
         children: [
           Expanded(
@@ -277,10 +311,12 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                         if (created != null) {
                           dt = DateTime.tryParse(created);
                         }
-                        final prev = index > 0 ? ticket!['messages'][index - 1] : null;
+                        final prev =
+                            index > 0 ? ticket!['messages'][index - 1] : null;
                         DateTime? prevDt;
                         if (prev != null && prev['createdAt'] != null) {
-                          prevDt = DateTime.tryParse(prev['createdAt'].toString());
+                          prevDt =
+                              DateTime.tryParse(prev['createdAt'].toString());
                         }
                         final showHeader = dt != null &&
                             (prevDt == null ||
@@ -288,7 +324,8 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                                 dt!.month != prevDt!.month ||
                                 dt!.day != prevDt!.day);
                         final headerText = dt != null
-                            ? DateFormat('EEEE, d MMM yyyy', 'id_ID').format(dt!)
+                            ? DateFormat('EEEE, d MMM yyyy', 'id_ID')
+                                .format(dt!)
                             : null;
                         return Align(
                           alignment: isMe
@@ -299,7 +336,8 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                             children: [
                               if (showHeader && headerText != null)
                                 Container(
-                                  margin: const EdgeInsets.symmetric(vertical: 8),
+                                  margin:
+                                      const EdgeInsets.symmetric(vertical: 8),
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 10, vertical: 4),
                                   decoration: BoxDecoration(
@@ -318,33 +356,39 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                                       padding: EdgeInsets.only(right: 6),
                                       child: CircleAvatar(
                                         radius: 12,
-                                        child: Icon(Icons.support_agent, size: 14),
+                                        child:
+                                            Icon(Icons.support_agent, size: 14),
                                       ),
                                     ),
                                   Flexible(
                                     child: GestureDetector(
                                       onLongPress: () {
-                                        final txt = (msg['message'] ?? '').toString();
+                                        final txt =
+                                            (msg['message'] ?? '').toString();
                                         if (txt.isEmpty) return;
-                                        Clipboard.setData(ClipboardData(text: txt));
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(
+                                        Clipboard.setData(
+                                            ClipboardData(text: txt));
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(const SnackBar(
                                                 content: Text('Teks disalin')));
                                       },
                                       child: ConstrainedBox(
                                         constraints: BoxConstraints(
-                                          maxWidth:
-                                              MediaQuery.of(context).size.width * 0.78,
+                                          maxWidth: MediaQuery.of(context)
+                                                  .size
+                                                  .width *
+                                              0.78,
                                         ),
                                         child: Container(
-                                          margin:
-                                              const EdgeInsets.symmetric(vertical: 4),
+                                          margin: const EdgeInsets.symmetric(
+                                              vertical: 4),
                                           padding: const EdgeInsets.all(12),
                                           decoration: BoxDecoration(
                                             color: isMe
-                                                ? Colors.indigo
+                                                ? const Color(0xFFE07A5F)
                                                 : Colors.grey[200],
-                                            borderRadius: BorderRadius.circular(12),
+                                            borderRadius:
+                                                BorderRadius.circular(12),
                                           ),
                                           child: Column(
                                             crossAxisAlignment:
@@ -359,7 +403,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                                                 style: TextStyle(
                                                     fontSize: 10,
                                                     color: isMe
-                                                        ? Colors.indigo[100]
+                                                        ? Colors.white70
                                                         : Colors.grey[600]),
                                               ),
                                             ],
@@ -391,7 +435,8 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                           SizedBox(
                             width: 20,
                             height: 20,
-                            child: Lottie.asset(AssetsConfig.lottieLivePulse, repeat: true),
+                            child: Lottie.asset(AssetsConfig.lottieLivePulse,
+                                repeat: true),
                           ),
                           const SizedBox(width: 6),
                           Text(typingUser!,
@@ -423,17 +468,20 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                     )),
                     IconButton(
                         onPressed: _showEmojiPicker,
-                        icon:
-                            const Icon(Icons.emoji_emotions_outlined, color: Colors.indigo)),
+                        icon: const Icon(Icons.emoji_emotions_outlined,
+                            color: Color(0xFFE07A5F))),
                     IconButton(
                         onPressed: _isUploading ? null : _attachImage,
                         icon: Icon(Icons.attach_file,
-                            color: _isUploading ? Colors.grey[400] : Colors.indigo)),
+                            color: _isUploading
+                                ? Colors.grey[400]
+                                : const Color(0xFFE07A5F))),
                     IconButton(
                         onPressed: _canSend ? _reply : null,
                         icon: Icon(Icons.send,
-                            color:
-                                _canSend ? Colors.indigo : Colors.grey[400]))
+                            color: _canSend
+                                ? const Color(0xFFE07A5F)
+                                : Colors.grey[400]))
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -448,8 +496,9 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                       return ActionChip(
                         label: Text(text, style: const TextStyle(fontSize: 12)),
                         onPressed: () {
-                          _msgController.text =
-                              (_msgController.text.isEmpty ? text : '${_msgController.text} $text');
+                          _msgController.text = (_msgController.text.isEmpty
+                              ? text
+                              : '${_msgController.text} $text');
                           _msgController.selection = TextSelection.fromPosition(
                               TextPosition(offset: _msgController.text.length));
                           setState(() {
@@ -504,7 +553,9 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
   bool _looksLikeImageUrl(String s) {
     if (s.isEmpty) return false;
     final lower = s.toLowerCase();
-    final hasProto = lower.startsWith('http://') || lower.startsWith('https://') || lower.startsWith('/');
+    final hasProto = lower.startsWith('http://') ||
+        lower.startsWith('https://') ||
+        lower.startsWith('/');
     final hasExt = lower.endsWith('.jpg') ||
         lower.endsWith('.jpeg') ||
         lower.endsWith('.png') ||

@@ -132,6 +132,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               );
 
     return Scaffold(
+      backgroundColor: const Color(0xFFFFF8F0),
       body: LayoutBuilder(
         builder: (context, constraints) {
           if (constraints.maxWidth < 900) return body;

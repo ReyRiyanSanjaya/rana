@@ -68,14 +68,14 @@ class CartWidget extends StatelessWidget {
 
           // Header
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
                           color: Theme.of(context)
                               .colorScheme
@@ -84,18 +84,20 @@ class CartWidget extends StatelessWidget {
                           borderRadius: BorderRadius.circular(8)),
                       child: Icon(Icons.shopping_cart,
                           color: Theme.of(context).colorScheme.primary,
-                          size: 20),
+                          size: 18),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
                     Text('Keranjang',
                         style: GoogleFonts.poppins(
-                            fontSize: 20,
+                            fontSize: 18,
                             fontWeight: FontWeight.bold,
                             color: Theme.of(context).colorScheme.onBackground)),
                   ],
                 ),
                 if (!isEmbedded && onClose != null)
-                  IconButton(onPressed: onClose, icon: const Icon(Icons.close)),
+                  IconButton(
+                      onPressed: onClose,
+                      icon: const Icon(Icons.close, size: 20)),
                 if (isEmbedded)
                   IconButton(
                       onPressed: () {
@@ -104,7 +106,7 @@ class CartWidget extends StatelessWidget {
                         cart.clear();
                       },
                       icon: const Icon(Icons.delete_sweep_outlined,
-                          color: Colors.grey))
+                          color: Colors.grey, size: 20))
               ],
             ),
           ),
@@ -113,7 +115,7 @@ class CartWidget extends StatelessWidget {
 
           // Customer Selector (Outlined)
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: InkWell(
               onTap: () async {
                 final controller =
@@ -141,7 +143,7 @@ class CartWidget extends StatelessWidget {
               },
               borderRadius: BorderRadius.circular(12),
               child: Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color:
                       isEmbedded ? ThemeConfig.beigeBackground : Colors.white,
@@ -156,15 +158,15 @@ class CartWidget extends StatelessWidget {
                 child: Row(
                   children: [
                     Icon(Icons.person_outline,
-                        color: Theme.of(context).colorScheme.primary),
-                    const SizedBox(width: 12),
+                        color: Theme.of(context).colorScheme.primary, size: 20),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Text(cart.customerName ?? 'Pelanggan Umum',
-                          style:
-                              GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+                          style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.w600, fontSize: 13)),
                     ),
                     const Icon(Icons.arrow_forward_ios,
-                        size: 14, color: Colors.grey),
+                        size: 12, color: Colors.grey),
                   ],
                 ),
               ),
@@ -190,9 +192,9 @@ class CartWidget extends StatelessWidget {
                 }
                 return ListView.separated(
                   controller: scrollController,
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   itemCount: cart.items.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 16),
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
                   itemBuilder: (ctx, i) {
                     final item = cart.items.values.toList()[i];
                     return Dismissible(
@@ -209,7 +211,7 @@ class CartWidget extends StatelessWidget {
                         child: Row(
                           children: [
                             const Icon(Icons.delete_outline,
-                                color: Colors.white, size: 28),
+                                color: Colors.white, size: 24),
                             const SizedBox(width: 8),
                             Text('Hapus',
                                 style: GoogleFonts.poppins(
@@ -234,12 +236,12 @@ class CartWidget extends StatelessWidget {
                                     fontWeight: FontWeight.bold)),
                             const SizedBox(width: 8),
                             const Icon(Icons.delete_outline,
-                                color: Colors.white, size: 28),
+                                color: Colors.white, size: 24),
                           ],
                         ),
                       ),
                       child: Container(
-                        padding: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
                           color: isEmbedded
                               ? ThemeConfig.beigeBackground
@@ -255,15 +257,15 @@ class CartWidget extends StatelessWidget {
                         child: Row(
                           children: [
                             Container(
-                              width: 56,
-                              height: 56,
+                              width: 48,
+                              height: 48,
                               decoration: BoxDecoration(
                                   color: Colors.grey[50],
                                   borderRadius: BorderRadius.circular(12)),
                               child: Icon(Icons.image_not_supported_outlined,
-                                  color: Colors.grey[300], size: 28),
+                                  color: Colors.grey[300], size: 24),
                             ),
-                            const SizedBox(width: 16),
+                            const SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -273,8 +275,8 @@ class CartWidget extends StatelessWidget {
                                       overflow: TextOverflow.ellipsis,
                                       style: GoogleFonts.poppins(
                                           fontWeight: FontWeight.w600,
-                                          fontSize: 14)),
-                                  const SizedBox(height: 4),
+                                          fontSize: 13)),
+                                  const SizedBox(height: 2),
                                   Text(
                                       NumberFormat.currency(
                                               locale: 'id_ID',
@@ -285,6 +287,7 @@ class CartWidget extends StatelessWidget {
                                           color: Theme.of(context)
                                               .colorScheme
                                               .primary,
+                                          fontSize: 13,
                                           fontWeight: FontWeight.bold)),
                                 ],
                               ),
@@ -298,13 +301,13 @@ class CartWidget extends StatelessWidget {
                                           cart.removeSingleItem(item.productId),
                                       borderRadius: BorderRadius.circular(20),
                                       child: Container(
-                                        padding: const EdgeInsets.all(4),
+                                        padding: const EdgeInsets.all(2),
                                         decoration: BoxDecoration(
                                           color: Colors.grey[100],
                                           shape: BoxShape.circle,
                                         ),
                                         child: const Icon(Icons.remove,
-                                            size: 16, color: Colors.grey),
+                                            size: 14, color: Colors.grey),
                                       ),
                                     ),
                                     InkWell(
@@ -354,11 +357,11 @@ class CartWidget extends StatelessWidget {
                                       borderRadius: BorderRadius.circular(8),
                                       child: Padding(
                                         padding: const EdgeInsets.symmetric(
-                                            horizontal: 12, vertical: 4),
+                                            horizontal: 8, vertical: 2),
                                         child: Text('${item.quantity}',
                                             style: GoogleFonts.poppins(
                                                 fontWeight: FontWeight.bold,
-                                                fontSize: 16)),
+                                                fontSize: 14)),
                                       ),
                                     ),
                                     InkWell(
@@ -370,7 +373,7 @@ class CartWidget extends StatelessWidget {
                                       },
                                       borderRadius: BorderRadius.circular(20),
                                       child: Container(
-                                        padding: const EdgeInsets.all(4),
+                                        padding: const EdgeInsets.all(2),
                                         decoration: BoxDecoration(
                                           color: Theme.of(context)
                                               .colorScheme
@@ -378,7 +381,7 @@ class CartWidget extends StatelessWidget {
                                           shape: BoxShape.circle,
                                         ),
                                         child: const Icon(Icons.add,
-                                            size: 16, color: Colors.white),
+                                            size: 14, color: Colors.white),
                                       ),
                                     ),
                                   ],
@@ -397,7 +400,7 @@ class CartWidget extends StatelessWidget {
 
           // Footer
           Container(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: isEmbedded ? Colors.white : Colors.white,
               borderRadius:
@@ -418,7 +421,7 @@ class CartWidget extends StatelessWidget {
                     children: [
                       Text('Subtotal',
                           style: GoogleFonts.poppins(
-                              fontSize: 14, color: Colors.grey[600])),
+                              fontSize: 13, color: Colors.grey[600])),
                       Consumer<CartProvider>(
                         builder: (_, cart, __) => Text(
                           NumberFormat.currency(
@@ -427,7 +430,7 @@ class CartWidget extends StatelessWidget {
                                   decimalDigits: 0)
                               .format(cart.subtotal),
                           style: GoogleFonts.poppins(
-                              fontSize: 14,
+                              fontSize: 13,
                               fontWeight: FontWeight.w600,
                               color: Colors.black),
                         ),
@@ -445,7 +448,7 @@ class CartWidget extends StatelessWidget {
                         children: [
                           Text('Pajak',
                               style: GoogleFonts.poppins(
-                                  fontSize: 14, color: Colors.grey[600])),
+                                  fontSize: 13, color: Colors.grey[600])),
                           Consumer<CartProvider>(
                             builder: (_, cart, __) => Text(
                               NumberFormat.currency(
@@ -454,7 +457,7 @@ class CartWidget extends StatelessWidget {
                                       decimalDigits: 0)
                                   .format(cart.taxAmount),
                               style: GoogleFonts.poppins(
-                                  fontSize: 14,
+                                  fontSize: 13,
                                   fontWeight: FontWeight.w600,
                                   color: Colors.black),
                             ),
@@ -464,11 +467,11 @@ class CartWidget extends StatelessWidget {
                     ),
 
                   const Divider(),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
 
                   // Total Section with Template Color Background
                   Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: ThemeConfig.brandColor,
                       borderRadius: BorderRadius.circular(20),
@@ -487,7 +490,7 @@ class CartWidget extends StatelessWidget {
                           children: [
                             Text('Total Tagihan',
                                 style: GoogleFonts.poppins(
-                                    fontSize: 14,
+                                    fontSize: 12,
                                     fontWeight: FontWeight.w500,
                                     color: Colors.white.withOpacity(0.9))),
                             Consumer<CartProvider>(
@@ -498,18 +501,18 @@ class CartWidget extends StatelessWidget {
                                         decimalDigits: 0)
                                     .format(cart.totalAmount),
                                 style: GoogleFonts.poppins(
-                                    fontSize: 20,
+                                    fontSize: 18,
                                     fontWeight: FontWeight.bold,
                                     color: Colors.white),
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
                         // Pay Button
                         SizedBox(
                           width: double.infinity,
-                          height: 56,
+                          height: 48,
                           child: ElevatedButton(
                             onPressed: cart.itemCount == 0
                                 ? null
@@ -541,11 +544,11 @@ class CartWidget extends StatelessWidget {
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Icon(Icons.payment_rounded, size: 22),
+                                const Icon(Icons.payment_rounded, size: 18),
                                 const SizedBox(width: 8),
                                 Text('BAYAR SEKARANG',
                                     style: GoogleFonts.poppins(
-                                        fontSize: 16,
+                                        fontSize: 14,
                                         fontWeight: FontWeight.bold,
                                         letterSpacing: 0.5)),
                               ],

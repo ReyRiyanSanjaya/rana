@@ -36,15 +36,15 @@ class _BlogListScreenState extends State<BlogListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: const Color(0xFFFFF8F0),
       appBar: AppBar(
         title: Text('Blog & Berita',
             style: GoogleFonts.outfit(
-                fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
+                fontWeight: FontWeight.bold, color: const Color(0xFFE07A5F))),
         centerTitle: true,
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFFFFF8F0),
         elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF1E293B)),
+        iconTheme: const IconThemeData(color: Color(0xFFE07A5F)),
       ),
       body: _isLoading
           ? const Center(

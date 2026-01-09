@@ -24,7 +24,9 @@ class MaintenanceScreen extends StatelessWidget {
         ? DateFormat('dd MMM yyyy HH:mm').format(DateTime.tryParse(until!) ?? DateTime.now())
         : null;
     return Scaffold(
+      backgroundColor: const Color(0xFFFFF8F0),
       appBar: AppBar(
+        backgroundColor: const Color(0xFFFFF8F0),
         title: Text('Maintenance', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
       ),
       body: Center(

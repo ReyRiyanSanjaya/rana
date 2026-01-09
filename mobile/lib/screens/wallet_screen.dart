@@ -46,7 +46,7 @@ class _WalletScreenState extends State<WalletScreen>
         title: Text('Dompet Merchant',
             style: GoogleFonts.outfit(
                 fontWeight: FontWeight.w600, color: const Color(0xFFE07A5F))),
-        backgroundColor: Colors.transparent,
+        backgroundColor: const Color(0xFFFFF8F0),
         elevation: 0,
         centerTitle: true,
         iconTheme: const IconThemeData(color: Color(0xFFE07A5F)),
@@ -365,7 +365,7 @@ class _WalletScreenState extends State<WalletScreen>
         final item = history[i];
         final isIncome = item['type'] == 'CASH_IN';
         final color =
-            isIncome ? const Color(0xFF81B29A) : const Color(0xFFE07A5F);
+            isIncome ? const Color(0xFFE07A5F) : const Color(0xFFE07A5F);
 
         return Container(
           padding: const EdgeInsets.all(16),
@@ -504,8 +504,7 @@ class _WalletScreenState extends State<WalletScreen>
                             style: GoogleFonts.outfit(
                                 fontSize: 18, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 24),
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting)
+                        if (snapshot.connectionState == ConnectionState.waiting)
                           const SizedBox(
                             width: 200,
                             height: 200,
@@ -601,8 +600,7 @@ class _WalletScreenState extends State<WalletScreen>
                           children: [
                             Text('Program Referral',
                                 style: GoogleFonts.outfit(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold)),
+                                    fontSize: 18, fontWeight: FontWeight.bold)),
                             const SizedBox(height: 16),
                             Text(
                               'Gagal memuat data referral.',
@@ -624,7 +622,8 @@ class _WalletScreenState extends State<WalletScreen>
 
                     final data = snapshot.data!;
                     final code = (data['code'] ?? '').toString();
-                    final program = data['program'] as Map<String, dynamic>? ?? {};
+                    final program =
+                        data['program'] as Map<String, dynamic>? ?? {};
                     final stats = data['stats'] as Map<String, dynamic>? ?? {};
 
                     final totalReferrals =
@@ -704,8 +703,7 @@ class _WalletScreenState extends State<WalletScreen>
                               children: [
                                 Text('Total Referral',
                                     style: GoogleFonts.outfit(
-                                        fontSize: 12,
-                                        color: Colors.grey[600])),
+                                        fontSize: 12, color: Colors.grey[600])),
                                 const SizedBox(height: 4),
                                 Text(totalReferrals,
                                     style: GoogleFonts.outfit(
@@ -718,15 +716,14 @@ class _WalletScreenState extends State<WalletScreen>
                               children: [
                                 Text('Reward Cair',
                                     style: GoogleFonts.outfit(
-                                        fontSize: 12,
-                                        color: Colors.grey[600])),
+                                        fontSize: 12, color: Colors.grey[600])),
                                 const SizedBox(height: 4),
                                 Text(
                                     NumberFormat.simpleCurrency(
                                             locale: 'id_ID', decimalDigits: 0)
-                                        .format(double.tryParse(
-                                                totalReleased) ??
-                                            0),
+                                        .format(
+                                            double.tryParse(totalReleased) ??
+                                                0),
                                     style: GoogleFonts.outfit(
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold)),
@@ -741,8 +738,7 @@ class _WalletScreenState extends State<WalletScreen>
                             onPressed: () => Navigator.pop(context),
                             style: OutlinedButton.styleFrom(
                                 side: BorderSide(
-                                    color: Colors.grey.shade300,
-                                    width: 1.2),
+                                    color: Colors.grey.shade300, width: 1.2),
                                 shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12))),
                             child: const Text('Tutup'),

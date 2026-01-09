@@ -353,7 +353,7 @@ class _WholesaleCheckoutScreenState extends State<WholesaleCheckoutScreen> {
                                       const SnackBar(
                                           content:
                                               Text("Voucher berhasil dipasang"),
-                                          backgroundColor: Color(0xFF81B29A)));
+                                          backgroundColor: Color(0xFFE07A5F)));
                                   _couponController.clear();
                                 } catch (e) {
                                   if (!context.mounted) return;

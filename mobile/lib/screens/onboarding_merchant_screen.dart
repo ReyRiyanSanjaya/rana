@@ -215,8 +215,13 @@ class _MerchantOnboardingScreenState extends State<MerchantOnboardingScreen> {
     }
 
     return Scaffold(
+      backgroundColor: const Color(0xFFFFF8F0),
       appBar: AppBar(
-        title: Text('Langkah ${currentStep + 1} dari 5'),
+        backgroundColor: const Color(0xFFFFF8F0),
+        title: Text('Langkah ${currentStep + 1} dari 5',
+            style: const TextStyle(
+                color: Color(0xFFE07A5F), fontWeight: FontWeight.bold)),
+        iconTheme: const IconThemeData(color: Color(0xFFE07A5F)),
         leading: currentStep > 0
             ? IconButton(
                 icon: const Icon(Icons.arrow_back),
@@ -226,7 +231,8 @@ class _MerchantOnboardingScreenState extends State<MerchantOnboardingScreen> {
         actions: [
           TextButton(
             onPressed: _isSubmitting ? null : _skipFlow,
-            child: const Text('Lewati'),
+            child: const Text('Lewati',
+                style: TextStyle(color: Color(0xFFE07A5F))),
           ),
         ],
       ),

@@ -27,7 +27,7 @@ class _ScanScreenState extends State<ScanScreen> {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                 content: Text('Scan berhasil! Pesanan sudah terverifikasi.'),
-                backgroundColor: Colors.green));
+                backgroundColor: Color(0xFFE07A5F)));
             if (Navigator.of(context).canPop()) {
               Navigator.pop(context, order);
             }
@@ -36,7 +36,7 @@ class _ScanScreenState extends State<ScanScreen> {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                 content: Text('Scan gagal, coba lagi ya. ($e)'),
-                backgroundColor: Colors.red));
+                backgroundColor: const Color(0xFFE07A5F)));
             await Future.delayed(const Duration(seconds: 2));
             setState(() => _isProcessing = false);
           }
@@ -49,9 +49,11 @@ class _ScanScreenState extends State<ScanScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFFFF8F0),
       appBar: AppBar(
         title: const Text('Scan QR Pickup',
-            style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFE07A5F))),
+            style: TextStyle(
+                fontWeight: FontWeight.bold, color: Color(0xFFE07A5F))),
         backgroundColor: const Color(0xFFFFF8F0),
         iconTheme: const IconThemeData(color: Color(0xFFE07A5F)),
         centerTitle: true,

@@ -182,13 +182,13 @@ class _MarketingScreenState extends State<MarketingScreen>
       selected: selected,
       label: Text(label, style: GoogleFonts.poppins(fontSize: 12)),
       onSelected: (_) => setState(() => _activeLayerId = id),
-      selectedColor: Colors.blueAccent.withOpacity(0.18),
+      selectedColor: const Color(0xFFE07A5F).withOpacity(0.18),
       backgroundColor: Colors.grey.shade100,
       side: BorderSide(
-          color: selected ? Colors.blueAccent : Colors.grey.shade300),
+          color: selected ? const Color(0xFFE07A5F) : Colors.grey.shade300),
       labelStyle: GoogleFonts.poppins(
         fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-        color: selected ? Colors.blueAccent : Colors.grey.shade800,
+        color: selected ? const Color(0xFFE07A5F) : Colors.grey.shade800,
       ),
     );
   }
@@ -227,11 +227,14 @@ class _MarketingScreenState extends State<MarketingScreen>
     }
 
     return Scaffold(
+      backgroundColor: const Color(0xFFFFF8F0),
       appBar: AppBar(
         title: Row(
           children: [
             Text('Studio Promo',
-                style: GoogleFonts.poppins(fontWeight: FontWeight.w800)),
+                style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFFE07A5F))),
             const SizedBox(width: 8),
             if (_isVideoMode)
               SizedBox(
@@ -244,12 +247,14 @@ class _MarketingScreenState extends State<MarketingScreen>
                   duration: 800.ms),
           ],
         ),
+        backgroundColor: const Color(0xFFFFF8F0),
         elevation: 0,
+        iconTheme: const IconThemeData(color: Color(0xFFE07A5F)),
         bottom: TabBar(
           controller: _tabController,
-          labelColor: Colors.blueAccent,
+          labelColor: const Color(0xFFE07A5F),
           unselectedLabelColor: Colors.grey,
-          indicatorColor: Colors.blueAccent,
+          indicatorColor: const Color(0xFFE07A5F),
           tabs: const [
             Tab(icon: Icon(Icons.image), text: "Poster"),
             Tab(icon: Icon(Icons.movie_filter), text: "Video Animasi"),
@@ -379,7 +384,7 @@ class _MarketingScreenState extends State<MarketingScreen>
                                 value: _showWatermark,
                                 onChanged: (val) =>
                                     setState(() => _showWatermark = val),
-                                activeColor: Colors.pinkAccent),
+                                activeColor: const Color(0xFFE07A5F)),
                           ],
                         )
                       ],
@@ -458,8 +463,8 @@ class _MarketingScreenState extends State<MarketingScreen>
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.orange.shade50,
-                          border: Border.all(color: Colors.orange),
+                          color: const Color(0xFFE07A5F).withOpacity(0.1),
+                          border: Border.all(color: const Color(0xFFE07A5F)),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Column(
@@ -467,7 +472,8 @@ class _MarketingScreenState extends State<MarketingScreen>
                           children: [
                             Row(
                               children: [
-                                const Icon(Icons.percent, color: Colors.orange),
+                                const Icon(Icons.percent,
+                                    color: Color(0xFFE07A5F)),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
@@ -480,7 +486,7 @@ class _MarketingScreenState extends State<MarketingScreen>
                                               : "Discount Price",
                                           style: GoogleFonts.poppins(
                                               fontWeight: FontWeight.bold,
-                                              color: Colors.deepOrange)),
+                                              color: const Color(0xFFE07A5F))),
                                       Text(
                                           "Set harga baru untuk diterapkan di sistem",
                                           style: GoogleFonts.poppins(

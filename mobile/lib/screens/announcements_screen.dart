@@ -36,13 +36,15 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFFFF8F0),
       appBar: AppBar(
+        backgroundColor: const Color(0xFFFFF8F0),
         title: const Text('Broadcasts'),
       ),
-      body: isLoading 
-          ? const Center(child: CircularProgressIndicator()) 
-          : announcements.isEmpty 
-              ? const Center(child: Text("No new announcements")) 
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : announcements.isEmpty
+              ? const Center(child: Text("No new announcements"))
               : ListView.builder(
                   padding: const EdgeInsets.all(16),
                   itemCount: announcements.length,
@@ -60,12 +62,17 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
                               children: [
                                 Text(
                                   item['title'] ?? 'Notice',
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16),
                                 ),
                                 if (item['createdAt'] != null)
                                   Text(
-                                    item['createdAt'].toString().substring(0, 10),
-                                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                                    item['createdAt']
+                                        .toString()
+                                        .substring(0, 10),
+                                    style: TextStyle(
+                                        color: Colors.grey[600], fontSize: 12),
                                   ),
                               ],
                             ),

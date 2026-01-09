@@ -99,7 +99,7 @@ class _WholesaleOrderListScreenState extends State<WholesaleOrderListScreen> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text("Pesanan Berhasil Diterima!"),
-                        backgroundColor: Colors.green,
+                        backgroundColor: Color(0xFFE07A5F),
                       ),
                     );
                     _refreshOrders();
@@ -123,7 +123,7 @@ class _WholesaleOrderListScreenState extends State<WholesaleOrderListScreen> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text("Gagal Scan: $e"),
-                        backgroundColor: Colors.red,
+                        backgroundColor: const Color(0xFFE07A5F),
                       ),
                     );
                   }

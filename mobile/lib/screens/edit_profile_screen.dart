@@ -114,7 +114,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content: Text('Gagal mengambil lokasi: $e'),
-              backgroundColor: Colors.red),
+              backgroundColor: const Color(0xFFE07A5F)),
         );
       }
     } finally {
@@ -237,7 +237,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Gagal memperbarui profil: $e'),
-            backgroundColor: Colors.redAccent,
+            backgroundColor: Color(0xFFE07A5F),
           ),
         );
       }
@@ -249,15 +249,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFFFF8F0),
       appBar: AppBar(
         title: Text('Edit Profil Toko',
             style: GoogleFonts.outfit(
-                color: const Color(0xFF1E293B), fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
+                color: const Color(0xFFE07A5F), fontWeight: FontWeight.bold)),
+        backgroundColor: const Color(0xFFFFF8F0),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Color(0xFF1E293B)),
+          icon: const Icon(Icons.arrow_back_ios_new, color: Color(0xFFE07A5F)),
           onPressed: () => Navigator.pop(context),
         ),
       ),

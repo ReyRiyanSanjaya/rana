@@ -130,6 +130,11 @@ const getProfitLoss = async (req, res) => {
         const start = new Date(`${startDate}T00:00:00.000Z`);
         const end = new Date(`${endDate}T23:59:59.999Z`);
 
+        // [FIX] Adjust for WIB (UTC+7)
+        // User wants Jan 10 00:00 WIB -> Jan 9 17:00 UTC
+        start.setHours(start.getHours() - 7);
+        end.setHours(end.getHours() - 7);
+
         // Aggregate the Aggregates: Summing up DailySalesSummaries
         const aggs = await prisma.dailySalesSummary.groupBy({
             by: ['tenantId'],
@@ -271,6 +276,11 @@ const getAnalytics = async (req, res) => {
         const start = new Date(`${startDate}T00:00:00.000Z`);
         const end = new Date(`${endDate}T23:59:59.999Z`);
 
+        // [FIX] Adjust for WIB (UTC+7)
+        // User wants Jan 10 00:00 WIB -> Jan 9 17:00 UTC
+        start.setHours(start.getHours() - 7);
+        end.setHours(end.getHours() - 7);
+
         const transactions = await prisma.transaction.findMany({
             where: {
                 tenantId,
@@ -301,7 +311,8 @@ const getAnalytics = async (req, res) => {
         for (const t of transactions) {
             revenue += Number(t.totalAmount) || 0;
             const d = new Date(t.occurredAt);
-            d.setHours(0, 0, 0, 0);
+            // Adjust to WIB for grouping
+            d.setHours(d.getHours() + 7);
             const key = d.toISOString().split('T')[0];
             trendMap.set(key, (trendMap.get(key) || 0) + (Number(t.totalAmount) || 0));
             const pm = t.paymentMethod || 'UNKNOWN';
@@ -323,6 +334,9 @@ const getAnalytics = async (req, res) => {
                 tenantId,
                 storeId: storeId || undefined,
                 type: 'CASH_OUT',
+                category: {
+                in: ['EXPENSE_OPERATIONAL', 'EXPENSE_PURCHASE', 'EXPENSE_PETTY', 'OTHER']
+            },
                 occurredAt: { gte: start, lte: end }
             },
             _sum: { amount: true }
@@ -340,6 +354,9 @@ const getAnalytics = async (req, res) => {
                 tenantId,
                 storeId: storeId || undefined,
                 type: 'CASH_OUT',
+                category: {
+                    in: ['EXPENSE_OPERATIONAL', 'EXPENSE_PURCHASE', 'EXPENSE_PETTY', 'OTHER']
+                },
                 occurredAt: { gte: start, lte: end }
             },
             select: { occurredAt: true, amount: true },
@@ -348,7 +365,8 @@ const getAnalytics = async (req, res) => {
         const expenseTrendMap = new Map();
         for (const l of expenseTrendLogs) {
             const d = new Date(l.occurredAt);
-            d.setHours(0, 0, 0, 0);
+            // Adjust to WIB for grouping
+            d.setHours(d.getHours() + 7);
             const key = d.toISOString().split('T')[0];
             expenseTrendMap.set(key, (expenseTrendMap.get(key) || 0) + Number(l.amount));
         }
@@ -372,6 +390,99 @@ const getAnalytics = async (req, res) => {
         const averageOrderValue = totalTransactions > 0 ? revenue / totalTransactions : 0;
         const netProfit = revenue - totalExpenses;
 
+        // [ENRICHMENT] Calculate Growth (vs Previous Period)
+        const duration = end.getTime() - start.getTime();
+        const prevEnd = new Date(start.getTime() - 1);
+        const prevStart = new Date(prevEnd.getTime() - duration);
+        
+        const prevTransactions = await prisma.transaction.aggregate({
+            where: {
+                tenantId,
+                orderStatus: 'COMPLETED',
+                storeId: storeId || undefined,
+                occurredAt: { gte: prevStart, lte: prevEnd }
+            },
+            _sum: { totalAmount: true }
+        });
+        const prevRevenue = Number(prevTransactions._sum.totalAmount) || 0;
+        
+        const prevExpenses = await prisma.cashflowLog.aggregate({
+             where: {
+                tenantId,
+                storeId: storeId || undefined,
+                type: 'CASH_OUT',
+                category: {
+                    in: ['EXPENSE_OPERATIONAL', 'EXPENSE_PURCHASE', 'EXPENSE_PETTY', 'OTHER']
+                },
+                occurredAt: { gte: prevStart, lte: prevEnd }
+            },
+            _sum: { amount: true }
+        });
+        const prevTotalExpenses = Number(prevExpenses._sum.amount) || 0;
+        const prevNetProfit = prevRevenue - prevTotalExpenses;
+
+        const growth = {
+            revenue: prevRevenue > 0 ? ((revenue - prevRevenue) / prevRevenue) * 100 : 0,
+            expenses: prevTotalExpenses > 0 ? ((totalExpenses - prevTotalExpenses) / prevTotalExpenses) * 100 : 0,
+            netProfit: prevNetProfit > 0 ? ((netProfit - prevNetProfit) / prevNetProfit) * 100 : 0
+        };
+
+        // [ENRICHMENT] Hourly Distribution (Busy Hours)
+        // Group by Hour (0-23)
+        const hourlyMap = new Array(24).fill(0).map(() => ({ count: 0, revenue: 0 }));
+        for (const t of transactions) {
+            const d = new Date(t.occurredAt);
+            // Adjust to WIB (UTC+7)
+            // Use getUTCHours to avoid server timezone dependency
+            const hour = (d.getUTCHours() + 7) % 24;
+            if (hour >= 0 && hour < 24) {
+                hourlyMap[hour].count += 1;
+                hourlyMap[hour].revenue += (Number(t.totalAmount) || 0);
+            }
+        }
+        const hourlyStats = hourlyMap.map((stats, hour) => ({
+            hour: `${hour.toString().padStart(2, '0')}:00`,
+            ...stats
+        }));
+
+        // [ENRICHMENT] Advanced AI Insights
+        const insights = [];
+        
+        // 1. Peak Hour Insight
+        const peakHour = hourlyStats.reduce((max, curr, idx) => curr.revenue > max.revenue ? { ...curr, idx } : max, { revenue: 0, idx: 0 });
+        if (peakHour.revenue > 0) {
+            insights.push({
+                type: 'PEAK_HOUR',
+                title: 'Jam Tersibuk',
+                message: `Penjualan tertinggi terjadi pada pukul ${peakHour.hour} dengan omzet Rp ${peakHour.revenue.toLocaleString('id-ID')}. Pastikan stok dan staf siap di jam ini.`
+            });
+        }
+
+        // 2. Growth Insight
+        if (growth.revenue > 10) {
+            insights.push({
+                type: 'GROWTH_POSITIVE',
+                title: 'Tren Positif',
+                message: `Omzet naik ${growth.revenue.toFixed(1)}% dibandingkan periode sebelumnya. Pertahankan strategi promosi saat ini!`
+            });
+        } else if (growth.revenue < -10) {
+            insights.push({
+                type: 'GROWTH_NEGATIVE',
+                title: 'Perhatian Diperlukan',
+                message: `Omzet turun ${Math.abs(growth.revenue).toFixed(1)}%. Coba tawarkan diskon atau bundel produk untuk meningkatkan penjualan.`
+            });
+        }
+
+        // 3. Basket Analysis (Simple)
+        // If average order value is high, suggest cross-selling
+        if (averageOrderValue > 100000) {
+            insights.push({
+                type: 'HIGH_AOV',
+                title: 'Nilai Transaksi Tinggi',
+                message: `Rata-rata transaksi tinggi (Rp ${averageOrderValue.toLocaleString('id-ID')}). Pelanggan cenderung belanja banyak, coba tawarkan paket premium.`
+            });
+        }
+
         const lowStocks = await prisma.stock.findMany({
             where: {
                 quantity: { lte: 5 },
@@ -387,14 +498,17 @@ const getAnalytics = async (req, res) => {
                 totalExpenses,
                 netProfit,
                 totalTransactions,
-                averageOrderValue
+                averageOrderValue,
+                growth
             },
+            hourlyStats,
             trend,
             topProducts,
             categorySales,
             paymentMethods,
             expenses: expenseBreakdown,
-            lowStock: lowStocks
+            lowStock: lowStocks,
+            insights // [NEW] AI Insights
         });
     } catch (error) {
         return errorResponse(res, "Failed to fetch analytics", 500, error);

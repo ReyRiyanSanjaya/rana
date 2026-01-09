@@ -4324,3 +4324,45 @@ Unique constraint failed on the fields: (`tenantId`,`offlineId`)
     at async C:\Data Riyan\projek\Rana\server\src\controllers\transactionController.js:95:32
     at async Proxy._transactionWithCallback (C:\Data Riyan\projek\Rana\server\node_modules\@prisma\client\runtime\library.js:130:8000)
     at async syncTransaction (C:\Data Riyan\projek\Rana\server\src\controllers\transactionController.js:94:24)
+[2026-01-09T15:57:24.110Z] Receiving Sync: {"offlineId":"0b220ab7-6a86-489a-b859-86d2c113fe01","cashierId":"616bdb2a-9b6e-42df-b3bd-9bfb02ebd4b7","totalAmount":60000,"paymentMethod":"CASH","occurredAt":"2026-01-09T22:57:23.517","items":[{"productId":"71cfa461-f6ed-416f-93de-a18c5e74b27c","quantity":12,"price":5000}]}
+[2026-01-09T15:57:24.163Z] Receiving Sync: {"offlineId":"0b220ab7-6a86-489a-b859-86d2c113fe01","cashierId":"616bdb2a-9b6e-42df-b3bd-9bfb02ebd4b7","totalAmount":60000,"paymentMethod":"CASH","occurredAt":"2026-01-09T22:57:23.517","items":[{"productId":"71cfa461-f6ed-416f-93de-a18c5e74b27c","quantity":12,"price":5000}]}
+[2026-01-09T15:57:24.295Z] Success: 923c396b-2eb0-4124-a4e7-c11fb9bedbbc
+[2026-01-09T15:57:24.319Z] Already Synced: 923c396b-2eb0-4124-a4e7-c11fb9bedbbc
+[2026-01-09T16:28:31.626Z] Receiving Sync: {"offlineId":"cbc8e3cb-c8de-44dd-80cc-559c18343598","cashierId":"616bdb2a-9b6e-42df-b3bd-9bfb02ebd4b7","totalAmount":65000,"paymentMethod":"CASH","occurredAt":"2026-01-09T23:28:30.928","items":[{"productId":"71cfa461-f6ed-416f-93de-a18c5e74b27c","quantity":13,"price":5000}]}
+[2026-01-09T16:28:31.644Z] Receiving Sync: {"offlineId":"cbc8e3cb-c8de-44dd-80cc-559c18343598","cashierId":"616bdb2a-9b6e-42df-b3bd-9bfb02ebd4b7","totalAmount":65000,"paymentMethod":"CASH","occurredAt":"2026-01-09T23:28:30.928","items":[{"productId":"71cfa461-f6ed-416f-93de-a18c5e74b27c","quantity":13,"price":5000}]}
+[2026-01-09T16:28:31.796Z] Success: 14fdc635-ca13-4c36-86c0-94d9734c3d48
+[2026-01-09T16:28:31.829Z] ERROR: 
+Invalid `tx.transaction.create()` invocation in
+D:\rana\server\src\controllers\transactionController.js:95:53
+
+  92 
+  93 const stockChanges = [];
+  94 const newTxn = await prisma.$transaction(async (tx) => {
+→ 95     const createdTxn = await tx.transaction.create(
+Unique constraint failed on the fields: (`tenantId`,`offlineId`) 
+Stack: PrismaClientKnownRequestError: 
+Invalid `tx.transaction.create()` invocation in
+D:\rana\server\src\controllers\transactionController.js:95:53
+
+  92 
+  93 const stockChanges = [];
+  94 const newTxn = await prisma.$transaction(async (tx) => {
+→ 95     const createdTxn = await tx.transaction.create(
+Unique constraint failed on the fields: (`tenantId`,`offlineId`)
+    at $n.handleRequestError (D:\rana\server\node_modules\@prisma\client\runtime\library.js:121:7315)
+    at $n.handleAndLogRequestError (D:\rana\server\node_modules\@prisma\client\runtime\library.js:121:6623)
+    at $n.request (D:\rana\server\node_modules\@prisma\client\runtime\library.js:121:6307)
+    at async l (D:\rana\server\node_modules\@prisma\client\runtime\library.js:130:9633)
+    at async D:\rana\server\src\controllers\transactionController.js:95:32
+    at async Proxy._transactionWithCallback (D:\rana\server\node_modules\@prisma\client\runtime\library.js:130:8000)
+    at async syncTransaction (D:\rana\server\src\controllers\transactionController.js:94:24)
+[2026-01-09T16:36:13.897Z] Receiving Sync: {"offlineId":"817ec8aa-df01-426b-8cfe-8b780db0c707","cashierId":"616bdb2a-9b6e-42df-b3bd-9bfb02ebd4b7","totalAmount":15000,"paymentMethod":"CASH","occurredAt":"2026-01-09T23:36:13.131","items":[{"productId":"71cfa461-f6ed-416f-93de-a18c5e74b27c","quantity":3,"price":5000}]}
+[2026-01-09T16:36:14.120Z] Success: e86b6796-61fe-4d77-862a-e390c5eacdd7
+[2026-01-09T17:03:41.119Z] Receiving Sync: {"offlineId":"9dd12669-8060-4ef1-86f7-12012462cc9c","cashierId":"616bdb2a-9b6e-42df-b3bd-9bfb02ebd4b7","totalAmount":20000,"paymentMethod":"CASH","occurredAt":"2026-01-10T00:03:40.345","items":[{"productId":"71cfa461-f6ed-416f-93de-a18c5e74b27c","quantity":4,"price":5000}]}
+[2026-01-09T17:03:41.214Z] Success: bade9363-4986-44cf-a7b9-ac37bd8f89bd
+[2026-01-09T17:06:37.670Z] Receiving Sync: {"offlineId":"e23c1fed-58ed-4c50-b2bf-1c6cc5e2749d","cashierId":"616bdb2a-9b6e-42df-b3bd-9bfb02ebd4b7","totalAmount":50000,"paymentMethod":"CASH","occurredAt":"2026-01-10T00:06:36.726","items":[{"productId":"590ab3cb-afaf-4cc0-8142-1675eb50fb42","quantity":5,"price":9000},{"productId":"71cfa461-f6ed-416f-93de-a18c5e74b27c","quantity":1,"price":5000}]}
+[2026-01-09T17:06:37.774Z] Success: 0ce1688e-b586-4a79-b1ca-48068575f05d
+[2026-01-09T17:27:53.505Z] Receiving Sync: {"offlineId":"443d01fb-338f-4534-ab9f-49e9b3efcafc","cashierId":"616bdb2a-9b6e-42df-b3bd-9bfb02ebd4b7","totalAmount":330000,"paymentMethod":"CASH","occurredAt":"2026-01-10T00:27:52.626","items":[{"productId":"71cfa461-f6ed-416f-93de-a18c5e74b27c","quantity":30,"price":5000},{"productId":"590ab3cb-afaf-4cc0-8142-1675eb50fb42","quantity":20,"price":9000}]}
+[2026-01-09T17:27:53.642Z] Success: 533226fa-0d94-406f-a932-184883d991dd
+[2026-01-09T17:42:57.180Z] Receiving Sync: {"offlineId":"d45602ca-f788-4fbe-8eff-b946505091c4","cashierId":"616bdb2a-9b6e-42df-b3bd-9bfb02ebd4b7","totalAmount":14000,"paymentMethod":"CASH","occurredAt":"2026-01-10T00:42:56.294","items":[{"productId":"590ab3cb-afaf-4cc0-8142-1675eb50fb42","quantity":1,"price":9000},{"productId":"71cfa461-f6ed-416f-93de-a18c5e74b27c","quantity":1,"price":5000}]}
+[2026-01-09T17:42:57.348Z] Success: 0e7e0e51-de87-400b-8a28-db9e4121a274

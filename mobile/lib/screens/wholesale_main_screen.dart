@@ -83,6 +83,7 @@ class _WholesaleMainScreenState extends State<WholesaleMainScreen> {
           ? null
           : Container(
               decoration: BoxDecoration(
+                color: Colors.white, // Ensure container has background
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.05),

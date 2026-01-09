@@ -21,33 +21,41 @@ class _PpobScreenState extends State<PpobScreen>
   late TabController _tabController;
 
   final List<Map<String, dynamic>> _services = [
-    {'icon': Icons.phone_android, 'label': 'Pulsa', 'color': Colors.redAccent},
-    {'icon': Icons.wifi, 'label': 'Paket Data', 'color': Colors.blueAccent},
+    {
+      'icon': Icons.phone_android,
+      'label': 'Pulsa',
+      'color': const Color(0xFFE07A5F)
+    },
+    {
+      'icon': Icons.wifi,
+      'label': 'Paket Data',
+      'color': const Color(0xFFE07A5F)
+    },
     {
       'icon': Icons.lightbulb_outline,
       'label': 'Listrik PLN',
-      'color': Colors.orange
+      'color': const Color(0xFFE07A5F)
     },
     {
       'icon': Icons.water_drop_outlined,
       'label': 'Air PDAM',
-      'color': Colors.blue
+      'color': const Color(0xFFE07A5F)
     },
     {
       'icon': Icons.health_and_safety_outlined,
       'label': 'BPJS',
-      'color': Colors.green
+      'color': const Color(0xFFE07A5F)
     },
-    {'icon': Icons.tv, 'label': 'TV Kabel', 'color': Colors.purple},
+    {'icon': Icons.tv, 'label': 'TV Kabel', 'color': const Color(0xFFE07A5F)},
     {
       'icon': Icons.account_balance_wallet_outlined,
       'label': 'E-Wallet',
-      'color': Colors.indigo
+      'color': const Color(0xFFE07A5F)
     },
     {
       'icon': Icons.sports_esports,
       'label': 'Voucher Game',
-      'color': Colors.deepOrange
+      'color': const Color(0xFFE07A5F)
     },
   ];
 
@@ -64,9 +72,9 @@ class _PpobScreenState extends State<PpobScreen>
     return Scaffold(
       backgroundColor: const Color(0xFFFFF8F0),
       appBar: AppBar(
-        backgroundColor: const Color(0xFFE07A5F),
+        backgroundColor: const Color(0xFFFFF8F0),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+          icon: const Icon(Icons.arrow_back_ios_new, color: Color(0xFFE07A5F)),
           onPressed: () => Navigator.pop(context),
         ),
         title: Column(
@@ -74,27 +82,25 @@ class _PpobScreenState extends State<PpobScreen>
             Text('PPOB & Tagihan',
                 style: GoogleFonts.poppins(
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: const Color(0xFF1E293B),
                     fontSize: 18)),
             Text('Powered by Digiflazz',
                 style: GoogleFonts.poppins(
                     fontWeight: FontWeight.w400,
-                    color: Colors.white.withOpacity(0.8),
+                    color: const Color(0xFF64748B),
                     fontSize: 10)),
           ],
         ),
-        iconTheme: const IconThemeData(
-            color: Colors.white), // [FIX] Ensure Back Arrow is White
+        iconTheme: const IconThemeData(color: Color(0xFFE07A5F)),
         elevation: 0,
         centerTitle: true,
         bottom: TabBar(
             controller: _tabController,
-            indicatorColor: Colors.white, // [FIX] Indicator to White
+            indicatorColor: const Color(0xFFE07A5F),
             labelStyle: GoogleFonts.poppins(
-                fontWeight: FontWeight.bold,
-                color: Colors.white), // [FIX] Label White
-            unselectedLabelColor:
-                Colors.white.withOpacity(0.6), // [FIX] Unselected Light White
+                fontWeight: FontWeight.bold, color: const Color(0xFFE07A5F)),
+            unselectedLabelColor: const Color(0xFF94A3B8),
+            labelColor: const Color(0xFFE07A5F),
             tabs: const [
               Tab(text: "Layanan"),
               Tab(text: "Riwayat Transaksi"),
@@ -180,8 +186,8 @@ class _PpobScreenState extends State<PpobScreen>
                                 const WalletScreen())), // [FIX] Navigate to Wallet
                     style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
-                        foregroundColor: Theme.of(context)
-                            .primaryColor, // [FIX] Text color matches theme
+                        foregroundColor: const Color(
+                            0xFFE07A5F), // [FIX] Text color matches brand
                         shape: const StadiumBorder()),
                     child: const Text('Top Up'),
                   )
@@ -296,8 +302,9 @@ class _PpobScreenState extends State<PpobScreen>
               leading: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                    color: Colors.blue.shade50, shape: BoxShape.circle),
-                child: Icon(Icons.receipt_long, color: Colors.blue.shade700),
+                    color: const Color(0xFFE07A5F).withOpacity(0.1),
+                    shape: BoxShape.circle),
+                child: const Icon(Icons.receipt_long, color: Color(0xFFE07A5F)),
               ),
               title: Text(txn['description'] ?? 'Transaksi PPOB',
                   style: const TextStyle(
@@ -306,7 +313,7 @@ class _PpobScreenState extends State<PpobScreen>
                   style: const TextStyle(fontSize: 12, color: Colors.grey)),
               trailing: Text(amount,
                   style: const TextStyle(
-                      fontWeight: FontWeight.bold, color: Colors.red)),
+                      fontWeight: FontWeight.bold, color: Color(0xFFE07A5F))),
             ),
           );
         },
@@ -400,7 +407,7 @@ class _TransactionSheetState extends State<_TransactionSheet> {
                   style: GoogleFonts.poppins(
                       fontSize: 18, fontWeight: FontWeight.bold)),
               const Text("Powered by Digiflazz",
-                  style: TextStyle(fontSize: 10, color: Colors.orange))
+                  style: TextStyle(fontSize: 10, color: Colors.grey))
             ])
           ]),
           const SizedBox(height: 24),
@@ -442,7 +449,7 @@ class _TransactionSheetState extends State<_TransactionSheet> {
                     subtitle: p['promo'] == true
                         ? const Text('Promo Hemat!',
                             style: TextStyle(
-                                color: Colors.green,
+                                color: Color(0xFFE07A5F),
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold))
                         : null,
@@ -498,7 +505,7 @@ class _TransactionSheetState extends State<_TransactionSheet> {
                               SnackBar(
                                   content:
                                       Text('Inquiry gagal: ${e.toString()}'),
-                                  backgroundColor: Colors.red),
+                                  backgroundColor: Color(0xFFE07A5F)),
                             );
                           }
                         } finally {

@@ -75,7 +75,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
         title: Text('Rana Grosir (B2B)',
             style: GoogleFonts.poppins(
                 fontWeight: FontWeight.bold, color: const Color(0xFFE07A5F))),
-        backgroundColor: Colors.transparent,
+        backgroundColor: const Color(0xFFFFF8F0),
         iconTheme: const IconThemeData(color: Color(0xFFE07A5F)),
         elevation: 0,
         actions: [

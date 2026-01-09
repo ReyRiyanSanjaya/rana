@@ -26,7 +26,8 @@ class _ReceiptSettingsScreenState extends State<ReceiptSettingsScreen> {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       _headerController.text = prefs.getString('receipt_header') ?? '';
-      _footerController.text = prefs.getString('receipt_footer') ?? 'Terima Kasih atas Kunjungan Anda';
+      _footerController.text = prefs.getString('receipt_footer') ??
+          'Terima Kasih atas Kunjungan Anda';
       _showLogo = prefs.getBool('receipt_show_logo') ?? true;
       _paperSize = prefs.getString('receipt_paper_size') ?? '58mm';
       _isLoading = false;
@@ -42,9 +43,9 @@ class _ReceiptSettingsScreenState extends State<ReceiptSettingsScreen> {
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Pengaturan Struk Disimpan'),
-          backgroundColor: Colors.green,
+          backgroundColor: const Color(0xFFE07A5F),
         ),
       );
       Navigator.pop(context);
@@ -54,14 +55,14 @@ class _ReceiptSettingsScreenState extends State<ReceiptSettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: const Color(0xFFFFF8F0),
       appBar: AppBar(
         title: Text('Pengaturan Struk',
             style: GoogleFonts.outfit(
-                color: const Color(0xFF1E293B), fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
+                color: const Color(0xFFE07A5F), fontWeight: FontWeight.bold)),
+        backgroundColor: const Color(0xFFFFF8F0),
         elevation: 0,
-        iconTheme: const IconThemeData(color: Color(0xFF1E293B)),
+        iconTheme: const IconThemeData(color: Color(0xFFE07A5F)),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -86,8 +87,7 @@ class _ReceiptSettingsScreenState extends State<ReceiptSettingsScreen> {
                           title: 'Ukuran Kertas',
                           value: _paperSize,
                           items: ['58mm', '80mm'],
-                          onChanged: (val) =>
-                              setState(() => _paperSize = val!),
+                          onChanged: (val) => setState(() => _paperSize = val!),
                         ),
                       ],
                     ),

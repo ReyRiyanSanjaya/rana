@@ -282,9 +282,9 @@ class _PosScreenState extends State<PosScreen> {
     );
 
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: const Color(0xFFFFF8F0),
       appBar: AppBar(
-        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+        backgroundColor: const Color(0xFFFFF8F0),
         elevation: 0,
         centerTitle: false,
         title: Row(

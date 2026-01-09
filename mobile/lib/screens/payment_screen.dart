@@ -65,7 +65,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       child: SingleChildScrollView(
         child: Container(
           decoration: const BoxDecoration(
-            color: Colors.white,
+            color: Color(0xFFFFF8F0),
             borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: Padding(
