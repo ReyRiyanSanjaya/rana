@@ -20,7 +20,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 12,
+      version: 13,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
@@ -184,6 +184,8 @@ class DatabaseHelper {
         quantity INTEGER,
         price REAL,
         costPrice REAL DEFAULT 0,
+        sku TEXT,      -- [NEW]
+        imageUrl TEXT, -- [NEW]
         FOREIGN KEY (transactionOfflineId) REFERENCES transactions (offlineId) ON DELETE CASCADE
       )
     ''');
@@ -316,11 +318,14 @@ class DatabaseHelper {
           if (item['costPrice'] == null) {
             // Fallback: fetch current cost from product if not provided in item object
             final productRes = await txnObj.query('products',
-                columns: ['costPrice'],
+                columns: ['costPrice', 'sku', 'imageUrl'],
                 where: 'id = ?',
                 whereArgs: [item['productId']]);
             if (productRes.isNotEmpty) {
               item['costPrice'] = productRes.first['costPrice'] ?? 0;
+              // Also try to populate snapshot if missing
+              if (item['sku'] == null) item['sku'] = productRes.first['sku'];
+              if (item['imageUrl'] == null) item['imageUrl'] = productRes.first['imageUrl'];
             } else {
               item['costPrice'] = 0;
             }
@@ -563,12 +568,12 @@ class DatabaseHelper {
     final db = await instance.database;
     return await db.rawQuery('''
       SELECT 
-        p.name, 
+        COALESCE(ti.name, p.name) as name, 
         SUM(ti.quantity) as totalQty,
         SUM(ti.price * ti.quantity) as totalRevenue
       FROM transaction_items ti
-      JOIN products p ON ti.productId = p.id
-      GROUP BY p.name
+      LEFT JOIN products p ON ti.productId = p.id
+      GROUP BY COALESCE(ti.name, p.name)
       ORDER BY totalQty DESC
       LIMIT ?
     ''', [limit]);
@@ -586,10 +591,12 @@ class DatabaseHelper {
 
     return await db.rawQuery('''
       SELECT
-        p.id as productId,
-        p.name as name,
-        p.stock as stock,
-        p.sellingPrice as sellingPrice,
+        ti.productId as productId,
+        MAX(COALESCE(ti.name, p.name)) as name,
+        MAX(COALESCE(ti.sku, p.sku)) as sku,
+        MAX(COALESCE(ti.imageUrl, p.imageUrl)) as imageUrl,
+        MAX(p.stock) as stock,
+        MAX(p.sellingPrice) as sellingPrice,
         SUM(ti.quantity) as totalQty,
         SUM(ti.price * ti.quantity) as totalRevenue,
         SUM((ti.price - ti.costPrice) * ti.quantity) as totalProfit,
@@ -600,9 +607,10 @@ class DatabaseHelper {
         END as profitMargin
       FROM transaction_items ti
       JOIN transactions t ON ti.transactionOfflineId = t.offlineId
-      JOIN products p ON ti.productId = p.id
+      LEFT JOIN products p ON ti.productId = p.id
       WHERE t.occurredAt BETWEEN ? AND ?
-      GROUP BY p.id, p.name, p.stock, p.sellingPrice
+      AND (t.status IS NULL OR t.status NOT IN ('VOID', 'CANCELLED'))
+      GROUP BY ti.productId
       ORDER BY totalQty DESC
       LIMIT ?
     ''', [startDate.toIso8601String(), endDate.toIso8601String(), limit]);
@@ -685,13 +693,13 @@ class DatabaseHelper {
 
     return await db.rawQuery('''
       SELECT 
-        p.category, 
+        COALESCE(p.category, 'Lainnya') as category, 
         SUM(ti.price * ti.quantity) as totalSales
       FROM transaction_items ti
-      JOIN products p ON ti.productId = p.id
       JOIN transactions t ON ti.transactionOfflineId = t.offlineId
+      LEFT JOIN products p ON ti.productId = p.id
       WHERE t.occurredAt BETWEEN ? AND ?
-      GROUP BY p.category
+      GROUP BY COALESCE(p.category, 'Lainnya')
     ''', [startDate.toIso8601String(), endDate.toIso8601String()]);
   }
 

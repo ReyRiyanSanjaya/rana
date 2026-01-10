@@ -21,6 +21,8 @@ import Contact from './pages/Contact'; // [NEW]
 import Support from './pages/Support'; // [NEW]
 import FlashSales from './pages/FlashSales';
 import Transactions from './pages/Transactions';
+import AIAssistant from './components/AIAssistant'; // [NEW]
+import BottomNav from './components/BottomNav'; // [NEW]
 
 // Placeholders for other routes
 const Placeholder = ({ title }) => (
@@ -112,6 +114,8 @@ function App() {
                         </ProtectedRoute>
                     } />
                 </Routes>
+                <AIAssistant />
+                <BottomNav />
             </Router>
         </AuthProvider>
     );

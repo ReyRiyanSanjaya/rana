@@ -41,7 +41,8 @@ const Transactions = () => {
                 area: area || undefined,
                 category: category || undefined,
                 paymentStatus: paymentStatus || undefined,
-                paymentMethod: paymentMethod || undefined
+                paymentMethod: paymentMethod || undefined,
+                search: search || undefined
             };
             const res = await api.get('/admin/transactions', { params });
             if (res.data.status === 'success') {
@@ -63,10 +64,13 @@ const Transactions = () => {
         } finally {
             setLoading(false);
         }
-    }, [page, startDate, endDate, area, category, paymentStatus, paymentMethod]);
+    }, [page, startDate, endDate, area, category, paymentStatus, paymentMethod, search]);
 
     useEffect(() => {
-        fetchTransactions();
+        const timer = setTimeout(() => {
+            fetchTransactions();
+        }, 500);
+        return () => clearTimeout(timer);
     }, [fetchTransactions]);
 
     // Socket Listener for Auto Refresh
@@ -112,7 +116,8 @@ const Transactions = () => {
                 area: area || undefined,
                 category: category || undefined,
                 paymentStatus: paymentStatus || undefined,
-                paymentMethod: paymentMethod || undefined
+                paymentMethod: paymentMethod || undefined,
+                search: search || undefined
             };
             const res = await api.get('/admin/transactions/export', { params });
             const data = Array.isArray(res.data.data) ? res.data.data : [];
@@ -155,28 +160,7 @@ const Transactions = () => {
 
     const formatCurrency = (val) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(val || 0);
 
-    const filteredTransactions = transactions.filter((t) => {
-        const q = search.trim().toLowerCase();
-        if (!q) return true;
-        const storeName = (t.store?.name || '').toLowerCase();
-        const storeLocation = (t.store?.location || '').toLowerCase();
-        const storeCategory = (t.store?.category || '').toLowerCase();
-        const tenantName = (t.tenant?.name || '').toLowerCase();
-        const cashierName = (t.user?.name || '').toLowerCase();
-        const method = (t.paymentMethod || '').toLowerCase();
-        const status = (t.paymentStatus || '').toLowerCase();
-        const id = (t.id || '').toLowerCase();
-        return (
-            storeName.includes(q) ||
-            storeLocation.includes(q) ||
-            storeCategory.includes(q) ||
-            tenantName.includes(q) ||
-            cashierName.includes(q) ||
-            method.includes(q) ||
-            status.includes(q) ||
-            id.includes(q)
-        );
-    });
+    const filteredTransactions = transactions;
 
     const pageTotalAmount = filteredTransactions.reduce((sum, t) => sum + (t.totalAmount || 0), 0);
 
@@ -556,6 +540,54 @@ const Transactions = () => {
                                         </span>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+
+                        <div className="px-6 pb-6 space-y-2">
+                            <h3 className="text-xs font-semibold text-slate-500 uppercase">Item Transaksi</h3>
+                            <div className="border rounded-md overflow-hidden">
+                                <table className="w-full text-sm text-left">
+                                    <thead className="bg-slate-50 border-b">
+                                        <tr>
+                                            <th className="px-3 py-2 font-medium text-slate-700">Produk</th>
+                                            <th className="px-3 py-2 font-medium text-slate-700 text-right">Qty</th>
+                                            <th className="px-3 py-2 font-medium text-slate-700 text-right">Harga</th>
+                                            <th className="px-3 py-2 font-medium text-slate-700 text-right">Modal</th>
+                                            <th className="px-3 py-2 font-medium text-slate-700 text-right">Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {selectedTransaction.transactionItems && selectedTransaction.transactionItems.length > 0 ? (
+                                            selectedTransaction.transactionItems.map((item, idx) => (
+                                                <tr key={idx}>
+                                                    <td className="px-3 py-2">
+                                                        <div className="flex items-center gap-2">
+                                                            {item.productImage ? (
+                                                                <img src={item.productImage} alt="" className="w-8 h-8 rounded object-cover bg-slate-100" />
+                                                            ) : (
+                                                                <div className="w-8 h-8 rounded bg-slate-100 flex items-center justify-center text-slate-400 text-xs">IMG</div>
+                                                            )}
+                                                            <div>
+                                                                <div className="font-medium text-slate-900 line-clamp-1">{item.productName || 'Unknown'}</div>
+                                                                {item.productSku && <div className="text-xs text-slate-500">{item.productSku}</div>}
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-3 py-2 text-right">{item.quantity}</td>
+                                                    <td className="px-3 py-2 text-right text-slate-600">{formatCurrency(item.price)}</td>
+                                                    <td className="px-3 py-2 text-right text-slate-500 text-xs">{item.basePrice ? formatCurrency(item.basePrice) : '-'}</td>
+                                                    <td className="px-3 py-2 text-right font-medium text-slate-900">{formatCurrency(item.quantity * item.price)}</td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr>
+                                                <td colSpan="4" className="px-3 py-4 text-center text-slate-400 italic">
+                                                    Tidak ada detail item
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>

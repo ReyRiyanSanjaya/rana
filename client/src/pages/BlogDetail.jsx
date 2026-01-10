@@ -29,7 +29,7 @@ const BlogDetail = () => {
         <div className="min-h-screen bg-gradient-to-b from-[#0a0b0f] via-[#0b1020] to-[#0a0b0f] text-slate-200">
             <Navbar />
 
-            <article className="max-w-4xl mx-auto px-4 py-12">
+            <article className="max-w-4xl mx-auto px-4 pt-32 pb-12">
                 <div className="text-center mb-12">
                     <div className="flex justify-center gap-2 mb-6">
                         {post.tags?.map(tag => (

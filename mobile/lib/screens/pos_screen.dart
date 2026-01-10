@@ -272,7 +272,12 @@ class _PosScreenState extends State<PosScreen> {
                             SoundService.playBeep();
                             cart.addItem(product['id'], product['name'],
                                 product['sellingPrice'],
-                                maxStock: stock);
+                                maxStock: stock,
+                                sku: product['sku'],
+                                imageUrl: product['imageUrl'],
+                                basePrice: (product['costPrice'] is num)
+                                    ? (product['costPrice'] as num).toDouble()
+                                    : 0.0);
                           },
                         ).animate().fadeIn(delay: (30 * i).ms).scale();
                       },

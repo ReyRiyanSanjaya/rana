@@ -2,7 +2,7 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const { successResponse, errorResponse } = require('../utils/response');
 const AggregationService = require('../services/aggregationService');
-const { emitToTenant, emitToAdmin } = require('../socket');
+const { emitToTenant, emitToAdmin, emitPublic } = require('../socket');
 
 /**
  * Handle incoming sync batches from offline clients
@@ -68,7 +68,7 @@ const syncTransaction = async (req, res) => {
                 id: { in: productIds },
                 tenantId: tenantId // [SECURITY] Compulsory filter
             },
-            select: { id: true, sellingPrice: true, basePrice: true }
+            select: { id: true, sellingPrice: true, basePrice: true, name: true, sku: true, imageUrl: true }
         });
         const validProductMap = new Map(validProducts.map(p => [p.id, p]));
 
@@ -89,7 +89,12 @@ const syncTransaction = async (req, res) => {
             return {
                 productId: item.productId,
                 quantity: item.quantity,
-                price: Number(item.price || prod?.sellingPrice || 0)
+                price: Number(item.price || prod?.sellingPrice || 0),
+                // [NEW] Snapshot Data (Prefer Client Data if available)
+                productName: item.productName || prod?.name || "Unknown Product",
+                productSku: item.productSku || prod?.sku,
+                productImage: item.productImage || prod?.imageUrl,
+                basePrice: item.basePrice !== undefined ? Number(item.basePrice) : (prod?.basePrice || 0)
             };
         });
 
@@ -174,6 +179,22 @@ const syncTransaction = async (req, res) => {
 
         emitToTenant(tenantId, 'transactions:created', { id: newTxn.id, storeId, occurredAt: transactionData.occurredAt });
         if (stockChanges.length) emitToTenant(tenantId, 'inventory:changed', { storeId, changes: stockChanges });
+
+        // [REALTIME] Emit public event for map visualization (Async)
+        prisma.store.findUnique({ 
+            where: { id: storeId }, 
+            select: { location: true, category: true } 
+        }).then(store => {
+            if (store) {
+                emitPublic('public:transaction_created', {
+                    id: newTxn.id,
+                    city: store.location || 'Indonesia',
+                    category: store.category,
+                    amount: Number(transactionData.totalAmount),
+                    occurredAt: transactionData.occurredAt
+                });
+            }
+        }).catch(err => console.error("Failed to emit public txn", err));
 
         return successResponse(res, { id: newTxn.id, status: 'SYNCED' }, "Sync successful");
 

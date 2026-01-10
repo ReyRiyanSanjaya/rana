@@ -3,6 +3,7 @@ const prisma = new PrismaClient();
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { successResponse, errorResponse } = require('../utils/response');
+const { emitPublic } = require('../socket');
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
@@ -346,8 +347,18 @@ const register = async (req, res) => {
                 }
             }
 
-            return { tenant, user };
+            return { tenant, user, store };
         });
+
+        // [REALTIME] Emit public event
+        if (result && result.store) {
+            emitPublic('public:merchant_created', {
+                id: result.store.id,
+                city: result.store.location || 'Indonesia',
+                businessName: result.tenant.name,
+                createdAt: new Date()
+            });
+        }
 
         return successResponse(res, { tenantId: result.tenant.id, email: result.user.email }, "Registration Successful");
 

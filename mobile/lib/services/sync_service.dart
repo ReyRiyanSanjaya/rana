@@ -61,7 +61,12 @@ class SyncService {
               .map((i) => {
                     'productId': i['productId'],
                     'quantity': i['quantity'],
-                    'price': i['price']
+                    'price': i['price'],
+                    // [NEW] Enriched Data
+                    'productName': i['name'],
+                    'productSku': i['sku'],
+                    'productImage': i['imageUrl'],
+                    'basePrice': i['costPrice']
                   })
               .toList()
         };
@@ -180,8 +185,10 @@ class SyncService {
                   'productId': i['productId'],
                   'quantity': i['quantity'],
                   'price': i['price'],
-                  'costPrice':
-                      i['costPrice'] ?? 0, // Server should provide this
+                  'costPrice': i['basePrice'] ?? i['costPrice'] ?? 0, // Map server basePrice to local costPrice
+                  'name': i['productName'] ?? '',
+                  'sku': i['productSku'],
+                  'imageUrl': i['productImage']
                 })
             .toList();
 

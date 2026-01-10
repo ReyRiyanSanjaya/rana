@@ -21,8 +21,10 @@ const initSocket = (server) => {
         console.log("Socket Auth Attempt:", socket.id, "Token provided?", !!socket.handshake.auth.token);
         const token = socket.handshake.auth.token;
         if (!token) {
-            console.log("Socket Auth Failed: No Token");
-            return next(new Error('Authentication error'));
+            // Allow guest connections for public real-time data
+            console.log("Socket Auth: Guest Connected");
+            socket.user = { role: 'GUEST', userId: 'guest_' + socket.id };
+            return next();
         }
 
         try {
@@ -32,14 +34,20 @@ const initSocket = (server) => {
             next();
         } catch (e) {
             console.log("Socket Auth Failed: Invalid Token", e.message);
+            // Optionally allow invalid token as guest too? No, better to fail if token is bad.
             next(new Error('Authentication error'));
         }
     });
 
     io.on('connection', (socket) => {
         console.log('User connected:', socket.user.role, socket.user.userId);
-        if (socket.user?.tenantId) socket.join(`tenant:${socket.user.tenantId}`);
-        if (socket.user?.storeId) socket.join(`store:${socket.user.storeId}`);
+        
+        if (socket.user.role === 'GUEST') {
+            socket.join('public');
+        } else {
+            if (socket.user?.tenantId) socket.join(`tenant:${socket.user.tenantId}`);
+            if (socket.user?.storeId) socket.join(`store:${socket.user.storeId}`);
+        }
 
         // Join Order Room (for Buyer Tracking)
         socket.on('join_order', (orderId) => {
@@ -137,4 +145,10 @@ const emitToAdmin = (event, data) => {
     }
 };
 
-module.exports = { initSocket, getIo, emitToTenant, emitToOrder, emitToAdmin };
+const emitPublic = (event, data) => {
+    if (io) {
+        io.to('public').emit(event, data);
+    }
+};
+
+module.exports = { initSocket, getIo, emitToTenant, emitToOrder, emitToAdmin, emitPublic };

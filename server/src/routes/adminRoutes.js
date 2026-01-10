@@ -31,6 +31,7 @@ router.get('/merchants', adminController.getMerchants);
 router.post('/merchants', adminController.createMerchant);
 router.delete('/merchants/:id', adminController.deleteMerchant);
 router.put('/merchants/:tenantId/subscription', adminController.updateMerchantSubscription);
+router.put('/merchants/:id', adminController.updateMerchant); // [NEW]
 router.get('/merchants/:id', adminController.getMerchantDetail); // [NEW]
 router.post('/merchants/:storeId/wallet/adjust', adminController.adjustMerchantWallet); // [NEW]
 router.post('/merchants/:tenantId/notify', adminController.sendNotification); // [NEW]

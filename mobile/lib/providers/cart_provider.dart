@@ -7,16 +7,22 @@ import 'package:rana_merchant/services/sync_service.dart';
 class CartItem {
   final String productId;
   final String name;
+  final String? sku; // [NEW] Snapshot
+  final String? imageUrl; // [NEW] Snapshot
   final double price;
+  final double basePrice; // [NEW] Snapshot (costPrice)
   int quantity;
-  final int maxStock; // [NEW]
+  final int maxStock;
 
   CartItem({
     required this.productId,
     required this.name,
+    this.sku,
+    this.imageUrl,
     required this.price,
+    this.basePrice = 0,
     this.quantity = 1,
-    this.maxStock = 999999, // Default to high if not tracked
+    this.maxStock = 999999,
   });
 
   double get total => price * quantity;
@@ -77,14 +83,20 @@ class CartProvider extends ChangeNotifier {
   }
 
   void addItem(String productId, String name, double price,
-      {int maxStock = 999999}) {
+      {int maxStock = 999999,
+      String? sku,
+      String? imageUrl,
+      double basePrice = 0}) {
     if (_items.containsKey(productId)) {
       _items.update(
         productId,
         (existing) => CartItem(
           productId: existing.productId,
           name: existing.name,
+          sku: existing.sku,
+          imageUrl: existing.imageUrl,
           price: existing.price,
+          basePrice: existing.basePrice,
           quantity: existing.quantity + 1,
           maxStock: existing.maxStock,
         ),
@@ -95,7 +107,10 @@ class CartProvider extends ChangeNotifier {
         () => CartItem(
           productId: productId,
           name: name,
+          sku: sku,
+          imageUrl: imageUrl,
           price: price,
+          basePrice: basePrice,
           maxStock: maxStock,
         ),
       );
@@ -126,7 +141,10 @@ class CartProvider extends ChangeNotifier {
         (existing) => CartItem(
           productId: existing.productId,
           name: existing.name,
+          sku: existing.sku,
+          imageUrl: existing.imageUrl,
           price: existing.price,
+          basePrice: existing.basePrice,
           quantity: existing.quantity - 1,
         ),
       );
@@ -193,8 +211,11 @@ class CartProvider extends ChangeNotifier {
               'transactionOfflineId': offlineId,
               'productId': item.productId,
               'name': item.name, // [FIX] Added missing name
+              'sku': item.sku, // [NEW] Snapshot
+              'imageUrl': item.imageUrl, // [NEW] Snapshot
               'quantity': item.quantity,
-              'price': item.price
+              'price': item.price,
+              'costPrice': item.basePrice // [NEW] Snapshot
             })
         .toList();
 

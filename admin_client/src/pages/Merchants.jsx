@@ -93,7 +93,17 @@ const Merchants = () => {
                 alert("Please fill in all required fields");
                 return;
             }
-            await api.post('/auth/register-merchant', addForm); // Assuming this is the endpoint based on standard practice, otherwise /admin/merchants
+            // Map form to API expectation
+            const payload = {
+                ownerName: addForm.name,
+                businessName: addForm.businessName,
+                email: addForm.email,
+                password: addForm.password,
+                phone: addForm.phone,
+                address: addForm.address
+            };
+
+            await api.post('/admin/merchants', payload);
             alert("Merchant created successfully!");
             setShowAddModal(false);
             setAddForm({ name: '', email: '', password: '', phone: '', businessName: '', address: '' });
@@ -110,6 +120,18 @@ const Merchants = () => {
         setSubForm({
             status: merchant.tenant?.subscriptionStatus || 'TRIAL'
         });
+    };
+
+    const handleDelete = async (id) => {
+        if (!window.confirm("Are you sure you want to deactivate this merchant? This will cancel their subscription.")) return;
+        try {
+            await api.delete(`/admin/merchants/${id}`);
+            alert("Merchant deactivated successfully");
+            fetchMerchants();
+        } catch (error) {
+            console.error(error);
+            alert("Failed to deactivate merchant");
+        }
     };
 
     const toggleSelectAll = (checked) => {
@@ -346,7 +368,8 @@ const Merchants = () => {
                                 <Td className="text-right">
                                     <div className="inline-flex gap-2 flex-wrap justify-end">
                                         <Button variant="outline" size="sm" onClick={() => navigate(`/merchants/${m.id}`)} icon={Eye}>View</Button>
-                                        <Button variant="secondary" size="sm" onClick={() => handleEditSubscription(m)} icon={Cog}>Manage Plan</Button>
+                                        <Button variant="secondary" size="sm" onClick={() => handleEditSubscription(m)} icon={Cog}>Plan</Button>
+                                        <Button variant="destructive" size="sm" onClick={() => handleDelete(m.id)} icon={Trash2}>Del</Button>
                                     </div>
                                 </Td>
                             </Tr>

@@ -24,7 +24,7 @@ const BlogList = () => {
     return (
         <div className="min-h-screen bg-gradient-to-b from-[#0a0b0f] via-[#0b1020] to-[#0a0b0f] text-slate-200">
             <Navbar />
-            <div className="max-w-7xl mx-auto px-4 py-12">
+            <div className="max-w-7xl mx-auto px-4 pt-32 pb-12">
                 <h1 className="text-4xl font-bold text-white mb-8">Update & Berita Terbaru</h1>
 
                 {loading ? (
