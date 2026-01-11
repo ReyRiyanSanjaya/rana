@@ -180,7 +180,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                           content: Text('Password berhasil diubah'),
-                          backgroundColor: Colors.green),
+                          backgroundColor: const Color(0xFFE07A5F)),
                     );
                   }
                 } catch (e) {
@@ -419,7 +419,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.redAccent),
+          borderSide: const BorderSide(color: Color(0xFFE07A5F)),
         ),
       ),
     );

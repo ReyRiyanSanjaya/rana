@@ -1763,7 +1763,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
-                                  color: Colors.redAccent,
+                                  color: const Color(0xFFE07A5F),
                                   borderRadius: BorderRadius.circular(999),
                                 ),
                                 child: Row(
@@ -1823,7 +1823,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
-                                color: Colors.red,
+                                color: const Color(0xFFE07A5F),
                                 borderRadius: BorderRadius.circular(999),
                               ),
                               constraints: const BoxConstraints(
@@ -2375,12 +2375,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                      color: isAlert ? Colors.red.shade50 : Colors.blue.shade50,
+                      color: const Color(0xFFE07A5F).withOpacity(0.1),
                       shape: BoxShape.circle),
                   child: Icon(
                       isAlert ? Icons.warning_amber : Icons.auto_awesome,
                       size: 48,
-                      color: isAlert ? Colors.red : Colors.blue),
+                      color: const Color(0xFFE07A5F)),
                 ),
                 const SizedBox(height: 16),
                 Text(_aiInsight!['title'],

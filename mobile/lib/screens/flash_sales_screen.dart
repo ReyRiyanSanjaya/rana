@@ -123,7 +123,7 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Tanggal mulai harus sebelum tanggal berakhir'),
-          backgroundColor: Colors.red,
+          backgroundColor: const Color(0xFFE07A5F),
         ),
       );
       return;
@@ -147,7 +147,7 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Flash Sale berhasil dibuat'),
-            backgroundColor: Colors.green,
+            backgroundColor: Color(0xFFE07A5F),
           ),
         );
       }
@@ -156,7 +156,7 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Gagal membuat: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: const Color(0xFFE07A5F),
           ),
         );
       }
@@ -845,12 +845,12 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
                         Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: Colors.green.shade50,
+                            color: const Color(0xFFE07A5F).withOpacity(0.1),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: const Icon(
                             Icons.add_shopping_cart,
-                            color: Colors.green,
+                            color: Color(0xFFE07A5F),
                             size: 24,
                           ),
                         ),
@@ -1399,7 +1399,7 @@ class _FlashSalesScreenState extends State<FlashSalesScreen> {
                                         IconButton(
                                           icon:
                                               const Icon(Icons.delete_outline),
-                                          color: Colors.red,
+                                          color: const Color(0xFFE07A5F),
                                           onPressed: () => _deleteItem(
                                             sale['id'].toString(),
                                             it['id'].toString(),

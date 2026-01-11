@@ -147,7 +147,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
       final msg = e.response?.data['message'] ?? e.message ?? 'Terjadi Kesalahan Server';
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal: $msg'), backgroundColor: const Color(0xFFE07A5F)));
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal: $e'), backgroundColor: Colors.red));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal: $e'), backgroundColor: const Color(0xFFE07A5F)));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

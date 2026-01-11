@@ -569,7 +569,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Navigator.pop(ctx);
               Provider.of<AuthProvider>(context, listen: false).logout();
             },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(foregroundColor: const Color(0xFFE07A5F)),
             child: const Text('Keluar'),
           ),
         ],

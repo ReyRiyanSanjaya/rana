@@ -613,7 +613,7 @@ class _WholesaleCheckoutScreenState extends State<WholesaleCheckoutScreen> {
                           ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                   content: Text("Pesanan Berhasil Dibuat!"),
-                                  backgroundColor: Colors.green));
+                                  backgroundColor: Color(0xFFE07A5F)));
 
                           Navigator.pushReplacement(
                               context,
@@ -626,7 +626,7 @@ class _WholesaleCheckoutScreenState extends State<WholesaleCheckoutScreen> {
                           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                               content: Text(
                                   e.toString().replaceAll('Exception: ', '')),
-                              backgroundColor: Colors.red));
+                              backgroundColor: Color(0xFFE07A5F)));
                         } finally {
                           if (mounted) setState(() => _isProcessing = false);
                         }

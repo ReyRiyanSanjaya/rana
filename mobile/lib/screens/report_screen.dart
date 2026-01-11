@@ -2008,7 +2008,7 @@ class _ReportScreenState extends State<ReportScreen> {
               Text(_categorySales[_touchedIndex]['category'] ?? '',
                   style: const TextStyle(
                       fontWeight: FontWeight.bold, fontSize: 12)),
-              // Text(currency.format(_categorySales[_touchedIndex]['totalSales']), style: const TextStyle(fontSize: 10, color: Colors.indigo)),
+              // Text(currency.format(_categorySales[_touchedIndex]['totalSales']), style: const TextStyle(fontSize: 10, color: Color(0xFFE07A5F)),
             ],
           )
         else

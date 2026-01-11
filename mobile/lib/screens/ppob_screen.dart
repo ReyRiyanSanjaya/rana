@@ -621,7 +621,7 @@ class _TransactionSheetState extends State<_TransactionSheet> {
                         } catch (e) {
                           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                               content: Text('Gagal: ${e.toString()}'),
-                              backgroundColor: Colors.red));
+                              backgroundColor: const Color(0xFFE07A5F)));
                         }
                       },
                 style: ElevatedButton.styleFrom(

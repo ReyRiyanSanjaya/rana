@@ -137,7 +137,7 @@ class _PromoHubScreenState extends State<PromoHubScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Gagal membuka WhatsApp. Pastikan WhatsApp terpasang.'),
-          backgroundColor: Colors.red,
+          backgroundColor: const Color(0xFFE07A5F),
         ),
       );
       return;
@@ -2209,7 +2209,8 @@ class _PromoCustomersSheetState extends State<_PromoCustomersSheet> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Gagal import: $e'), backgroundColor: Colors.red),
+              content: Text('Gagal import: $e'),
+              backgroundColor: Color(0xFFE07A5F)),
         );
       }
     } finally {

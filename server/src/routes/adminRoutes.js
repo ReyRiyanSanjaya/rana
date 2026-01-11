@@ -11,7 +11,7 @@ router.use(checkRole(['SUPER_ADMIN']));
 
 // Get Dashboard Stats
 router.get('/stats', adminController.getDashboardStats);
-router.get('/stats/chart', adminController.getPayoutChart);
+router.get('/stats/chart', adminController.getDashboardStats);
 router.get('/analytics', adminController.getBusinessAnalytics); // [NEW]
 
 // Subscription Packages

@@ -511,7 +511,7 @@ class _MarketingScreenState extends State<MarketingScreen>
                                       border: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(8),
                                         borderSide: BorderSide(
-                                            color: Colors.orange.shade200),
+                                            color: const Color(0xFFE07A5F)),
                                       ),
                                       contentPadding:
                                           const EdgeInsets.symmetric(
@@ -534,7 +534,7 @@ class _MarketingScreenState extends State<MarketingScreen>
                                       border: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(8),
                                         borderSide: BorderSide(
-                                            color: Colors.orange.shade200),
+                                            color: const Color(0xFFE07A5F)),
                                       ),
                                       contentPadding:
                                           const EdgeInsets.symmetric(
@@ -1188,7 +1188,8 @@ class _MarketingScreenState extends State<MarketingScreen>
     final newPrice = double.tryParse(newPriceText);
     if (newPrice == null || newPrice <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Harga tidak valid'), backgroundColor: Colors.red));
+          content: Text('Harga tidak valid'),
+          backgroundColor: const Color(0xFFE07A5F)));
       return;
     }
 
@@ -1232,15 +1233,16 @@ class _MarketingScreenState extends State<MarketingScreen>
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content:
               Text('✅ Sukses! Harga ${_selectedTemplate} telah diterapkan.'),
-          backgroundColor: Colors.green,
+          backgroundColor: const Color(0xFFE07A5F),
         ));
         _discountAppliedTick++;
         _showDiscountSuccess();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Gagal: $e'), backgroundColor: Colors.red));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Gagal: \$e'),
+            backgroundColor: const Color(0xFFE07A5F)));
       }
     }
   }
